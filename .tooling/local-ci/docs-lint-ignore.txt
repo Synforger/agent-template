@@ -1,0 +1,12 @@
+# docs-check exceptions: one substring or glob per line.
+# A reference flagged by docs-check.sh is suppressed when its path matches
+# any line here. Use for intentional references to paths that do not exist
+# in this repository (e.g. examples in prose, planned layouts whose root
+# already exists). Keep this list short — every entry is a hole in the net.
+#
+# Example:
+#   docs/planned-layout.md      # whole-file worth of future paths
+#   some/example/path.py        # single intentional example
+
+task version:bump   # workflows/README: "derive per project when needed" example
+task release:cut    # same — intentionally hypothetical, not a stale reference

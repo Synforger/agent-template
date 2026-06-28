@@ -1,0 +1,25 @@
+# 派生エージェント repo の .gitignore 雛形
+# (= init-new-agent.sh が派生先で .gitignore にリネーム展開)
+# (= 派生で必要に応じて加筆)
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# 自動生成出力 (= 起動時 startup-status + SessionEnd hook の出力先、 PC 同期衝突回避)
+.tooling/_output/*
+!.tooling/_output/.gitkeep
+
+# anon-words 実体 (= 派生先で各自書く、 .example のみ追跡)
+.tooling/local-ci/anon-words.txt
+
+# 派生固有: 必要なら追加
+# 例:
+# .env
+# secrets/
+# .company/

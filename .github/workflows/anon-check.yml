@@ -1,0 +1,24 @@
+name: anon-check
+
+# Public personal repo guard. Runs on every push / PR to catch personal
+# identifiers or prior-employer affiliation that may have slipped past the
+# local pre-commit hook (`.githooks/pre-commit` + `task lint`).
+#
+# The forbidden-word list lives in `.tooling/local-ci/anon-words.txt` (single
+# source of truth). This workflow runs the very same scanner the hook runs
+# (`.tooling/local-ci/anon-scan.sh`), so CI and commit-time guards read one
+# pattern and can never drift.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for personal identifiers
+        shell: bash
+        run: bash .tooling/local-ci/anon-scan.sh

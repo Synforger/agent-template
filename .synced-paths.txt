@@ -1,0 +1,49 @@
+# =============================================================================
+# agent-template synced paths
+# =============================================================================
+# 派生エージェント repo へ降ろす path 一覧。
+# - sync-from-base.sh = ここに列挙された path のみ base 最新で上書き
+# - promote-to-base.sh = ここに列挙された path の派生変更のみ base へ昇格
+# - ここに列挙されていない path = 派生固有の自由領域 (= 人格 / 実プロジェクト / journal 実コンテンツ等)
+#
+# 表記 path は派生先 root からの相対 path (= base 側の src/ プレフィックスは剥がす)
+# 末尾 / で dir 全体を意味する (= 配下全 file を再帰的に sync)
+# =============================================================================
+
+# === 機構 script (= 真値は base、 派生で勝手に編集しない) ===
+.tooling/docs-check.sh
+.tooling/detect-duplicates.py
+.tooling/detect-stale-rules.sh
+.tooling/extract-artifact-index.sh
+.tooling/first-prompt-pull.sh
+.tooling/precommit-conflict-check.sh
+.tooling/setup-hooks.sh
+.tooling/startup-status.sh
+.tooling/_README.md
+.tooling/pc-labels.example.txt
+
+# === rules 必須 4 file (= 機構の真値書類) ===
+rules/_README.md
+rules/always/meta.md
+rules/lazy/_template.md
+rules/lazy/automation-machinery.md
+rules/lazy/rule-promotion-format.md
+
+# === 構造テンプレ (= 雛形 file 集) ===
+projects/_README.md
+projects/_template-project/
+journal/_README.md
+journal/_template.md
+todos/_README.md
+todos/_template.md
+plans/_README.md
+research/_README.md
+research/_template.md
+profile/_README.md
+profile/_template.md
+
+# === 派生立ち上げ時のみ展開、 sync 対象外 (= init-new-agent.sh が *.template → 実 file に変換) ===
+# 以下は明示的に sync 対象から除外:
+# - CLAUDE.md             (init で CLAUDE.template.md から展開、 派生で書き換える)
+# - .gitignore            (init で .gitignore.template から展開、 派生で加筆する)
+# - profile/profile-core.md (init で profile-core.template.md から展開、 派生で書く)

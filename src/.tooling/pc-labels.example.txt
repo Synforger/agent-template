@@ -1,0 +1,11 @@
+# PC label mapping (= LocalHostName → label)
+# 用途: startup-status.sh が `scutil --get LocalHostName` で hostname 取得 → このファイル lookup → PC: <label> 表示
+# 新 PC 追加時 = 1 行追加するだけ、 hook 改修不要
+# 形式: <LocalHostName> <label> (space 区切り、 # 始まりはコメント)
+#
+# 真名含む LocalHostName は本 example ファイルに書かず、 派生先で pc-labels.txt に追記
+# (= 派生 .gitignore で実体を非追跡にすれば PC ローカルで book-keeping できる)
+#
+# 例:
+# my-home-mac    home
+# my-office-mac  office
