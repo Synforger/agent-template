@@ -8,7 +8,11 @@ set -euo pipefail
 # 逆昇格する。
 #
 # Usage:
-#   ./.tooling/promote-to-base.sh [<commit-message>]
+#   ./.tooling/promote-to-base.sh [--file <path>]... [<commit-message>]
+#
+# Options:
+#   --file <path> : 指定 file のみ promote (= 複数指定可、 synced-paths 内のもののみ受理)。
+#                   省略時は .synced-paths.txt 全件を書き戻し。
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記)
@@ -20,14 +24,36 @@ set -euo pipefail
 #   1. **先に sync-from-base.sh を実行することを推奨** (= 競合解決を派生で済ます)
 #   2. base を tmpdir に clone (or BASE_REPO_PATH を直参照)
 #   3. .synced-paths.txt を読んで、 派生/<path> → base/src/<path> に書き戻し
-#      (= 派生独自 file (synced-paths 外) は弾く)
+#      (= 派生独自 file (synced-paths 外) は弾く、 --file 指定時は対象を絞る)
 #   4. base 側で feature branch を切って commit + push
 #   5. PR 提案 (= gh pr create) or push URL を出力
 # =============================================================================
 
 DEFAULT_BASE_URL="${BASE_REPO_URL:-git@github.com:synforger/agent-template.git}"
 BASE_BRANCH="${BASE_BRANCH:-main}"
-COMMIT_MSG="${1:-chore: promote changes from derived agent}"
+
+# --file 引数を抽出 (= 残りは commit message)
+SELECTED_FILES=()
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --file)
+            shift
+            SELECTED_FILES+=("$1")
+            shift
+            ;;
+        --file=*)
+            SELECTED_FILES+=("${1#--file=}")
+            shift
+            ;;
+        *)
+            POSITIONAL+=("$1")
+            shift
+            ;;
+    esac
+done
+
+COMMIT_MSG="${POSITIONAL[0]:-chore: promote changes from derived agent}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -55,14 +81,36 @@ else
     git clone --branch="$BASE_BRANCH" "$DEFAULT_BASE_URL" "$BASE_DIR"
 fi
 
-# .synced-paths.txt を読む
-sync_paths=()
+# .synced-paths.txt を読む (= synced 集合)
+all_sync_paths=()
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%#*}"
     line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$line" ] && continue
-    sync_paths+=("$line")
+    all_sync_paths+=("$line")
 done < "$SYNCED_PATHS_FILE"
+
+# --file 指定がある場合は selective、 synced-paths 内のもののみ受理
+sync_paths=()
+if [ "${#SELECTED_FILES[@]}" -gt 0 ]; then
+    for sel in "${SELECTED_FILES[@]}"; do
+        found=0
+        for p in "${all_sync_paths[@]}"; do
+            if [ "$sel" = "$p" ]; then
+                sync_paths+=("$sel")
+                found=1
+                break
+            fi
+        done
+        if [ "$found" -eq 0 ]; then
+            echo "error: --file '$sel' is not in .synced-paths.txt (派生独自 file は promote 不可)" >&2
+            exit 1
+        fi
+    done
+    echo "==> selective promote: ${#sync_paths[@]} file(s)"
+else
+    sync_paths=("${all_sync_paths[@]}")
+fi
 
 # feature branch
 TS="$(git -C "$AGENT_DIR" rev-parse --short HEAD 2>/dev/null || echo init)"
