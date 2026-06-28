@@ -25,7 +25,7 @@ capacity: 5KB
 - **発生 file** (= 重複の場合): `<path>:<section>`, `<path>:<section>` 形式
 - **頻度** (= 過去 1 month 内): N 回 / N 日
 - **既存 rule との接続**: 該当 rule (= H2 section path)、 無ければ「新規」
-- **昇格先候補**: `CLAUDE.md` / `profile/profile-core.md` / `rules/always/<file>.md` / `rules/lazy/<file>.md` のいずれか
+- **昇格先候補**: `CLAUDE.md` / `rules/always/<file>.md` / `rules/lazy/<file>.md` / 派生 profile 構造に応じた `profile/<core file>` のいずれか
 - **提案 diff** (= 既存 file への追加 or 修正):
 
 ```diff
