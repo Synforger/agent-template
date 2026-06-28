@@ -2,7 +2,7 @@
 title: projects フォルダ
 description: 自己完結プロジェクト群 + プロジェクト判定キーワード mapping (= 起動時 1 file Read で判定完了)
 updated: 2026-06-29
-capacity: 5KB
+capacity: 6KB
 ---
 
 # projects/
