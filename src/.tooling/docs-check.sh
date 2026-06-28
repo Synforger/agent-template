@@ -104,8 +104,9 @@ for f in projects/*/rules/dev-env/*.md; do
   fi
 done
 
-# _README.md 系 (= 5KB)
-for f in research/_README.md projects/_README.md todos/_README.md; do
+# _README.md 系 (= 5KB、 ただし projects/_README.md は派生で cap が異なる
+# = REDACTED 5KB / REDACTED 6KB 等、 frontmatter 自己宣言に委ねる)
+for f in research/_README.md todos/_README.md; do
   [ -f "$f" ] || continue
   size=$(wc -c < "$f")
   [ "$size" -gt 5120 ] && fail "$f: $size byte > 5KB 上限"
@@ -148,16 +149,19 @@ done
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
 echo "[4/9] dead link チェック..."
 for f in $ALL_MD; do
-  # archive 配下の md は dead link チェック対象外 (= 過去記録、 link は history snapshot)
+  # archive / history 配下の md は dead link チェック対象外
+  # (= 過去スナップショット記録、 link は当時の状態 = 派生固有の history/ 慣習も同性質)
   case "$f" in
-    *archive/*) continue;;
+    *archive/*|*history/*) continue;;
   esac
   # `path/to/file.md` 形式の参照を抜く (= バックティック内)
   refs=$(grep -oE '`[a-zA-Z0-9_/.~-]+\.md`' "$f" 2>/dev/null | tr -d '`' | sort -u)
   for ref in $refs; do
-    # placeholder / 雛形パターンは skip
+    # placeholder / 雛形パターン + 自動生成出力は skip
+    # (= .tooling/_output/* は .gitignore 対象で派生で run 前は不在、 false positive 抑制)
     case "$ref" in
       *kebab-case*|*session-NN*|*_template*|*YYYY-MM*|*0000-*|*000X-*) continue;;
+      *.tooling/_output/*) continue;;
     esac
     case "$ref" in
       # 外部絶対 path (= REDACTED_PATH REDACTED_PATH REDACTED_PATH ~/Library/ 等) は info、 警告しない
