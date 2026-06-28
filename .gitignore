@@ -1,0 +1,23 @@
+# agent-template repo gitignore
+# (= template リポ自体の運用、 派生先の .gitignore は src/.gitignore.template 参照)
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# Python (= detect-duplicates.py 開発用)
+__pycache__/
+*.pyc
+
+# 注: template repo 自身は anon-words.txt を**追跡する** (= OSS 公開時に
+# 禁止語彙が混入しないことを CI でチェックする目的)。 派生 repo では
+# anon-words.txt を gitignore する (= src/.gitignore.template 参照)。
+
+# 自動生成出力
+src/.tooling/_output/*
+!src/.tooling/_output/.gitkeep
