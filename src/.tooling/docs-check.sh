@@ -62,11 +62,11 @@ size=$(wc -c < CLAUDE.md)
 # 注: ハードコード配列は廃止 (= frontmatter `capacity:` 宣言で全 file 自己宣言 = 真値分散ゼロ)
 # 個別チェックが必要な最小限のみ列挙 (= frontmatter なし or 別 cap)
 declare -a CAP_FILES=(
-  "profile/profile-core.md:16384"
-  "profile/_README.md:5120"
   "rules/_README.md:6144"
   "journal/_README.md:5120"
 )
+# profile/profile-core.md / profile/_README.md は派生ごとに存在有無 + cap が異なる (= REDACTED profile-core 採用 16KB / REDACTED REDACTED/REDACTED 2 極構造で profile-core.md 自体存在しない・profile/_README.md は 25KB)
+# → ハードコードから外し、 frontmatter capacity の自己宣言に委ねる (= 真値分散ゼロ原則)
 for entry in "${CAP_FILES[@]}"; do
   f="${entry%:*}"; cap="${entry##*:}"
   [ -f "$f" ] || { warn "$f: capacity 表に列挙されてるが実在しない"; continue; }
