@@ -1,0 +1,38 @@
+# agent-template Taskfile
+# https://taskfile.dev
+#
+# 派生エージェント立ち上げ + base 整合性検査の task 集
+version: '3'
+
+tasks:
+  default:
+    desc: 利用可能タスク一覧
+    cmds:
+      - task --list
+
+  init:
+    desc: 派生エージェント repo を新規立ち上げ (= AGENT_DIR=<path> 必須)
+    cmds:
+      - bash .tooling/init-new-agent.sh "${AGENT_DIR:?set AGENT_DIR=/path/to/new-agent}"
+
+  lint:
+    desc: template リポ自体の lint (= docs + anon)
+    cmds:
+      - bash .tooling/local-ci/anon-scan.sh
+      - bash .tooling/local-ci/docs-lint.sh
+
+  anon:
+    desc: 禁止語彙 scan (= pre-commit と同じ)
+    cmds:
+      - bash .tooling/local-ci/anon-scan.sh
+
+  docs-lint:
+    desc: docs 鮮度 lint
+    cmds:
+      - bash .tooling/local-ci/docs-lint.sh
+
+  install-hooks:
+    desc: git hooks install (= .githooks/pre-commit)
+    cmds:
+      - git config core.hooksPath .githooks
+      - echo "git hooks installed (= .githooks/pre-commit)"

@@ -1,0 +1,36 @@
+#!/bin/bash
+set -eu
+
+# -----------------------------------------------------------------------------
+# 1. Branch-name guard: refuse direct commits on main / develop (personal habit).
+# -----------------------------------------------------------------------------
+branch="$(git symbolic-ref HEAD 2>/dev/null)" || "$(git describe --contains --all HEAD)"
+
+if [[ ${branch} =~ \/*main$ ]] || [[ ${branch} =~ \/*develop$ ]]; then
+    echo "Can't commit on branch whose name contains main or develop (use a feature branch + PR)."
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# 2. Anonymity scan: refuse commits that introduce personal identifiers or
+#    operator-internal stack names. The _template-prototype variant runs the
+#    same PCRE pattern the disabled `.github/workflows/anon-check.yml` would
+#    use, executed locally via the portable scanner. Staged files only — the
+#    hook stays fast.
+# -----------------------------------------------------------------------------
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCANNER="${REPO_ROOT}/.tooling/local-ci/anon-scan.sh"
+
+if [ -x "${SCANNER}" ]; then
+    staged="$(git diff --cached --name-only --diff-filter=ACMRT)"
+    if [ -n "${staged}" ]; then
+        abs_staged=""
+        while IFS= read -r f; do
+            [ -z "${f}" ] && continue
+            abs_staged="${abs_staged}${REPO_ROOT}/${f}"$'\n'
+        done <<< "${staged}"
+        ANON_SCAN_PATHS="${abs_staged}" bash "${SCANNER}"
+    fi
+else
+    echo "warning: ${SCANNER} not found / not executable; skipping anon scan."
+fi

@@ -1,0 +1,24 @@
+# agent-template OSS 公開向け 禁止語彙 list
+#
+# このファイルは template リポ自体 (= base) で**追跡する** = OSS 公開時に
+# 個人情報・既存エージェント名が紛れていないことを CI で機械チェックする目的。
+# 派生 repo では .gitignore で除外、 各派生で固有語彙を書く。
+#
+# 1 行 1 PCRE 片、 単語境界 \b で false positive を避ける。
+#
+# === 既存エージェント名 (= base に混入禁止、 派生固有なので) ===
+\bARK\b
+\bARIA\b
+REDACTED
+REDACTED
+#
+# === 既存エージェント運用者の個人情報 ===
+\bokg\b
+\bokajima\b
+\bokajima99\b
+REDACTED
+REDACTED
+#
+# === 既存エージェントのリポ path 混入防止 ===
+REDACTED/REDACTED
+REDACTED/REDACTED
