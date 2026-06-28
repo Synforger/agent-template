@@ -26,15 +26,27 @@ pass() { PASS=$((PASS+1)); }
 # 除外: CLAUDE.md (= 根本 config、 frontmatter なし設計) / journal (= 履歴、 遡及修正しない)
 # 除外: _template (= 雛形、 docs 未実装) / messages (= 別系統)
 # 除外: drafts/ (= 作業中ドラフト + Issue/notes 本文コピー、 frontmatter 不要)
-ALL_MD=$(find . -name "*.md" \
-  -not -path "./.git/*" \
-  -not -path "./.tooling/*" \
-  -not -path "./.claude/worktrees/*" \
-  -not -path "*/journal/*" \
-  -not -path "*/drafts/*" \
-  -not -path "*/_template*" \
-  -not -name "CLAUDE.md" \
-  | sort)
+#
+# 派生固有除外: .tooling/local-excludes.txt があれば 1 行 1 path pattern を読んで動的追加
+# (= 派生固有の dir = REDACTED `feelings/` 等を派生で宣言、 base には混入させない)
+FIND_ARGS=(. -name "*.md"
+  -not -path "./.git/*"
+  -not -path "./.tooling/*"
+  -not -path "./.claude/worktrees/*"
+  -not -path "*/journal/*"
+  -not -path "*/drafts/*"
+  -not -path "*/_template*"
+  -not -name "CLAUDE.md")
+LOCAL_EXCLUDES="$ROOT/.tooling/local-excludes.txt"
+if [ -f "$LOCAL_EXCLUDES" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    [ -z "$line" ] && continue
+    FIND_ARGS+=(-not -path "$line")
+  done < "$LOCAL_EXCLUDES"
+fi
+ALL_MD=$(find "${FIND_ARGS[@]}" | sort)
 
 # ===== 1. frontmatter 検査 =====
 echo "[1/9] frontmatter チェック..."
