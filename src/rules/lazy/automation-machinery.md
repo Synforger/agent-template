@@ -66,14 +66,4 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 
 ## 継続的自己強化ループ
 
-機構の品質は「逐次 grep で見に行く」 のでなく**機械検出で自動 sweep + エージェントは出力に反応のみ**で確保 (= context 食わない、 規律依存最小化)。 新たな弱点パターンを発見したら detector を増強 (= 機構が自己拡張するループ)。
-
-弱点パターン発見時の運用:
-
-1. **機械検出可能性を評価**: grep / awk / python で機械化できるか
-2. **可能なら `docs-check.sh` に step 追加** (= false positive 抑制パターン込みで)
-3. **可能なら `detect-duplicates.py` / `detect-stale-rules.sh` の精度向上** (= 閾値調整等)
-4. **機械化不能なら `rules/always/meta.md` の改訂文化 section に規律として追記**
-5. **既存 step の形骸化** (= hit 常時 0 で 1 month+) なら**廃止 or 検出基準調整**
-
-「detector 追加」 のハードルを意識的に下げる = 同パターンを 2 回見たら即 detector 化、 機械出力に反応するだけで品質維持。
+真値 = `rules/always/meta.md § 継続的自己強化ループ` 参照。 本 file からは機構の具体実装 (= 上記 § 機構と発火 / 反応規律 / 新 script 追加手順) に集中し、 弱点パターン発見時の運用フローは meta.md に集約。
