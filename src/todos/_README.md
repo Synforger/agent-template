@@ -32,7 +32,7 @@ capacity: 5KB
 ## 命名規則
 
 - **トピック単位ファイル**: `kebab-case-name.md`
-- 例: `rss-llm-agent-next.md`, `voice-agent-research.md`
+- 例: rss-llm-agent-next.md, voice-agent-research.md
 - 1ファイル = 1テーマ。肥大化したら分割を検討
 
 ## 書き方
