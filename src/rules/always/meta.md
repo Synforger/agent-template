@@ -14,15 +14,15 @@ capacity: 11KB
 - **上限超過時は同セッション内で圧縮完結**。 翌セッション持ち越し禁止
 - **圧縮・削除はエージェント判断で実行**。 「開発に必要そう」 を判断軸に重要項目を抜粋して残す方針。 重要度判断つく項目は積極的に残す、 重要度低い / 1 回限り / 再現可能な情報は捨てる側に倒す
 - 抽象化・統合・捨てる判断は各ファイルの `_README.md` に従う
-- **`profile/profile-core.md` はセッション終了時 Step 1 で必ず圧縮を完遂** (= 持ち越し禁止)。 抽象化・統合・捨てる判断は `profile/_README.md` のルールに従う
+- **派生で profile core file を採用する場合はセッション終了時 Step 1 で必ず圧縮を完遂** (= 持ち越し禁止)。 抽象化・統合・捨てる判断は `profile/_README.md` のルールに従う
 
 ### 容量上限一覧 (= 派生で調整、 ここは agent-template 出荷時 default)
 
 | ファイル | 上限 | 備考 |
 |---|---|---|
 | `CLAUDE.md` | 16KB | 索引 + 人格 + Phase A/B/C 骨格 |
-| `profile/profile-core.md` | 16KB | 常時 load = ユーザの核 + 判断軸 |
-| `profile/profile-*.md` (lazy 群) | 3-6KB | lazy = シチュエーション別 (= 派生で定義) |
+| 派生 profile core file (= `profile/<core>.md` 等) | 16KB | 常時 load = ユーザの核 + 判断軸 (= 派生で採用時) |
+| 派生 profile lazy 群 | 3-6KB | lazy = シチュエーション別 (= 派生で定義) |
 | `profile/_README.md` | 5KB | profile の書き方ルール本体 |
 | `rules/always/meta.md` | 11KB | 常時 load: メタ運用 (本ファイル) |
 | `rules/always/*-local.md` | 派生定義 | 派生固有の常時 load rule |
@@ -66,7 +66,7 @@ capacity: 11KB
 
 ### 改訂対象 file の役割
 
-`CLAUDE.md` = 索引 + 人格 + Phase 骨格 / `rules/always/*` = 常時 load 横断 / `rules/lazy/*` = use 時参照 (= 文書庫) / `projects/<project>/rules/*` = プロジェクト固有 / `profile/profile-core.md` = ユーザプロファイル核 / `profile/profile-*.md` lazy = ユーザプロファイル詳細 (= シチュエーション別)
+`CLAUDE.md` = 索引 + 人格 + Phase 骨格 / `rules/always/*` = 常時 load 横断 / `rules/lazy/*` = use 時参照 (= 文書庫) / `projects/<project>/rules/*` = プロジェクト固有 / `profile/<core>` = ユーザプロファイル核 (= 派生定義) / 派生 profile lazy = ユーザプロファイル詳細 (= シチュエーション別)
 
 ### 改訂運用
 
