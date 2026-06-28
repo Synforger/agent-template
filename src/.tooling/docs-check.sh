@@ -62,11 +62,10 @@ size=$(wc -c < CLAUDE.md)
 # 注: ハードコード配列は廃止 (= frontmatter `capacity:` 宣言で全 file 自己宣言 = 真値分散ゼロ)
 # 個別チェックが必要な最小限のみ列挙 (= frontmatter なし or 別 cap)
 declare -a CAP_FILES=(
-  "profile/profile-core.md:16384"
   "rules/_README.md:6144"
   "journal/_README.md:5120"
 )
-# profile/_README.md は派生ごとに cap が異なる (= 派生が独自 profile 構造を取る場合 base default で縛れない)
+# profile/profile-core.md / profile/_README.md は派生ごとに存在有無 + cap が異なる (= ARK profile-core 採用 16KB / ARIA okg/aria 2 極構造で profile-core.md 自体存在しない・profile/_README.md は 25KB)
 # → ハードコードから外し、 frontmatter capacity の自己宣言に委ねる (= 真値分散ゼロ原則)
 for entry in "${CAP_FILES[@]}"; do
   f="${entry%:*}"; cap="${entry##*:}"
