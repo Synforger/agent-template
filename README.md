@@ -14,7 +14,7 @@
 ```
 agent-template/
 ├── LICENSE                            # Apache 2.0
-├── BASE-README.md                     # 本 file
+├── README.md                     # 本 file
 ├── .gitignore                         # template リポ自体の gitignore
 ├── .github/workflows/anon-check.yml   # OSS 公開時の禁止語彙 scan (= pre-commit + CI)
 ├── .githooks/pre-commit               # branch guard + anon-scan
