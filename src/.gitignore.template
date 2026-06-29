@@ -11,9 +11,13 @@
 .idea/
 *.swp
 
-# 自動生成出力 (= 起動時 startup-status + SessionEnd hook の出力先、 PC 同期衝突回避)
+# 自動生成出力 (= 起動時 startup-status + 終了時 Step 2 script の出力先、 PC 同期衝突回避)
 .tooling/_output/*
 !.tooling/_output/.gitkeep
+
+# SessionEnd 系 jsonl (= PC ローカル artifact、 session-NN 採番が PC 独立なので cross-PC 同期しない、 journal .md が cross-PC 真値)
+journal/**/session-*-auto-index.jsonl
+journal/**/session-*-friction.jsonl
 
 # anon-words 実体 (= 派生先で各自書く、 .example のみ追跡)
 .tooling/local-ci/anon-words.txt
