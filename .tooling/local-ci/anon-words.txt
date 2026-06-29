@@ -1,24 +1,129 @@
-# agent-template OSS 公開向け 禁止語彙 list
+# ============================================================================
+# 匿名性スキャンの禁止ワード master (= 単一の真値、 ~/haven/ 外で適用)
+# ============================================================================
+# このファイルが禁止ワードの唯一の真値。 各リポの anon-scan.sh はこれを読み、
+# `#` 始まりの行と空行を除いて `|` で連結し、(?i) 大小無視の PCRE として
+# 全文検索する。 各リポの .tooling/local-ci/anon-words.txt はここから cp で
+# 同期 (= ARK が PR 前 / 定期 / 新規 repo create 時に自動配信)。
 #
-# このファイルは template リポ自体 (= base) で**追跡する** = OSS 公開時に
-# 個人情報・既存エージェント名が紛れていないことを CI で機械チェックする目的。
-# 派生 repo では .gitignore で除外、 各派生で固有語彙を書く。
+# 各行 = PCRE 片。 行末「半角スペース + #」 以降はコメント。
+# 単語境界 \b や否定先読み (?!-) が要るものは行に明示。
+# (?i) flag は scanner が冒頭で自動付与するので各行に書かない (= 大小写 auto)。
+# alphabet / 漢字 / カタカナ / ひらがな 全 variant を網羅。
 #
-# 1 行 1 PCRE 片、 単語境界 \b で false positive を避ける。
-#
-# === 既存エージェント名 (= base に混入禁止、 派生固有なので) ===
-\bARK\b
-\bARIA\b
-REDACTED
-REDACTED
-#
-# === 既存エージェント運用者の個人情報 ===
+# 真値拡充原則 = 「これでもか限度」、 false positive を許容してでも漏れ 0 優先。
+# 業務 repo (= ~/work/) は本 file の更新を即時受け入れる前提。
+# ============================================================================
+
+# === 1. okg 個人 handle / dir ===
 \bokg\b
+\bokajima99\b           # GitHub handle、 synforger persona と分離するため synforger 配下では NG
+# 注: synforger / synforge.dev は public persona 本人の identity = 隠す対象外、 真値に入れない
+
+# === 2. 本名 (= alphabet + 漢字 + カタカナ + ひらがな 全 variant) ===
 \bokajima\b
-\bokajima99\b
-REDACTED
-REDACTED
-#
-# === 既存エージェントのリポ path 混入防止 ===
-REDACTED/REDACTED
-REDACTED/REDACTED
+オカジマ
+おかじま
+\btsukasa\b
+ツカサ
+つかさ
+岡嶋
+岡島
+オカジマ・ツカサ
+岡嶋 ?司
+岡島 ?司
+
+# === 3. agent name (= ARK / ARIA / haven) ===
+\bark\b(?!-)            # ark-* npm パッケージ名は除外
+\baria\b(?!-)           # aria-label / aria-hidden / aria-query 等 a11y 属性は除外
+アーク
+アリア
+\bhaven\b
+ハヴェン
+ヘイブン
+ハーベン
+
+# === 4. 旧所属 org (= Araya Inc / Araya Brain Imaging) ===
+\baraya\b
+\barayabrain\b
+\bAraya\sBrain(\sImaging)?\b
+アラヤ
+アラヤブレイン
+アラヤ・?ブレイン
+アラヤ・?ブレイン・?イメージング
+株式会社アラヤ
+株式会社 ?Araya
+
+# === 5. 同僚 / 関係者 名 (= git-basics.md L50 言及分、 書き残し禁止) ===
+丸山
+森本
+\b敷\b
+\bMaruyama\b
+\bMorimoto\b
+マルヤマ
+モリモト
+
+# === 6. email domain ===
+@araya\.
+@arayabrain\.
+@haven\.
+@okajima\.
+
+# === 7. bundle id (= reverse domain notation) ===
+com\.okg\.
+com\.haven\.
+com\.araya\.
+com\.arayabrain\.
+jp\.okg\.
+jp\.araya\.
+
+# === 8. ローカル path (= 個人 PC 固有) ===
+/Users/                 # macOS user home root、 path 内に user name が必ず含む
+~/work\b
+~/repos\b
+~/haven\b
+~/Downloads\b
+~/Documents\b
+~/dev\b
+~/\.config\b
+~/Library/Application Support
+/Volumes/[^/\s]+        # 外付け SSD / USB drive 個別名
+~/okzy
+/private/tmp/[^/\s]+    # 個別 user の tmp
+
+# === 9. 認証情報 (= sensitive token / key)  ===
+# GitHub
+ghp_[A-Za-z0-9]{30,}    # Personal Access Token
+gho_[A-Za-z0-9]{30,}    # OAuth token
+ghs_[A-Za-z0-9]{30,}    # Server token
+ghr_[A-Za-z0-9]{30,}    # Refresh token
+# Slack
+xoxb-[A-Za-z0-9-]{20,}  # Bot token
+xoxp-[A-Za-z0-9-]{20,}  # User token
+xoxa-[A-Za-z0-9-]{20,}  # App-level token
+# OpenAI / Anthropic
+sk-[A-Za-z0-9]{30,}     # OpenAI key
+sk-ant-[A-Za-z0-9-]{40,}  # Anthropic key
+# Google
+AIzaSy[A-Za-z0-9_-]{30,}    # Google API key
+# AWS
+AKIA[0-9A-Z]{16}        # Access Key ID
+aws_secret_access_key
+# SSH / GPG private blob (= 行頭で PEM start)
+^-----BEGIN OPENSSH PRIVATE KEY-----
+^-----BEGIN RSA PRIVATE KEY-----
+^-----BEGIN EC PRIVATE KEY-----
+^-----BEGIN DSA PRIVATE KEY-----
+^-----BEGIN PGP PRIVATE KEY BLOCK-----
+^-----BEGIN PRIVATE KEY-----
+
+# === 10. 個人 email アドレス候補 (= 既知 prefix) ===
+okajima99@
+tsukasa\.okajima@
+okg@
+
+# === 11. 業務 device / product 名 (= EEG / neurotech 系、 okg が追加すべき) ===
+# (例: SDK 名 / device model / 業務 codename。 okg しか知らないので空欄、 必要時追記)
+
+# === 12. okg 用 識別子 余地 (= 上記以外で書き残し禁止のもの) ===
+# (例: 旧勤務先 codename / 個人サービスのアカウント名 / 機材シリアル等。 okg 追記欄)
