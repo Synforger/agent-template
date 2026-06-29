@@ -80,8 +80,8 @@
 - `todos/` 配下のファイル (= `_README.md` / `_template.md` 除く) を全部読む (= 進行中タスクの現況把握)
 - **journal を最新 1 セッション読む** (= 必須・例外なし・スキップ禁止): 配置はプロジェクト依存、 詳細は Phase B-プロジェクト固有 / Phase B-サブプロジェクト固有 参照。 `normal` 起動なら `journal/` 直下の日付フォルダから最新 `session-NN.md` を 1 個読む。 「最新日に session-01 しか無い」 なら前日 / 前々日に遡って 1 件確保。 例外 = 立ち上げ初期で 1 件も無いなら skip 可
 - <message-dir 設定時のみ> エージェント間メッセージを確認
-- **`bash .tooling/startup-status.sh` 実行** (= LLM 不使用、 token ゼロ): docs-check FAIL のみ反応 (= FAIL ≥ 1 で同 session 内 fix)。 stale_rules / dup_pairs は**起動時は無視** (= SessionEnd hook で機械抽出 → 起動直後はユーザ用件に集中)
-- **前 session の自動抽出出力 Read**: `journal/<前 date>/session-NN-auto-index.jsonl` を確認 (= SessionEnd hook 設置時のみ)
+- **`bash .tooling/startup-status.sh` 実行** (= LLM 不使用、 token ゼロ): docs-check FAIL のみ反応 (= FAIL ≥ 1 で同 session 内 fix)。 stale_rules / dup_pairs は**起動時は無視** (= 終了時 Step 2 で機械抽出 → 起動直後はユーザ用件に集中)
+- **前 session の自動抽出出力 Read**: `journal/<前 date>/session-NN-auto-index.jsonl` を確認 (= 終了時 Step 2 で生成、 **PC ローカル artifact で git 追跡せず** = cross-PC 真値は .md 側、 .gitignore 済)
 
 #### Phase B-プロジェクト固有 (= プロジェクト判定後、 並列で一括実行)
 
@@ -128,8 +128,11 @@
 
 #### Step 2 (= 並列で一括実行・打診禁止・判断で走り切り)
 
+- **自動抽出 script 実行** (= 旧 SessionEnd hook 廃止): ジャーナル .md 書く**前に**以下を実行。 hook 経由廃止の理由 = 終了プロトコル発動外の軽い対話 (= CC 自然 exit) で空打ち jsonl が orphan 化する構造欠陥のため、 エージェント明示 trigger に倒した
+  - `bash .tooling/extract-artifact-index.sh` (= session-NN-auto-index.jsonl 生成、 当 session 触った file / commit / PR の機械抽出、 PC ローカル artifact)
+  - 派生固有の他 script (= extract-friction / scan-cross-project-violations / detect-duplicates 等) があれば同位置で実行
 - **TODO 更新** (= 必須・例外なし・スキップ禁止): 関連ファイルが既にあれば**必ず**最新化する (= 無ければ新規作成しない)。 完了済タスクの完了マーク、 新規残タスクの追加、 状態スナップショット (= ブランチ tip / open PR / branch 等) の更新、 「次セッション最優先」「再開後手順」 系の古い時点記述の掃除まで**全部やる**。 横断タスクは `todos/` 直下、 プロジェクト固有タスクは `projects/<project>/todos/`
-- **ジャーナル記入**: **触れた階層全部に 1 本ずつ書く**。 `normal` は `journal/YYYY-MM-DD/session-NN.md`、 プロジェクトは `projects/<project>/journal/YYYY-MM-DD/session-NN.md`、 サブプロは `projects/<project>/subprojects/<sub>/journal/YYYY-MM-DD/session-NN.md`。 親+サブ両方触った session は両階層に 1 本ずつ (= 採番は各階層独立)。 日付フォルダが無ければ作成する。 **session-NN 採番は「該当日付フォルダの既存 `.md` 最大 NN + 1」 で取る**。 フォーマット規則は `journal/_README.md` に従う (= artifact_index は SessionEnd hook で自動抽出される `session-NN-auto-index.jsonl` を参照、 手書きは不要)
+- **ジャーナル記入**: **触れた階層全部に 1 本ずつ書く**。 `normal` は `journal/YYYY-MM-DD/session-NN.md`、 プロジェクトは `projects/<project>/journal/YYYY-MM-DD/session-NN.md`、 サブプロは `projects/<project>/subprojects/<sub>/journal/YYYY-MM-DD/session-NN.md`。 親+サブ両方触った session は両階層に 1 本ずつ (= 採番は各階層独立)。 日付フォルダが無ければ作成する。 **session-NN 採番は「該当日付フォルダの既存 `.md` 最大 NN + 1」 で取る**。 フォーマット規則は `journal/_README.md` に従う (= artifact_index は本 Step 2 冒頭の `extract-artifact-index.sh` で生成した `session-NN-auto-index.jsonl` を参照、 手書きは不要)
 - **docs-check 実行**: `bash .tooling/docs-check.sh` で 9 step 検査 (= frontmatter / capacity / 索引 / dead link / 重複 / placeholder / 動的検索パターン / プロジェクト整合 / synced-paths)。 FAIL は同セッション内 fix 必須。 詳細 = `rules/always/meta.md § 継続的自己強化ループ`
 - **`bash .tooling/startup-status.sh` 実行 → stale_rules / dup_pairs 走り切り** (= 打診禁止・判断で commit まで完遂): stale_rules ≥ 1 → 中身確認して dead rule 退役 commit / dup_pairs ≥ 1 → 中身確認して集約 commit。 改訂文化の即時主義通り、 ユーザ承認不要、 失敗は revert で戻す前提で走り切る
 
