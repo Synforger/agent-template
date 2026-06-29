@@ -21,3 +21,6 @@ __pycache__/
 # 自動生成出力
 src/.tooling/_output/*
 !src/.tooling/_output/.gitkeep
+
+# anon-words.txt は gitignored (= operator master からのみ sync、 base 公開禁止)
+.tooling/local-ci/anon-words.txt
