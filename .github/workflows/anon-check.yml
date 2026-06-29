@@ -1,24 +1,46 @@
 name: anon-check
 
-# Public personal repo guard. Runs on every push / PR to catch personal
-# identifiers or prior-employer affiliation that may have slipped past the
-# local pre-commit hook (`.githooks/pre-commit` + `task lint`).
+# 公開 repo の identity ガード。 push / PR で自動実行、 GitHub 側で
+# personal identifier や旧所属 affiliation の混入を検出する。
 #
-# The forbidden-word list lives in `.tooling/local-ci/anon-words.txt` (single
-# source of truth). This workflow runs the very same scanner the hook runs
-# (`.tooling/local-ci/anon-scan.sh`), so CI and commit-time guards read one
-# pattern and can never drift.
+# 真値 = `.tooling/local-ci/anon-words.txt` (= 通常 gitignored、 operator master
+# から sync)。 CI には operator master が無いので、 公開 placeholder
+# `.tooling/local-ci/anon-words.example.txt` を fallback として使い、
+# 「placeholder pattern にすら match する明らかな leak」 を catch する。
+# 本当の防御層は local pre-commit hook + 真値 sync 後の `task audit:deep`。
+
 on:
   push:
     branches: ['**']
   pull_request:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # = 全 history を fetch、 deep audit が source 2-6 walk できるよう
 
-      - name: Scan for personal identifiers
+      - name: Fallback wordlist (= example placeholder、 CI には operator master 無し)
+        shell: bash
+        run: |
+          if [ ! -f .tooling/local-ci/anon-words.txt ]; then
+            cp .tooling/local-ci/anon-words.example.txt .tooling/local-ci/anon-words.txt
+          fi
+
+      - name: Tracked-file anon scan (= 軽量、 source 1)
         shell: bash
         run: bash .tooling/local-ci/anon-scan.sh
+
+      - name: Deep audit (= sources 2-10、 GITHUB_TOKEN で gh CLI 自動認証)
+        if: hashFiles('.tooling/local-ci/anon-audit-deep.sh') != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .tooling/local-ci/anon-audit-deep.sh
