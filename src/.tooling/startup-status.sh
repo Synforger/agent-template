@@ -38,7 +38,29 @@ else
     echo "duplicates: (skipped, script not found)"
 fi
 
-# 3. docs-check (= 最後の 1 行 summary)
+# 3. orphan auto-index 検出 (= jsonl だけ残って .md 無し = 前 session 終了プロトコル不完走)
+#    検査対象 = 過去 3 日分の journal/<date>/ (= 古い orphan は不可逆なので無視)
+orphan_count=0
+orphan_list=""
+for d in $(ls -1 journal/ 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | head -3); do
+    for jsonl in journal/"$d"/session-*-auto-index.jsonl; do
+        [ -f "$jsonl" ] || continue
+        nn=$(basename "$jsonl" | sed -E 's/session-([0-9]+).*/\1/')
+        md="journal/$d/session-${nn}.md"
+        if [ ! -f "$md" ]; then
+            orphan_count=$((orphan_count + 1))
+            orphan_list="$orphan_list\n  - $jsonl (= 対応 .md 欠落)"
+        fi
+    done
+done
+if [ "$orphan_count" -gt 0 ]; then
+    echo "orphan_auto_index: $orphan_count 件 (= 前 session で journal .md 書かれず終了プロトコル不完走)"
+    printf "$orphan_list\n"
+else
+    echo "orphan_auto_index: 0"
+fi
+
+# 4. docs-check (= 最後の 1 行 summary)
 if [ -x .tooling/docs-check.sh ]; then
     docs_summary=$(bash .tooling/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g' | grep -E "^(PASS|WARN|FAIL):" | tr '\n' ' ')
     echo "docs-check: $docs_summary"
@@ -51,3 +73,4 @@ echo ""
 echo "行動指針:"
 echo "  - stale_rules / dup_pairs は起動時無視 (= 終了時 Step 2 でエージェントが走り切る)"
 echo "  - docs-check FAIL >= 1 → 同セッション内 fix 必須"
+echo "  - orphan_auto_index >= 1 → 前 session の触り内容を jsonl から復元して当日 .md に補追記 (= 同 NN で写経)"
