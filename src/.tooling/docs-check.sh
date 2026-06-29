@@ -28,7 +28,7 @@ pass() { PASS=$((PASS+1)); }
 # 除外: drafts/ (= 作業中ドラフト + Issue/notes 本文コピー、 frontmatter 不要)
 #
 # 派生固有除外: .tooling/local-excludes.txt があれば 1 行 1 path pattern を読んで動的追加
-# (= 派生固有の dir = REDACTED `feelings/` 等を派生で宣言、 base には混入させない)
+# (= 派生固有の dir (= 派生 agent ごとの専用 dir) を派生で宣言、 base には混入させない)
 FIND_ARGS=(. -name "*.md"
   -not -path "./.git/*"
   -not -path "./.tooling/*"
@@ -77,7 +77,7 @@ declare -a CAP_FILES=(
   "rules/_README.md:6144"
   "journal/_README.md:5120"
 )
-# profile/profile-core.md / profile/_README.md は派生ごとに存在有無 + cap が異なる (= REDACTED profile-core 採用 16KB / REDACTED REDACTED/REDACTED 2 極構造で profile-core.md 自体存在しない・profile/_README.md は 25KB)
+# profile/profile-core.md / profile/_README.md は派生ごとに存在有無 + cap が異なる (= 派生 agent ごとに採用構造が異なる、 frontmatter capacity 自己宣言に委ねる)
 # → ハードコードから外し、 frontmatter capacity の自己宣言に委ねる (= 真値分散ゼロ原則)
 for entry in "${CAP_FILES[@]}"; do
   f="${entry%:*}"; cap="${entry##*:}"
@@ -91,7 +91,7 @@ for entry in "${CAP_FILES[@]}"; do
 done
 
 # _README.md 系 (= 5KB、 ただし projects/_README.md は派生で cap が異なる
-# = REDACTED 5KB / REDACTED 6KB 等、 frontmatter 自己宣言に委ねる)
+# = 派生 agent ごとに cap が異なるので frontmatter 自己宣言に委ねる)
 for f in research/_README.md todos/_README.md; do
   [ -f "$f" ] || continue
   size=$(wc -c < "$f")
