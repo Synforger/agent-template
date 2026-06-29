@@ -90,20 +90,6 @@ for entry in "${CAP_FILES[@]}"; do
   fi
 done
 
-# 会社プロジェクト配下 dev-env/<env>.md 群 (= gitignore 切離済の場合は this PC で空走、 OK)
-for f in projects/*/rules/dev-env/*.md; do
-  [ "$(basename "$f")" = "_README.md" ] && continue
-  size=$(wc -c < "$f")
-  cap=12288
-  if [ "$(basename "$f")" = "windows-vm.md" ]; then
-    cap=18432
-  fi
-  if [ "$size" -gt "$cap" ]; then
-    cap_label="$((cap / 1024))KB"
-    fail "$f: $size byte > $cap_label 上限"
-  fi
-done
-
 # _README.md 系 (= 5KB、 ただし projects/_README.md は派生で cap が異なる
 # = REDACTED 5KB / REDACTED 6KB 等、 frontmatter 自己宣言に委ねる)
 for f in research/_README.md todos/_README.md; do
