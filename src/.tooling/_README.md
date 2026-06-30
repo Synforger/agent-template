@@ -35,17 +35,18 @@ updated: 2026-06-29
 
 SessionEnd hook + 起動時 startup-status の出力先。 session 毎に丸ごと再生成される派生物なので **gitignore 済 (= 追跡しない)**。 各 PC ローカルで再生成、 複数 PC 同期の固定名衝突を避ける目的。 フォルダだけ `.gitkeep` で保持。
 
-## docs-check.sh の検査ステップ (= 9/9)
+## docs-check.sh の検査ステップ (= 8/8)
 
 1. **frontmatter チェック** — 全 .md に `---` 区切り + title 必須、 description 推奨
 2. **capacity チェック** — CLAUDE.md 容量表 + 各 file の frontmatter `capacity:` 宣言に対する突き合わせ
 3. **索引整合チェック** — `_README.md` に「索引 / ファイル / エントリ」 section があれば同フォルダ .md を全部言及してるか
 4. **dead link チェック** — `` `*.md` `` 形式の相対参照が実在するか (= archive / 雛形 / 外部リポ参照は skip)
-5. **CLAUDE.md ↔ rules/always 重複** — 15 字以上の日本語連続 fragment が CLAUDE.md と always 系両方にないか
-6. **placeholder 残し** — `projects/_template-project/` 配下の雛形から `{{...}}` と `<日本語 含む 文>` を**動的抽出**して禁止 list 化、 active file 内ヒットを FAIL (= 雛形 cp 後の埋め忘れ防止)
-7. **動的検索パターン残骸** — `ls + head` 動線等の旧式参照パターン検出
-8. **プロジェクト folder 整合** — `projects/<name>/_README.md` 不在 = プロジェクト未成立検出
-9. **synced-paths 整合** — `.synced-paths.txt` 列挙 path が実在することをチェック (= 派生 repo の場合)、 `BASE_REPO_PATH` 環境変数指定時は base ↔ 派生 diff も検出
+5. **placeholder 残し** — `projects/_template-project/` 配下の雛形から `{{...}}` と `<日本語 含む 文>` を**動的抽出**して禁止 list 化、 active file 内ヒットを FAIL (= 雛形 cp 後の埋め忘れ防止)
+6. **動的検索パターン残骸** — `ls + head` 動線等の旧式参照パターン検出
+7. **プロジェクト folder 整合** — `projects/<name>/_README.md` 不在 = プロジェクト未成立検出
+8. **synced-paths 整合** — `.synced-paths.txt` 列挙 path が実在することをチェック (= 派生 repo の場合)、 `BASE_REPO_PATH` 環境変数指定時は base ↔ 派生 diff も検出
+
+> 旧 step 5 (= CLAUDE.md ↔ rules/always 重複 = 15 字日本語 fragment) は 2026-06-30 廃止。 重複検出は `detect-duplicates.py` (= section 単位 LCS、 全 rule file 網羅) に集約。
 
 ## 新 script を追加する時 (= 拡張手順)
 

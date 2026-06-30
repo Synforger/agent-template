@@ -28,7 +28,7 @@ pass() { PASS=$((PASS+1)); }
 # 除外: drafts/ (= 作業中ドラフト + Issue/notes 本文コピー、 frontmatter 不要)
 #
 # 派生固有除外: .tooling/local-excludes.txt があれば 1 行 1 path pattern を読んで動的追加
-# (= 派生固有の dir (= 派生 agent ごとの専用 dir) を派生で宣言、 base には混入させない)
+# (= 派生固有の dir = ARIA `feelings/` 等を派生で宣言、 base には混入させない)
 FIND_ARGS=(. -name "*.md"
   -not -path "./.git/*"
   -not -path "./.tooling/*"
@@ -63,42 +63,15 @@ for f in $ALL_MD; do
   pass
 done
 
-# ===== 2. capacity チェック (= CLAUDE.md 容量表に対する突き合わせ) =====
-echo "[2/9] capacity チェック..."
+# ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
+echo "[2/8] capacity チェック..."
 
-# CLAUDE.md 自身
+# CLAUDE.md 自身 (= frontmatter なし設計、 ハードコード)
 size=$(wc -c < CLAUDE.md)
-[ "$size" -gt 16384 ] && fail "CLAUDE.md: $size byte > 16KB 上限"
+[ "$size" -gt 17408 ] && fail "CLAUDE.md: $size byte > 17KB 上限"
 
-# profile / rules / projects/<mode> 主要ファイル
-# 注: ハードコード配列は廃止 (= frontmatter `capacity:` 宣言で全 file 自己宣言 = 真値分散ゼロ)
-# 個別チェックが必要な最小限のみ列挙 (= frontmatter なし or 別 cap)
-declare -a CAP_FILES=(
-  "rules/_README.md:6144"
-  "journal/_README.md:5120"
-)
-# profile/profile-core.md / profile/_README.md は派生ごとに存在有無 + cap が異なる (= 派生 agent ごとに採用構造が異なる、 frontmatter capacity 自己宣言に委ねる)
-# → ハードコードから外し、 frontmatter capacity の自己宣言に委ねる (= 真値分散ゼロ原則)
-for entry in "${CAP_FILES[@]}"; do
-  f="${entry%:*}"; cap="${entry##*:}"
-  [ -f "$f" ] || { warn "$f: capacity 表に列挙されてるが実在しない"; continue; }
-  size=$(wc -c < "$f")
-  if [ "$size" -gt "$cap" ]; then
-    fail "$f: $size byte > $cap byte 上限"
-  else
-    pass
-  fi
-done
-
-# _README.md 系 (= 5KB、 ただし projects/_README.md は派生で cap が異なる
-# = 派生 agent ごとに cap が異なるので frontmatter 自己宣言に委ねる)
-for f in research/_README.md todos/_README.md; do
-  [ -f "$f" ] || continue
-  size=$(wc -c < "$f")
-  [ "$size" -gt 5120 ] && fail "$f: $size byte > 5KB 上限"
-done
-
-# frontmatter で capacity: 宣言してるファイルの突き合わせ
+# 他全 file は frontmatter `capacity:` 宣言で自己宣言 (= 真値分散ゼロ)
+# 旧 _README.md ハードコード配列は 2026-06-30 廃止 (= 全 _README が frontmatter capacity 宣言済)
 for f in $ALL_MD; do
   cap_decl=$(awk '/^---$/{c++; if(c==2) exit; next} c==1 && /^capacity:/' "$f" | head -1)
   [ -z "$cap_decl" ] && continue
@@ -150,7 +123,7 @@ for f in $ALL_MD; do
       *.tooling/_output/*) continue;;
     esac
     case "$ref" in
-      # 外部絶対 path (= REDACTED_PATH REDACTED_PATH REDACTED_PATH ~/Library/ 等) は info、 警告しない
+      # 外部絶対 path (= ~/work/ ~/repos/ ~/Downloads/ ~/Library/ 等) は info、 警告しない
       "~/"*|"/"*) continue;;
       *)
         # エージェント 内部相対参照: $dir/$ref → $ref (リポルート) → リポ内同名ファイル
@@ -177,24 +150,13 @@ for f in $ALL_MD; do
   done
 done
 
-# ===== 5. CLAUDE.md ↔ rules/always 重複検出 =====
-echo "[5/9] CLAUDE.md ↔ rules/always 重複チェック..."
-# 同じ文 (= 30 文字以上の連続文字列) が両方に存在するかをざっくり検出
-# 完全自動化は難しいので、 大きいキーワード重複の存在感知レベルで止める
-for always_f in rules/always/*.md; do
-  [ -f "$always_f" ] || continue
-  common=$(comm -12 \
-    <(grep -oE '[一-龯ぁ-んァ-ヶ]{15,}' CLAUDE.md | sort -u) \
-    <(grep -oE '[一-龯ぁ-んァ-ヶ]{15,}' "$always_f" | sort -u))
-  if [ -n "$common" ]; then
-    echo "$common" | while read -r line; do
-      [ -n "$line" ] && warn "重複候補: \"$line\" が CLAUDE.md と $always_f 両方にあり"
-    done
-  fi
-done
+# ===== 重複検出は detect-duplicates.py に集約 (= section 単位 LCS、 project / subproject まで拡張済) =====
+# 旧 step 5 (= CLAUDE.md ↔ rules/always の 15 字連続日本語 fragment 検出) は廃止
+# 理由 = detect-duplicates.py が全 rule file を section 単位で網羅検出、 機能重複のため
+# (= 2026-06-30 docs-check スリム化、 step 5 削除で 9→8 step)
 
-# ===== 6. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
-echo "[6/9] placeholder 残し チェック..."
+# ===== 5. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
+echo "[5/8] placeholder 残し チェック..."
 # 真値 = projects/_template-project/ 配下の全 .md から自動抽出 (= 構造ベース、 exact 一致 list を hard-code しない)
 # 検出対象 = 雛形に登場する文字列のうち、 path 例示 false positive を構造的に分離:
 #   - 二重中括弧 {{...}} = 全部 (= path 例示で {{...}} は普通使われない、 強 signal)
@@ -237,8 +199,8 @@ else
 fi
 rm -f "$ph_tmpfile"
 
-# ===== 7. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
-echo "[7/9] 動的検索パターン チェック..."
+# ===== 6. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
+echo "[6/8] 動的検索パターン チェック..."
 # エージェント 親 rule (= CLAUDE / always / lazy / 索引 _README) に「動的検索 / ls + head」 残骸がないか
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
@@ -254,8 +216,8 @@ for pat in 'ls\s+(projects|rules)/[^_]' 'head\s+[^|]+_README' '各.*_README\.md.
 done
 pass
 
-# ===== 8. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
-echo "[8/9] プロジェクト folder 整合 チェック..."
+# ===== 7. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
+echo "[7/8] プロジェクト folder 整合 チェック..."
 # folder 名 = 判定キーワード方式に移行済 (= mapping 表廃止)、 本 step は「_README.md ある folder は判定対象」 「無い folder は死蔵 or 未成立」 を識別
 for d in projects/*/; do
   name=$(basename "$d")
@@ -269,7 +231,7 @@ for d in projects/*/; do
 done
 pass
 
-echo "[9/9] synced-paths 整合 チェック..."
+echo "[8/8] synced-paths 整合 チェック..."
 # agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
 # 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
 # base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。

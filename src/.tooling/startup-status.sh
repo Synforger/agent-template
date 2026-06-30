@@ -39,18 +39,23 @@ else
 fi
 
 # 3. orphan auto-index 検出 (= jsonl だけ残って .md 無し = 前 session 終了プロトコル不完走)
-#    検査対象 = 過去 3 日分の journal/<date>/ (= 古い orphan は不可逆なので無視)
+#    検査対象 = 全階層 journal (= normal + projects/*/journal + projects/*/subprojects/*/journal) の過去 7 日分
+#    (= 2026-06-30 3→7 緩和、 cross-PC 同期遅延 + ARK 認識漏れの 4-7 日後発覚 catch)
+#    階層自己完結原則: jsonl と .md は同 dir に揃う、 別 dir に pointer stub 書くこと禁止
 orphan_count=0
 orphan_list=""
-for d in $(ls -1 journal/ 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | head -3); do
-    for jsonl in journal/"$d"/session-*-auto-index.jsonl; do
-        [ -f "$jsonl" ] || continue
-        nn=$(basename "$jsonl" | sed -E 's/session-([0-9]+).*/\1/')
-        md="journal/$d/session-${nn}.md"
-        if [ ! -f "$md" ]; then
-            orphan_count=$((orphan_count + 1))
-            orphan_list="$orphan_list\n  - $jsonl (= 対応 .md 欠落)"
-        fi
+for journal_root in journal projects/*/journal projects/*/subprojects/*/journal; do
+    [ -d "$journal_root" ] || continue
+    for d in $(ls -1 "$journal_root" 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | head -7); do
+        for jsonl in "$journal_root/$d"/session-*-auto-index.jsonl; do
+            [ -f "$jsonl" ] || continue
+            nn=$(basename "$jsonl" | sed -E 's/session-([0-9]+).*/\1/')
+            md="$journal_root/$d/session-${nn}.md"
+            if [ ! -f "$md" ]; then
+                orphan_count=$((orphan_count + 1))
+                orphan_list="$orphan_list\n  - $jsonl (= 対応 .md 欠落)"
+            fi
+        done
     done
 done
 if [ "$orphan_count" -gt 0 ]; then
@@ -60,7 +65,56 @@ else
     echo "orphan_auto_index: 0"
 fi
 
-# 4. docs-check (= 最後の 1 行 summary)
+# 4. 静的 rule 容量監視 (= 階層別合計、 上限 = plans/rule-capacity-redesign 真値)
+#    ARK 親 = CLAUDE + profile-core + always (= 40 KB)
+#    project = _README + always (= 20 KB)
+#    subproject = _README + always (= 10 KB)
+#    形態 D 移行中: rules/always.md (新) + rules/always/*.md (旧) 両対応で合算
+ARK_PARENT_LIMIT=40960
+PROJECT_LIMIT=20480
+SUBPROJECT_LIMIT=10240
+
+sum_files() {
+    local total=0 f
+    for f in "$@"; do
+        [ -f "$f" ] && total=$((total + $(wc -c < "$f")))
+    done
+    echo "$total"
+}
+
+overflows=()
+parent_files=(CLAUDE.md profile/profile-core.md rules/always.md)
+for f in rules/always/*.md; do [ -f "$f" ] && parent_files+=("$f"); done
+parent_size=$(sum_files "${parent_files[@]}")
+[ "$parent_size" -gt "$ARK_PARENT_LIMIT" ] && overflows+=("ARK 親: $((parent_size/1024))KB > 40KB")
+
+for p_dir in projects/*/; do
+    p_name=$(basename "$p_dir")
+    case "$p_name" in _*) continue ;; esac
+    proj_files=("$p_dir/_README.md" "$p_dir/rules/always.md")
+    for f in "$p_dir"rules/always/*.md; do [ -f "$f" ] && proj_files+=("$f"); done
+    proj_size=$(sum_files "${proj_files[@]}")
+    [ "$proj_size" -gt "$PROJECT_LIMIT" ] && overflows+=("$p_name: $((proj_size/1024))KB > 20KB")
+
+    for s_dir in "$p_dir"subprojects/*/; do
+        [ -d "$s_dir" ] || continue
+        s_name=$(basename "$s_dir")
+        case "$s_name" in _*) continue ;; esac
+        sub_files=("$s_dir/_README.md" "$s_dir/rules/always.md")
+        for f in "$s_dir"rules/always/*.md; do [ -f "$f" ] && sub_files+=("$f"); done
+        sub_size=$(sum_files "${sub_files[@]}")
+        [ "$sub_size" -gt "$SUBPROJECT_LIMIT" ] && overflows+=("$p_name/$s_name: $((sub_size/1024))KB > 10KB")
+    done
+done
+
+if [ "${#overflows[@]}" -gt 0 ]; then
+    echo "static_capacity: ${#overflows[@]} 件 上限超過"
+    for o in "${overflows[@]}"; do echo "  - $o"; done
+else
+    echo "static_capacity: OK (= 全階層上限内)"
+fi
+
+# 5. docs-check (= 最後の 1 行 summary)
 if [ -x .tooling/docs-check.sh ]; then
     docs_summary=$(bash .tooling/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g' | grep -E "^(PASS|WARN|FAIL):" | tr '\n' ' ')
     echo "docs-check: $docs_summary"
@@ -73,4 +127,4 @@ echo ""
 echo "行動指針:"
 echo "  - stale_rules / dup_pairs は起動時無視 (= 終了時 Step 2 でエージェントが走り切る)"
 echo "  - docs-check FAIL >= 1 → 同セッション内 fix 必須"
-echo "  - orphan_auto_index >= 1 → 前 session の触り内容を jsonl から復元して当日 .md に補追記 (= 同 NN で写経)"
+echo "  - orphan_auto_index >= 1 → jsonl と同 dir の正規 location (= 当 session 階層) で .md を書く / 別 dir に pointer stub 禁止"
