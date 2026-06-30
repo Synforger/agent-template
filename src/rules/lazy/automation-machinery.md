@@ -23,7 +23,7 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 | `.tooling/extract-artifact-index.sh` | SessionEnd hook | git log (= 当 transcript の最初 ts 以降) + gh pr | `journal/<date>/session-NN-auto-index.jsonl` (= 上書き、 NN = `.md` 最大 + 1) |
 | `.tooling/precommit-conflict-check.sh` | git pre-commit hook | 改訂 file vs 既存 rule file | stderr で重複警告 (= blocking なし) |
 | `.tooling/first-prompt-pull.sh` | Claude Code UserPromptSubmit hook | session 初回発話 (= flag file で区別) | `git pull --rebase --autostash` 実行 (= 複数 PC 同期運用時) |
-| `.tooling/docs-check.sh` | 終了時 Step 2 + 任意手動起動 | 全 .md 機械検査 (9 step) | PASS / WARN / FAIL カウント (= FAIL ≥ 1 で同 session fix 必須) |
+| `.tooling/docs-check.sh` | 終了時 Step 2 + 任意手動起動 | 全 .md 機械検査 (8 step) | PASS / WARN / FAIL カウント (= FAIL ≥ 1 で同 session fix 必須) |
 
 ## 反応規律
 

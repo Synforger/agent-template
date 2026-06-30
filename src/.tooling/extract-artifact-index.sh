@@ -1,12 +1,37 @@
 #!/usr/bin/env bash
-# extract-artifact-index.sh - SessionEnd hook、 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
-# 用途: SessionEnd hook 経由で発火、 journal/<date>/session-NN-auto-index.jsonl に append
-# 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh
+# extract-artifact-index.sh - 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
+# 用途: REDACTED 終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
+# 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh [<journal-dir>]
+#   引数なし → `.tooling/_output/current-session-journal-dir.txt` (= REDACTED 起動 Phase B で書く真値) を読む
+#   引数あり → override (= debug 用)
+#
+# session 開始時に REDACTED が Phase B でプロジェクト判定 → context file に当 session の journal_dir 1 行書く
+# session 初回発話の first-prompt-pull hook が前 session の context file をクリア (= 残骸防止)
+# context file 不在で本 script 引数なし起動 = error exit (= REDACTED が起動 Phase B を skip した signal)
+#
+# 階層自己完結原則: jsonl は当 session の正規階層に出力、 他階層に pointer stub 量産しない
+# (= 2026-06-30 反復違反癖の機構レベル根治、 引数省略デフォルトを normal 固定から context file 駆動に変更)
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 0
+
+CONTEXT_FILE="$ROOT/.tooling/_output/current-session-journal-dir.txt"
+
+if [ -n "${1:-}" ]; then
+    JOURNAL_DIR_ARG="$1"
+elif [ -f "$CONTEXT_FILE" ]; then
+    JOURNAL_DIR_ARG=$(head -1 "$CONTEXT_FILE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    if [ -z "$JOURNAL_DIR_ARG" ]; then
+        echo "ERROR: $CONTEXT_FILE が空、 REDACTED 起動 Phase B で journal_dir を書いてください" >&2
+        exit 2
+    fi
+else
+    echo "ERROR: $CONTEXT_FILE 不在、 REDACTED 起動 Phase B で journal_dir を書く義務 (= CLAUDE.md Phase B 参照)" >&2
+    echo "       一時 override = 引数で journal_dir を明示指定 (= debug 用)" >&2
+    exit 2
+fi
 
 # session 開始時刻 = 当 transcript 1 行目以降の最初の timestamp、 fallback = 24h
 # Claude Code の transcript dir 命名規約: $HOME/.claude/projects/-<root-path-with-slashes-as-dashes>
@@ -32,7 +57,7 @@ fi
 SINCE_ARG="${SINCE_ISO:-24 hours ago}"
 
 today=$(date '+%Y-%m-%d')
-DATE_DIR="$ROOT/journal/$today"
+DATE_DIR="$ROOT/$JOURNAL_DIR_ARG/$today"
 mkdir -p "$DATE_DIR"
 # 採番真値は .md のみ (= エージェント が書いた journal)。 jsonl は副産物 = 採番に使わない
 # session_nn = .md の最大 NN + 1 (= 当日 エージェント が締めた session 数 + 1 = 今 session)
