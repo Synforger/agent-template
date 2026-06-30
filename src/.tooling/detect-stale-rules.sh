@@ -18,12 +18,11 @@ case "${1:-}" in
 esac
 
 # 対象 file = rule + profile + CLAUDE + 各プロジェクト rule (= glob で自動編入、 ハードコード廃止)
-# 除外 = _template.md (= 雛形) / dev-env/* (= 環境別、 触らないのが正常) / _archive/* (= 履歴)
+# 除外 = _template.md (= 雛形) / _archive/* (= 履歴)。 個別 file は frontmatter `stable: true` で除外
 TARGETS=$(find . \
   -path "./.git" -prune -o \
   -path "./.claude/worktrees" -prune -o \
   -path "*/_archive" -prune -o \
-  -path "*/dev-env" -prune -o \
   \( \
     -path "./CLAUDE.md" -o \
     -path "./profile/*.md" -o \

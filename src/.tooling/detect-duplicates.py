@@ -35,6 +35,10 @@ TARGET_GLOBS = [
     "profile/profile-core.md",
     "rules/always/*.md",
     "rules/lazy/*.md",
+    "projects/*/rules/always/*.md",
+    "projects/*/rules/lazy/*.md",
+    "projects/*/subprojects/*/rules/always/*.md",
+    "projects/*/subprojects/*/rules/lazy/*.md",
 ]
 
 
