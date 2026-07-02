@@ -13,7 +13,6 @@ DIFF_FILES=$(git diff --cached --name-only -- \
     CLAUDE.md \
     'profile/*.md' \
     'rules/*.md' \
-    'rules/always/*.md' \
     'rules/lazy/*.md' 2>/dev/null | grep -v '^$' || true)
 
 [ -z "$DIFF_FILES" ] && exit 0
@@ -31,7 +30,7 @@ ALL_RULE_FILES=$(find . \
     \( \
       -path "./CLAUDE.md" -o \
       -path "./profile/*.md" -o \
-      -path "./rules/always/*.md" -o \
+      -path "./rules/always.md" -o \
       -path "./rules/lazy/*.md" \
     \) -print 2>/dev/null | sort)
 
@@ -58,15 +57,17 @@ if [ "$WARNED" -eq 1 ]; then
     echo "====================================================" >&2
 fi
 
-# ===== 容量緩和 reflex 警告 (= 2026-06-30 追加、 M4 歯止め) =====
-# meta.md 容量表が変わった commit に他の rule/profile/CLAUDE 本体が混在 = reflex sign
-META_CAP_LINES=$(git diff --cached -- rules/always/meta.md 2>/dev/null | grep -E '^\+.*\|.*[0-9]+\s*KB' | head -3)
+# ===== 容量緩和 reflex 警告 =====
+# rules/always.md § meta の容量表が変わった commit に他の rule/profile/CLAUDE 本体が混在 = reflex sign
+META_CAP_LINES=$(git diff --cached -- rules/always.md 2>/dev/null | grep -E '^\+.*\|.*[0-9]+\s*KB' | head -3)
 if [ -n "$META_CAP_LINES" ]; then
     OTHER_FILES=$(git diff --cached --name-only -- \
-        CLAUDE.md 'profile/*.md' 'rules/always/*.md' 'rules/lazy/*.md' \
+        CLAUDE.md 'profile/*.md' 'rules/lazy/*.md' \
+        'projects/*/rules/always.md' 'projects/*/rules/lazy/*.md' \
+        'projects/*/subprojects/*/rules/always.md' 'projects/*/subprojects/*/rules/lazy/*.md' \
         'projects/*/rules/always/*.md' 'projects/*/rules/lazy/*.md' \
         'projects/*/subprojects/*/rules/always/*.md' 'projects/*/subprojects/*/rules/lazy/*.md' \
-        2>/dev/null | grep -v 'rules/always/meta.md$' || true)
+        2>/dev/null | grep -v 'rules/always.md$' || true)
     if [ -n "$OTHER_FILES" ]; then
         echo "" >&2
         echo "===== precommit-conflict-check: 容量緩和 reflex 警告 =====" >&2

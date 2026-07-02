@@ -20,8 +20,5 @@ touch "$FLAG"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 0
 
-# 前 session の session-context file クリア (= 残骸防止、 当 session REDACTED が Phase B で書き直す)
-rm -f "$ROOT/.tooling/_output/current-session-journal-dir.txt" 2>/dev/null || true
-
 git pull --rebase --autostash 2>&1 | sed 's/^/[AGENT SYNC] /'
 exit 0

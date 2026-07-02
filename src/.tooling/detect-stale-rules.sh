@@ -26,14 +26,17 @@ TARGETS=$(find . \
   \( \
     -path "./CLAUDE.md" -o \
     -path "./profile/*.md" -o \
+    -path "./rules/always.md" -o \
     -path "./rules/always/*.md" -o \
     -path "./rules/lazy/*.md" -o \
     -path "./rules/_README.md" -o \
     -path "./projects/_README.md" -o \
     -path "./projects/*/_README.md" -o \
+    -path "./projects/*/rules/always.md" -o \
     -path "./projects/*/rules/always/*.md" -o \
     -path "./projects/*/rules/lazy/*.md" -o \
     -path "./projects/*/subprojects/*/_README.md" -o \
+    -path "./projects/*/subprojects/*/rules/always.md" -o \
     -path "./projects/*/subprojects/*/rules/always/*.md" -o \
     -path "./projects/*/subprojects/*/rules/lazy/*.md" \
   \) -print 2>/dev/null | grep -v '_template\.md$' | sort)
