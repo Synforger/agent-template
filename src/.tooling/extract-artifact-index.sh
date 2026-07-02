@@ -1,37 +1,25 @@
 #!/usr/bin/env bash
 # extract-artifact-index.sh - 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
 # 用途: ARK 終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
-# 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh [<journal-dir>]
-#   引数なし → `.tooling/_output/current-session-journal-dir.txt` (= ARK 起動 Phase B で書く真値) を読む
-#   引数あり → override (= debug 用)
+# 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh <journal-dir>
+#   引数必須。 ARK が終了時に当 session 実際に touch した階層 (= journal/ / projects/<P>/journal/ / ...) を明示指定
+#   親+サブ両方触った場合は 2 回呼ぶ (= 階層ごとに 1 回ずつ)
 #
-# session 開始時に ARK が Phase B でプロジェクト判定 → context file に当 session の journal_dir 1 行書く
-# session 初回発話の first-prompt-pull hook が前 session の context file をクリア (= 残骸防止)
-# context file 不在で本 script 引数なし起動 = error exit (= ARK が起動 Phase B を skip した signal)
+# 永続 state file 方式は 2026-07-02 廃止 (= 複数 session 併走で他 session の値を拾う事故が発生、
+# 引数省略の default 解決を無くして毎回明示指定に一本化)
 #
 # 階層自己完結原則: jsonl は当 session の正規階層に出力、 他階層に pointer stub 量産しない
-# (= 2026-06-30 反復違反癖の機構レベル根治、 引数省略デフォルトを normal 固定から context file 駆動に変更)
 
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 0
 
-CONTEXT_FILE="$ROOT/.tooling/_output/current-session-journal-dir.txt"
-
-if [ -n "${1:-}" ]; then
-    JOURNAL_DIR_ARG="$1"
-elif [ -f "$CONTEXT_FILE" ]; then
-    JOURNAL_DIR_ARG=$(head -1 "$CONTEXT_FILE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-    if [ -z "$JOURNAL_DIR_ARG" ]; then
-        echo "ERROR: $CONTEXT_FILE が空、 ARK 起動 Phase B で journal_dir を書いてください" >&2
-        exit 2
-    fi
-else
-    echo "ERROR: $CONTEXT_FILE 不在、 ARK 起動 Phase B で journal_dir を書く義務 (= CLAUDE.md Phase B 参照)" >&2
-    echo "       一時 override = 引数で journal_dir を明示指定 (= debug 用)" >&2
+if [ -z "${1:-}" ]; then
+    echo "ERROR: 引数 <journal-dir> 必須 (= 当 session が touch した journal 階層を明示、 例: journal / projects/<P>/journal)" >&2
     exit 2
 fi
+JOURNAL_DIR_ARG="$1"
 
 # session 開始時刻 = 当 transcript 1 行目以降の最初の timestamp、 fallback = 24h
 # Claude Code の transcript dir 命名規約: $HOME/.claude/projects/-<root-path-with-slashes-as-dashes>

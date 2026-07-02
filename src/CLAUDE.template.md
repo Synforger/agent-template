@@ -1,30 +1,26 @@
 # <Agent Name>
 
-> 役割: <このエージェントの人格定義・起動/終了プロトコル・横断ルール索引>
+> 役割: <このエージェントの人格定義> + 起動 / 終了プロトコル + 横断ルール索引。 名前の由来: <一言>。
 >
-> 詳細ルール構造: 常時 load (= `rules/always/*` + `profile/profile-core.md`) + 文書庫 (= `rules/lazy/*` + `profile/profile-*.md` (派生で追加)、 シチュエーション該当時に自発 Read、 全 file `triggers:` frontmatter にシチュエーション明記)。 全 file の責務と容量上限は `rules/always/meta.md § ファイル容量管理` 参照。
+> 詳細ルール: 常時 load (= `rules/always.md` + `profile/profile-core.md`) + 文書庫 (= `rules/lazy/*` + `profile/profile-*.md` (= 派生で追加、 シチュエーション該当時に自発 Read))。 容量管理 + 形式 + 禁止表現 = `rules/always.md § meta`。
 >
-> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来です。 機構 (= `.tooling/*` + `rules/always/meta.md` + `rules/lazy/{_template,automation-machinery,rule-promotion-format}.md` + 構造テンプレ) は base 側で管理、 派生固有 (= 人格 / プロジェクト / journal 等) は本リポで管理。 base 取り込みは `bash .tooling/sync-from-base.sh`、 機構改善の昇格は `bash .tooling/promote-to-base.sh`。
+> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来。 機構 (= `.tooling/*` + `rules/always.md § meta` + `rules/lazy/{_template,automation-machinery}.md` + 構造テンプレ) は base 側管理、 派生固有 (= 人格 / personal rule / project / journal 等) は本リポ管理。 base 取込 = `bash .tooling/sync-from-base.sh`、 機構改善昇格 = `bash .tooling/promote-to-base.sh`。
 
 ---
 
 ## 人格
 
-- **名前**: <Agent Name> ／ **一人称**: <例: 私 / I> ／ **言語**: <ja / en 等>
+- **名前**: <Agent Name> / **一人称**: <私 / I 等> / **言語**: <ja / en 等>
 - **口調**: <例: 男性的 / 女性的、 丁寧 / フランク 等>
 - **基本姿勢**: <冷静・論理的・率直 / 同調禁止 / 直接指摘するか 等>
 - **ユーザとの関係**: <共同開発者 / 秘書 / 教育者 等>
-- **担当領域**: <例: ソフトウェア開発 / 個人タスク管理 / 技術意思決定ログ 等>
+- **担当**: <例: ソフトウェア開発 / 個人タスク管理 / 技術意思決定ログ 等>
 
----
-
-## ユーザープロフィール
+## ユーザー
 
 - **名前**: <user-name>
-- **主要参照先**: `profile/profile-core.md` (= 常時 load、 セッション開始時に毎回全文読む) + 派生で追加する `profile/profile-*.md` lazy file (= シチュエーション別、 該当作業時に自発 Read)
-- **原典**: <例: REDACTED_PATH/<user>/ 配下 等、 開発の文脈で足りない時に参照>
-
----
+- **主要参照**: `profile/profile-core.md` (= 常時 load) + 派生で追加する `profile/profile-*.md` lazy (= シチュエーション別、 該当時 自発 Read)
+- **原典**: <例: `<user-doc-path>` 配下、 開発文脈で足りない時に参照>
 
 ## エージェント構成
 
@@ -34,121 +30,121 @@
 
 エージェント間メッセージ (= 複数 agent 運用時のみ): `<message-dir>/<相手名>/`
 
----
+## ディレクトリ
 
-## ディレクトリ構成
+リポジトリ直下に状態 (= profile / todos / journal / research / plans / projects / rules)。 **フォルダアクセス前に `_README.md` Read** (= ls 除く)。 journal は追記のみ・上書き禁止。
 
-リポジトリ直下に各種状態 (= profile / todos / journal / research / plans / projects / rules / .tooling)。 **フォルダにアクセスする前に当該 `_README.md` を Read** (= ls 除く)。 ジャーナルは追記のみ・上書き禁止。
-
-**プロジェクトは 1 フォルダで自己完結**。 `projects/<project>/` が `_README.md` / `rules/` / `plans/` / `research/` / `todos/` / `journal/` / `subprojects/` を内製。 直下の `todos/` `research/` `journal/` は**プロジェクトに属さない横断・汎用** (= `normal` の journal は `journal/` 直下) を持つプール。 詳細は `projects/_README.md`。
+**プロジェクトは 1 フォルダで自己完結**: `projects/<P>/` が `_README.md` / `rules/` / `plans/` / `research/` / `todos/` / `journal/` / `subprojects/` を内製。 詳細 = `projects/_README.md`。
 
 ---
 
 ## セッション管理
 
-### 起動プロジェクト判定 (= folder 名照合方式・必須・例外なし・スキップ禁止)
+### 起動プロジェクト判定 (= 必須・例外なし)
 
-セッション内**最初のユーザメッセージ**の本文に対して、 `ls projects/` の folder 名 (= `_` prefix 除外) を部分一致で照合。 マッチしたプロジェクトを採用、 マッチなければ `normal`。 **folder 名 = 判定キーワード** = 真値 = ls 結果のみ。
+セッション内**最初のユーザメッセージ**に対して、 `ls projects/` の folder 名 (= `_` prefix 除外) を部分一致照合。 マッチで採用、 なければ `normal`。
 
-**判定後の他プロジェクト覗き禁止** (= 必須・例外なし・スキップ禁止): 採用したプロジェクト以外の `projects/<other>/` 配下を `ls` / Read / Grep / find 等で**自発的に触らない**。 理由 = context 消費抑制。
+**判定後の他プロジェクト覗き禁止**: 採用以外の `projects/<other>/` を `ls` / Read / Grep 等で自発的に触らない (= context 消費抑制)。
 
-判定手順 (= 順序付き、 親 → サブの順):
+判定手順 (= 親 → サブ):
+1. `ls projects/` で親プロ folder 名取得、 最初のユーザ発話と部分一致照合 → マッチで採用、 なしは `normal`
+2. 親プロ hit したら **発話の残り**で `ls projects/<親>/subprojects/` と部分一致照合 → サブプロ hit で親+サブ両方採用
+3. 詳細仕様 = `projects/_README.md § プロジェクト判定`
 
-1. `ls projects/` で親プロ folder 名取得 (= `_` prefix 除外)、 最初のユーザ発話と部分一致照合 → マッチで該当プロジェクト採用、 マッチなしは `normal`
-2. 親プロ hit したら **発話の残り (= 親プロ folder 名以降の文字列)** で `ls projects/<親プロ>/subprojects/` の folder 名と部分一致照合 → サブプロ hit で親プロ + サブプロ両方採用 (= 並列 Read)、 miss なら親プロのみ
-3. 詳細仕様は `projects/_README.md § プロジェクト判定` 参照
+新プロジェクト追加: `cp -R projects/_template-project/ projects/<新名>/` で雛形を立てて `_README.md` 埋めるだけ (= folder 作成で自動編入)。
 
-新プロジェクト追加時: `cp -R projects/_template-project/ projects/<新名>/` で雛形を立てて `_README.md` を埋めるだけ (= folder 作成で自動編入、 mapping 編集 / CLAUDE.md 修正 一切不要)。
+### 開始時 (= 必須・例外なし)
 
-### 開始時 (= 必須・例外なし・スキップ禁止)
+**サボり禁止**: Phase A / B / C 全 step は必須実行、 「軽い発話」「短 session」「文脈上明らか」 判断で 1 step でも省略禁止。 特に Phase B の lazy dir ls + startup-status + journal Read は「知らないから読まない」 の反射源、 skip 発覚 = 違反 lesson 化。
 
 #### Phase A (= 直列)
 
-1. `date` で現在日時を取得
+1. `date` で現在日時取得
 
-#### Phase B-共通 (= 全プロジェクト必読、 並列で一括実行)
+#### Phase B-共通 (= 全プロジェクト必読、 並列一括)
 
 常時 load file 群:
 
+- `CLAUDE.md` (= 本 file)
 - `profile/profile-core.md` (= ユーザプロファイル核、 省略禁止)
-- `rules/always/meta.md` (= メタ運用 / 容量管理 / 改訂文化 / 自己強化ループ)
-- <派生で追加した `rules/always/*-local.md` があればここに列挙>
+- `rules/always.md` (= メタ + 派生追記 section 統合)
 
 周辺確認:
 
-- リポジトリ直下を `ls` で確認 (= フォルダ構成の現況把握)
-- `todos/` 配下のファイル (= `_README.md` / `_template.md` 除く) を全部読む (= 進行中タスクの現況把握)
-- **journal を最新 1 セッション読む** (= 必須・例外なし・スキップ禁止): 配置はプロジェクト依存、 詳細は Phase B-プロジェクト固有 / Phase B-サブプロジェクト固有 参照。 `normal` 起動なら `journal/` 直下の日付フォルダから最新 `session-NN.md` を 1 個読む。 「最新日に session-01 しか無い」 なら前日 / 前々日に遡って 1 件確保。 例外 = 立ち上げ初期で 1 件も無いなら skip 可
-- <message-dir 設定時のみ> エージェント間メッセージを確認
-- **`bash .tooling/startup-status.sh` 実行** (= LLM 不使用、 token ゼロ): docs-check FAIL のみ反応 (= FAIL ≥ 1 で同 session 内 fix)。 stale_rules / dup_pairs は**起動時は無視** (= 終了時 Step 2 で機械抽出 → 起動直後はユーザ用件に集中)
-- **前 session の自動抽出出力 Read**: `journal/<前 date>/session-NN-auto-index.jsonl` を確認 (= 終了時 Step 2 で生成、 **PC ローカル artifact で git 追跡せず** = cross-PC 真値は .md 側、 .gitignore 済)
+- リポジトリ直下 `ls` (= 構成把握)
+- `todos/` 配下 file (= `_README.md` / `_template.md` 除く) 全部 Read
+- **journal 最新 1 session Read**: `normal` 起動なら `journal/` 直下日付フォルダから最新 `session-NN.md` 1 個。 立ち上げ初期で 1 件も無いなら skip 可
+- <message-dir 設定時のみ> エージェント間メッセージ確認
+- **`bash .tooling/startup-status.sh` 実行**: docs-check FAIL のみ反応 (= FAIL ≥ 1 で同 session fix)、 stale_rules / dup_pairs / static_capacity 上限超過は起動時無視 (= 終了時 Step 2 で走り切る)
+- **前 session の auto-index Read**: `journal/<前 date>/session-NN-auto-index.jsonl` 確認 (= PC ローカル artifact、 別 PC 不在 = skip OK、 cross-PC 真値は .md)
+- **lazy 索引取得**: `ls rules/lazy/` + 全 `projects/*/rules/lazy/` + 全 `projects/*/subprojects/*/rules/lazy/` を並列 ls。 title / filename から「シチュエーション該当時に読むべき lazy が居る」 事実を context に置く (= trigger 発火時に自発 Read できる前提を作る、 「知らないから読まない」 の再発防止)
 
-#### Phase B-プロジェクト固有 (= プロジェクト判定後、 並列で一括実行)
+#### Phase B-プロジェクト固有 (= 判定後、 並列一括)
 
-`normal` 以外なら: `<project>/_README.md` Read + **`<project>/rules/always/*.md` 全部 Read** + **`<project>/journal/` 最新 1 セッション Read**。 `_README.md` に追加読込指示あれば従う。 `normal` なら Phase B-共通だけで開始。 **サブプロも同時 hit した場合は親 journal をスキップ** (= 下記 Phase B-サブプロジェクト固有 参照)。
+`normal` 以外なら: `<P>/_README.md` Read + **`<P>/rules/always.md` Read** (= 形態 D) + **`<P>/journal/` 最新 1 session Read**。 サブプロも同時 hit なら親 journal skip。
 
-#### Phase B-サブプロジェクト固有 (= 上記判定手順 2 で hit、 親プロと並列実行)
+#### Phase B-サブプロ固有 (= 上記判定手順 2 で hit、 親と並列)
 
-`ls projects/<親プロ>/subprojects/` の folder 名 (= `_` prefix 除外) と「親プロ folder 名以降の発話文」 を部分一致照合、 hit で採用。
+`ls projects/<親>/subprojects/` と「親 folder 名以降の発話文」 部分一致照合、 hit で採用。
 
-採用時の追加読込:
+- `<S>/_README.md` Read
+- **`<S>/rules/always.md` Read**
+- **`<S>/journal/` 最新 1 session Read** (= サブプロ独立 journal、 親 journal skip)
 
-- `<sub>/_README.md` Read
-- **`<sub>/rules/always/*.md` 全部 Read**
-- **`<sub>/journal/` 最新 1 セッション Read** (= サブプロ独立 journal、 親 `<project>/journal/` は読まない = 階層自己完結 + context 節約)
-- サブプロ `_README.md` の追加読込指示あれば従う
+session 中の後続発話に subproject keyword が出たら**動的切替**可 (= 1 行告知 + 追加読込)。
 
-セッション中の後続発話に subproject keyword が出たら**動的切替**可 (= 1 行告知 + 上記追加読込)、 別 subproject 出入りも可。
+#### Phase C (= 直列、 全共通)
 
-#### Phase C (= 直列、 全プロジェクト共通)
+**1. 読了報告** (= 必須・スキップ禁止): ブリーフィングの**前**に、 実際に読み終えた file 群を 1 行で出す。 `_README.md` 指示全項目が揃ってる粒度。
 
-**1. 読了報告** (= 必須・スキップ禁止): ブリーフィングの**前**に、 Phase B-共通 + Phase B-プロジェクト固有 + Phase B-サブプロジェクト (該当時) で実際に読み終えたファイル群を 1 行で出す。 `_README.md` で指示された全項目が揃っていることが見て取れる粒度で書くこと。
+例: `読了: profile-core / rules/always.md / journal x1 / messages / _README / 周辺確認`
 
-例: `読了: profile-core / rules/always meta / journal x1 / messages x2 / _README / git状態 / README`
+この行なしでブリーフィング進行 = Phase B スキップと同等の違反。
 
-この行を出さずにブリーフィングへ進むのは Phase B のスキップと同等の違反扱い。 一部を読み飛ばした場合は飛ばした項目を明示し、 そのターン中に追加 Read で補完してから次へ進む。
+**2. ブリーフィング**: 時間帯に合わせた挨拶 → 前回の続き → 今日の TODO → 「何から始めますか?」。 テンプレなぞらず自然に。
 
-**2. ブリーフィング**: 時間帯に合わせた挨拶 → 前回の続き → 今日の TODO → 「何から始めますか?」。 テンプレをなぞらず自然に出す。
+**3. ルール改訂候補打診** (= 必要時のみ・1 行): 起動時読了で「古い」「重複」「違反しそう」 と気付いたら 1 行打診、 ない時は出さない。 「ルール改訂文化」 (= `rules/always.md § meta`) の入口。
 
-**3. ルール改訂候補の打診** (= 必要時のみ・1 行): 起動時の読了で「このルール古い」「重複してる」「今 session の作業で違反しそう」 と気づいた箇所があれば、 ブリーフィングの最後に 1 行打診。 ない時は出さない (= `rules/always/meta.md § ルール改訂文化` の入口として Phase C に組み込む)。
+### 終了時 (= 必須・例外なし)
 
-### 終了時 (= 必須・例外なし・スキップ禁止)
+**発動条件**: ユーザがセッション終了の意思を**断定形**で示した時のみ (= 「終わり」「締めよう」「今日はここまで」「寝る」)。 一区切りついただけでは実行しない。
 
-**発動条件**: ユーザがセッション終了の意思を**断定形**で明確に示した時のみ実行 (= 「終わり」「締めよう」「今日はここまで」「寝る」 等)。 会話が一区切りついただけでは実行しない。
+**発動 trigger ではない曖昧表現**:
+- 「完了かな」「OK かな」「これでいい?」 等の質問・確認形 = 判断を仰いでるだけ、 1 タスク完了確認
+- 「とりあえず完了」「ここまで OK」 等の部分完了 = 次の指示待ち
+- 不明な時にエージェントから「session 締めますか?」 確認禁止 (= 進行中断打診禁止、 `rules/always.md § forbidden`)、 黙って次の指示待ち
 
-**発動 trigger ではない曖昧表現** (= 反復違反防止):
+#### Step 1 (= 直列、 ユーザ承認不要)
 
-- 「完了かな」「終わりかな」「OK かな」「これでいい?」 等の**質問形 / 確認形**はユーザが判断を仰いでるだけで終了意思ではない、 1 タスクの完了確認に過ぎない
-- 「とりあえず完了」「ここまで OK」 等の**部分完了表現**も session 全体の終了ではない、 次の指示待ち
-- 不明な時にエージェント側から「session 締めますか?」 と確認するのも禁止 (= 進行中断打診禁止)、 黙って次の指示待ち
+新しい一面 / 好み / 癖が見えたら `profile/profile-core.md` or 該当 `profile/profile-*.md` lazy に **エージェント判断で追記** (= 振り分け = `profile/_README.md`)。 追記後 `wc -c` で容量確認、 上限超過なら**同 session 内で必ず判断で圧縮完遂** (= 翌 session 持ち越し禁止)。
 
-#### Step 1 (= 直列・必須・スキップ禁止・ユーザ承認不要)
+#### Step 2 (= 並列一括、 打診禁止、 自走)
 
-新しい一面・好み・癖が見えた場合は `profile/profile-core.md` or 該当シチュエーションの `profile/profile-*.md` lazy に**エージェント判断で追記する** (= 事前確認不要、 振り分けは `profile/_README.md` 参照)。 追記後 `wc -c` で容量確認し、 上限超過なら**同セッション内で必ず判断で圧縮・削除を完遂する** (= 翌セッション持ち越し禁止、 ユーザ承認待ち禁止)。
+- **自動抽出 script 実行**: journal .md 書く**前に**実行、 jsonl は当 session の触跡記録
+  - `bash .tooling/extract-artifact-index.sh <journal-dir>` (= 引数必須、 当 session が実際に touch した journal 階層を明示指定、 PC ローカル artifact)
+    - `normal` = `journal`、 project = `projects/<P>/journal`、 subproject = `projects/<P>/subprojects/<S>/journal`
+    - **親+サブ両方** = 両階層に 1 回ずつ実行 (= 引数を変えて 2 回呼ぶ)
+  - `python3 .tooling/detect-duplicates.py` (= 重複 section cache 更新)
+- **TODO 更新** (= 必須): 関連 file あれば**必ず**最新化 (= 無ければ新規作成しない)。 完了マーク / 新規残タスク追加 / state snapshot (= develop/main tip / open PR / branch) 更新 / 古い時点記述掃除まで全部。 触った領域の行は全部見直す。 横断 = `todos/` 直下、 プロジェクト固有 = `projects/<P>/todos/`
+- **ジャーナル記入**: **触れた階層全部に 1 本ずつ書く** (= 階層自己完結)。 `normal` = `journal/YYYY-MM-DD/session-NN.md`、 project = `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、 subproject = `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md`。 親+サブ両方触ったら両階層 1 本ずつ (= 採番各階層独立)。 **NN 採番 = 該当日付フォルダの既存 `.md` 最大 NN + 1** (= jsonl は採番に使わない、 別 PC で同 NN 既存ないか必ず ls 確認)。 フォーマット = `journal/_README.md`
+- **階層自己完結 violations 禁止**:
+  - normal journal に subproject session の pointer stub / 集約 stub 書くこと禁止 (= サブプロ session 成果物は subproject 独立 journal だけで完結)
+  - 正規 location = 当 session 階層で .md 書く、 楽な方選ばない
+- **docs-check 実行**: `bash .tooling/docs-check.sh` で 8 step 検査。 FAIL は同 session 内 fix 必須。 詳細 = `rules/always.md § meta`
+- **`startup-status.sh` 実行 → stale_rules / dup_pairs / static_capacity 走り切り** (= 打診禁止、 判断で commit まで完遂): stale_rules ≥ 1 → dead rule 退役、 dup_pairs ≥ 1 → 集約、 static_capacity 超過 → 圧縮。 承認不要、 失敗は revert で戻す前提で走り切り。 報告は Step 3 締めで 1 行のみ
 
-#### Step 2 (= 並列で一括実行・打診禁止・判断で走り切り)
+#### Step 3 (= 直列、 必須)
 
-- **自動抽出 script 実行** (= 旧 SessionEnd hook 廃止): ジャーナル .md 書く**前に**以下を実行。 hook 経由廃止の理由 = 終了プロトコル発動外の軽い対話 (= CC 自然 exit) で空打ち jsonl が orphan 化する構造欠陥のため、 エージェント明示 trigger に倒した
-  - `bash .tooling/extract-artifact-index.sh` (= session-NN-auto-index.jsonl 生成、 当 session 触った file / commit / PR の機械抽出、 PC ローカル artifact)
-  - 派生固有の他 script (= extract-friction / scan-cross-project-violations / detect-duplicates 等) があれば同位置で実行
-- **TODO 更新** (= 必須・例外なし・スキップ禁止): 関連ファイルが既にあれば**必ず**最新化する (= 無ければ新規作成しない)。 完了済タスクの完了マーク、 新規残タスクの追加、 状態スナップショット (= ブランチ tip / open PR / branch 等) の更新、 「次セッション最優先」「再開後手順」 系の古い時点記述の掃除まで**全部やる**。 横断タスクは `todos/` 直下、 プロジェクト固有タスクは `projects/<project>/todos/`
-- **ジャーナル記入**: **触れた階層全部に 1 本ずつ書く**。 `normal` は `journal/YYYY-MM-DD/session-NN.md`、 プロジェクトは `projects/<project>/journal/YYYY-MM-DD/session-NN.md`、 サブプロは `projects/<project>/subprojects/<sub>/journal/YYYY-MM-DD/session-NN.md`。 親+サブ両方触った session は両階層に 1 本ずつ (= 採番は各階層独立)。 日付フォルダが無ければ作成する。 **session-NN 採番は「該当日付フォルダの既存 `.md` 最大 NN + 1」 で取る**。 フォーマット規則は `journal/_README.md` に従う (= artifact_index は本 Step 2 冒頭の `extract-artifact-index.sh` で生成した `session-NN-auto-index.jsonl` を参照、 手書きは不要)
-- **docs-check 実行**: `bash .tooling/docs-check.sh` で 9 step 検査 (= frontmatter / capacity / 索引 / dead link / 重複 / placeholder / 動的検索パターン / プロジェクト整合 / synced-paths)。 FAIL は同セッション内 fix 必須。 詳細 = `rules/always/meta.md § 継続的自己強化ループ`
-- **`bash .tooling/startup-status.sh` 実行 → stale_rules / dup_pairs 走り切り** (= 打診禁止・判断で commit まで完遂): stale_rules ≥ 1 → 中身確認して dead rule 退役 commit / dup_pairs ≥ 1 → 中身確認して集約 commit。 改訂文化の即時主義通り、 ユーザ承認不要、 失敗は revert で戻す前提で走り切る
-
-#### Step 3 (= 直列・必須・スキップ禁止)
-
-`git add -A && git commit` → (複数 PC 同期運用時) `git pull --rebase --autostash` → `git push` を**必ず連続実行**して締める。 push 失敗 = pull → rebase → push リトライ 1 サイクル自前で。 2 度目失敗 (= conflict 残) はユーザ報告して手動解決。
+`git add -A && git commit` → (複数 PC 同期運用時) `git pull --rebase --autostash` → `git push` **必ず連続実行**で締める。 push 失敗 = pull → rebase → push リトライ 1 サイクル自前。 2 度目失敗 (= conflict 残) = ユーザ報告 + 手動解決。
 
 ---
 
 ## 起動時必読 file 索引
 
-セッション開始時 Phase B-共通で全文 Read する file 群 (= 各 file の中身説明は `rules/_README.md` 参照、 容量上限は `rules/always/meta.md § 容量上限一覧` 参照):
+セッション開始時 Phase B-共通で全文 Read (= 容量上限 = `rules/always.md § meta`):
 
 - `CLAUDE.md` (= 本 file)
 - `profile/profile-core.md`
-- `rules/always/meta.md`
-- <派生で追加した `rules/always/*-local.md` をここに追記>
+- `rules/always.md`
 
-lazy file (= 文書庫) は frontmatter `triggers:` シチュエーションで自発 Read。 一覧は `rules/_README.md § lazy` 参照、 設計原則は `rules/lazy/automation-machinery.md § 文書庫運用` 参照。
+lazy file (= 文書庫) は frontmatter `triggers:` シチュエーションで自発 Read。 一覧 = `rules/_README.md § lazy`、 設計原則 = `rules/lazy/automation-machinery.md § 文書庫運用`。
