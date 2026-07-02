@@ -38,12 +38,12 @@ else
     echo "duplicates: (skipped, script not found)"
 fi
 
-# 4. 静的 rule 容量監視 (= 階層別合計、 上限 = plans/rule-capacity-redesign 真値)
-#    REDACTED 親 = CLAUDE + profile-core + always (= 40 KB)
-#    project = _README + always (= 20 KB)
-#    subproject = _README + always (= 10 KB)
+# 4. 静的 rule 容量監視 (= 階層別合計)
+#    派生親 = CLAUDE + profile-core + always (= 40 KB default)
+#    project = _README + always (= 20 KB default)
+#    subproject = _README + always (= 10 KB default)
 #    形態 D 移行中: rules/always.md (新) + rules/always/*.md (旧) 両対応で合算
-ARK_PARENT_LIMIT=40960
+PARENT_LIMIT=40960
 PROJECT_LIMIT=20480
 SUBPROJECT_LIMIT=10240
 
@@ -59,7 +59,7 @@ overflows=()
 parent_files=(CLAUDE.md profile/profile-core.md rules/always.md)
 for f in rules/always/*.md; do [ -f "$f" ] && parent_files+=("$f"); done
 parent_size=$(sum_files "${parent_files[@]}")
-[ "$parent_size" -gt "$ARK_PARENT_LIMIT" ] && overflows+=("REDACTED 親: $((parent_size/1024))KB > 40KB")
+[ "$parent_size" -gt "$PARENT_LIMIT" ] && overflows+=("派生親: $((parent_size/1024))KB > 40KB")
 
 for p_dir in projects/*/; do
     p_name=$(basename "$p_dir")
