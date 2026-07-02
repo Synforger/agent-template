@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # extract-artifact-index.sh - 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
-# 用途: REDACTED 終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
+# 用途: エージェント終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
 # 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh <journal-dir>
-#   引数必須。 REDACTED が終了時に当 session 実際に touch した階層 (= journal/ / projects/<P>/journal/ / ...) を明示指定
+#   引数必須。 エージェントが終了時に当 session 実際に touch した階層 (= journal/ / projects/<P>/journal/ / ...) を明示指定
 #   親+サブ両方触った場合は 2 回呼ぶ (= 階層ごとに 1 回ずつ)
 #
 # 永続 state file 方式は 2026-07-02 廃止 (= 複数 session 併走で他 session の値を拾う事故が発生、

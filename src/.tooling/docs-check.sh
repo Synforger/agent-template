@@ -28,7 +28,7 @@ pass() { PASS=$((PASS+1)); }
 # 除外: drafts/ (= 作業中ドラフト + Issue/notes 本文コピー、 frontmatter 不要)
 #
 # 派生固有除外: .tooling/local-excludes.txt があれば 1 行 1 path pattern を読んで動的追加
-# (= 派生固有の dir = REDACTED `feelings/` 等を派生で宣言、 base には混入させない)
+# (= 派生固有の dir を派生で宣言、 base には混入させない)
 FIND_ARGS=(. -name "*.md"
   -not -path "./.git/*"
   -not -path "./.tooling/*"
@@ -123,7 +123,7 @@ for f in $ALL_MD; do
       *.tooling/_output/*) continue;;
     esac
     case "$ref" in
-      # 外部絶対 path (= REDACTED_PATH/ REDACTED_PATH/ REDACTED_PATH/ ~/Library/ 等) は info、 警告しない
+      # 外部絶対 path (= `~/...` / `/...`) は info、 警告しない
       "~/"*|"/"*) continue;;
       *)
         # エージェント 内部相対参照: $dir/$ref → $ref (リポルート) → リポ内同名ファイル
