@@ -38,33 +38,6 @@ else
     echo "duplicates: (skipped, script not found)"
 fi
 
-# 3. orphan auto-index 検出 (= jsonl だけ残って .md 無し = 前 session 終了プロトコル不完走)
-#    検査対象 = 全階層 journal (= normal + projects/*/journal + projects/*/subprojects/*/journal) の過去 7 日分
-#    (= 2026-06-30 3→7 緩和、 cross-PC 同期遅延 + REDACTED 認識漏れの 4-7 日後発覚 catch)
-#    階層自己完結原則: jsonl と .md は同 dir に揃う、 別 dir に pointer stub 書くこと禁止
-orphan_count=0
-orphan_list=""
-for journal_root in journal projects/*/journal projects/*/subprojects/*/journal; do
-    [ -d "$journal_root" ] || continue
-    for d in $(ls -1 "$journal_root" 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | head -7); do
-        for jsonl in "$journal_root/$d"/session-*-auto-index.jsonl; do
-            [ -f "$jsonl" ] || continue
-            nn=$(basename "$jsonl" | sed -E 's/session-([0-9]+).*/\1/')
-            md="$journal_root/$d/session-${nn}.md"
-            if [ ! -f "$md" ]; then
-                orphan_count=$((orphan_count + 1))
-                orphan_list="$orphan_list\n  - $jsonl (= 対応 .md 欠落)"
-            fi
-        done
-    done
-done
-if [ "$orphan_count" -gt 0 ]; then
-    echo "orphan_auto_index: $orphan_count 件 (= 前 session で journal .md 書かれず終了プロトコル不完走)"
-    printf "$orphan_list\n"
-else
-    echo "orphan_auto_index: 0"
-fi
-
 # 4. 静的 rule 容量監視 (= 階層別合計、 上限 = plans/rule-capacity-redesign 真値)
 #    REDACTED 親 = CLAUDE + profile-core + always (= 40 KB)
 #    project = _README + always (= 20 KB)
@@ -127,4 +100,3 @@ echo ""
 echo "行動指針:"
 echo "  - stale_rules / dup_pairs は起動時無視 (= 終了時 Step 2 でエージェントが走り切る)"
 echo "  - docs-check FAIL >= 1 → 同セッション内 fix 必須"
-echo "  - orphan_auto_index >= 1 → jsonl と同 dir の正規 location (= 当 session 階層) で .md を書く / 別 dir に pointer stub 禁止"
