@@ -51,7 +51,7 @@ shapes:
 - Sensitive data leakage (= secrets in logs / errors / responses)
 - Path traversal / SSRF / SQLi / XSS / RCE in code paths the
   template's own scripts execute
-- Dependency vulnerabilities surfaced by `task audit`
+- Personal-identifier leakage surfaced by `task audit:deep`
 
 ## Out of scope
 
@@ -64,9 +64,8 @@ shapes:
 
 ## Audit log
 
-The maintainer runs `task audit` (= `pip-audit` + `npm audit` +
-`cargo audit` + `gitleaks` + `anon-scan` aggregated) at least every
-6 months. Findings + resolutions are tracked here:
+The maintainer runs `task audit:deep` (= 11-source deep anonymity
+audit via guard-dispatcher) at least every 6 months. Findings + resolutions are tracked here:
 
 | date | findings | resolution |
 |---|---|---|

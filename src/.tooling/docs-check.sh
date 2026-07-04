@@ -49,7 +49,7 @@ fi
 ALL_MD=$(find "${FIND_ARGS[@]}" | sort)
 
 # ===== 1. frontmatter 検査 =====
-echo "[1/9] frontmatter チェック..."
+echo "[1/8] frontmatter チェック..."
 for f in $ALL_MD; do
   if ! head -1 "$f" | grep -q '^---$'; then
     fail "$f: frontmatter なし (= 先頭 --- 欠落)"
@@ -86,7 +86,7 @@ for f in $ALL_MD; do
 done
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
-echo "[3/9] 索引整合チェック..."
+echo "[3/8] 索引整合チェック..."
 for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.claude/worktrees/*"); do
   # 明示的な索引セクションがある _README のみチェック対象
   # (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
@@ -106,7 +106,7 @@ for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.c
 done
 
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
-echo "[4/9] dead link チェック..."
+echo "[4/8] dead link チェック..."
 for f in $ALL_MD; do
   # archive / history 配下の md は dead link チェック対象外
   # (= 過去スナップショット記録、 link は当時の状態 = 派生固有の history/ 慣習も同性質)
