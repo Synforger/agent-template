@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 0
 
 if [ -z "${1:-}" ]; then
-    echo "ERROR: 引数 <journal-dir> 必須 (= 当 session が touch した journal 階層を明示、 例: journal / projects/<P>/journal)" >&2
+    echo "ERROR: argument <journal-dir> required (the journal tier this session touched, e.g. journal / projects/<P>/journal)" >&2
     exit 2
 fi
 JOURNAL_DIR_ARG="$1"
@@ -45,7 +45,13 @@ fi
 SINCE_ARG="${SINCE_ISO:-24 hours ago}"
 
 today=$(date '+%Y-%m-%d')
-DATE_DIR="$ROOT/$JOURNAL_DIR_ARG/$today"
+# 引数は相対 (= ROOT 基準) と絶対の両方を受ける。 絶対 path に ROOT を重ねると
+# repo 直下に絶対 path がそのまま連結された gitignore 外の誤配置が生まれ、
+# 別文脈の journal index が意図しない remote に push される事故になる。
+case "$JOURNAL_DIR_ARG" in
+    /*) DATE_DIR="$JOURNAL_DIR_ARG/$today" ;;
+    *)  DATE_DIR="$ROOT/$JOURNAL_DIR_ARG/$today" ;;
+esac
 mkdir -p "$DATE_DIR"
 # 採番真値は .md のみ (= エージェント が書いた journal)。 jsonl は副産物 = 採番に使わない
 # session_nn = .md の最大 NN + 1 (= 当日 エージェント が締めた session 数 + 1 = 今 session)

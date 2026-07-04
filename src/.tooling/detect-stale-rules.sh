@@ -70,14 +70,14 @@ if [ "$SUMMARY_MODE" -eq 1 ]; then
     exit 0
 fi
 
-echo "===== エージェント rule 形骸化検出 (= 7 日無更新) ====="
-echo "対象 file 数: $total"
-echo "退役候補 (= 7 日無更新): $stale_count"
+echo "===== stale-rule detection (no update for 7 days) ====="
+echo "files scanned: $total"
+echo "retirement candidates (7 days stale): $stale_count"
 echo ""
 if [ "$stale_count" -gt 0 ]; then
-    echo "退役候補一覧:"
+    echo "candidates:"
     for f in "${stale_list[@]}"; do
         last_date=$(git log -1 --format=%cd --date=short -- "$f" 2>/dev/null || echo "(no commit)")
-        echo "  $f (最終 commit: $last_date)"
+        echo "  $f (last commit: $last_date)"
     done
 fi

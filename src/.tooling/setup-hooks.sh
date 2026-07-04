@@ -32,11 +32,11 @@ chmod +x "$HOOKS_DIR/pre-commit"
 echo "Installed: $HOOKS_DIR/pre-commit -> .tooling/precommit-conflict-check.sh"
 echo ""
 echo "=================================================="
-echo "Claude Code UserPromptSubmit hook setup (= 任意、 複数 PC 同期運用時)"
+echo "Claude Code UserPromptSubmit hook setup (optional, for multi-PC sync)"
 echo "=================================================="
 echo ""
-echo "🚨 本 script は ~/.claude/settings.json を編集しない (= 既存 token-tracker entry 等を壊さない方針)"
-echo "    user が手動で下記 entry を「既存 hooks 配列に追加」 で追記:"
+echo "NOTE: this script does not edit ~/.claude/settings.json (so existing entries are never broken)"
+echo "    add the entry below to your existing hooks array manually:"
 echo ""
 cat <<'JSON'
 UserPromptSubmit に追加 (= session 初回発話で複数 PC 同期 pull、 任意):
@@ -60,7 +60,7 @@ UserPromptSubmit に追加 (= session 初回発話で複数 PC 同期 pull、 �
     現運用 = エージェントが終了プロトコル Step 2 で extract-artifact-index.sh を明示実行 (= CLAUDE.md 参照)。
 JSON
 echo ""
-echo "動作確認 (= 手動 dry-run):"
+echo "verify (manual dry-run):"
 echo "  bash <agent-repo-root>/.tooling/extract-artifact-index.sh"
 echo "  bash <agent-repo-root>/.tooling/detect-stale-rules.sh --summary"
 echo "  bash <agent-repo-root>/.tooling/precommit-conflict-check.sh"

@@ -103,7 +103,7 @@ if [ "${#SELECTED_FILES[@]}" -gt 0 ]; then
             fi
         done
         if [ "$found" -eq 0 ]; then
-            echo "error: --file '$sel' is not in .synced-paths.txt (派生独自 file は promote 不可)" >&2
+            echo "error: --file '$sel' is not in .synced-paths.txt (derived-only files cannot be promoted)" >&2
             exit 1
         fi
     done
@@ -137,7 +137,7 @@ done
 # base 側 diff チェック
 if git diff --quiet; then
     echo ""
-    echo "✓ no changes to promote (= base と派生 同一)"
+    echo "✓ no changes to promote (base and derived are identical)"
     [ "$KEEP_BASE" -eq 0 ] && rm -rf "$TMP_DIR"
     exit 0
 fi

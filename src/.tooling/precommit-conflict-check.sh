@@ -42,18 +42,18 @@ while IFS= read -r new_sec; do
     if [ "$count" -gt 1 ]; then
         if [ "$WARNED" -eq 0 ]; then
             echo "" >&2
-            echo "===== precommit-conflict-check: section 名重複候補 =====" >&2
+            echo "===== precommit-conflict-check: duplicate section-name candidates =====" >&2
             WARNED=1
         fi
-        echo "  「${new_sec}」 が複数 file にあり:" >&2
+        echo "  \"${new_sec}\" appears in multiple files:" >&2
         echo "$matches" | sed 's/^/    /' >&2
     fi
 done <<< "$NEW_SECTIONS"
 
 if [ "$WARNED" -eq 1 ]; then
     echo "" >&2
-    echo "確認推奨: 真値が 2 箇所以上に分散していないか" >&2
-    echo "blocking なし (= soft fail)、 確認後そのまま commit 可" >&2
+    echo "please check: is the source of truth split across locations?" >&2
+    echo "non-blocking (soft fail); commit may proceed after review" >&2
     echo "====================================================" >&2
 fi
 
@@ -70,13 +70,13 @@ if [ -n "$META_CAP_LINES" ]; then
         2>/dev/null | grep -v 'rules/always.md$' || true)
     if [ -n "$OTHER_FILES" ]; then
         echo "" >&2
-        echo "===== precommit-conflict-check: 容量緩和 reflex 警告 =====" >&2
-        echo "  meta.md 容量表 + 他 rule/profile/CLAUDE が同 commit に staged:" >&2
+        echo "===== precommit-conflict-check: capacity-relaxation reflex warning =====" >&2
+        echo "  capacity table and other rule/profile/CLAUDE files staged in the same commit:" >&2
         echo "$OTHER_FILES" | sed 's/^/    /' >&2
         echo "" >&2
-        echo "  確認推奨: 容量緩和は単独 commit、 本体追加は別 commit/session 推奨" >&2
-        echo "  (= 「上限超えたら緩和して詰め込む」 reflex 防止)" >&2
-        echo "  blocking なし (= soft fail)、 意図的判断なら commit 続行可" >&2
+        echo "  please check: relax capacity in its own commit; add content in a separate commit/session" >&2
+        echo "  (prevents the relax-then-stuff reflex)" >&2
+        echo "  non-blocking (soft fail); proceed if intentional" >&2
         echo "====================================================" >&2
     fi
 fi
