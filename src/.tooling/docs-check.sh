@@ -49,7 +49,7 @@ fi
 ALL_MD=$(find "${FIND_ARGS[@]}" | sort)
 
 # ===== 1. frontmatter 検査 =====
-echo "[1/8] frontmatter チェック..."
+echo "[1/9] frontmatter チェック..."
 for f in $ALL_MD; do
   if ! head -1 "$f" | grep -q '^---$'; then
     fail "$f: frontmatter なし (= 先頭 --- 欠落)"
@@ -64,7 +64,7 @@ for f in $ALL_MD; do
 done
 
 # ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
-echo "[2/8] capacity チェック..."
+echo "[2/9] capacity チェック..."
 
 # CLAUDE.md 自身 (= frontmatter なし設計、 ハードコード)
 size=$(wc -c < CLAUDE.md)
@@ -86,7 +86,7 @@ for f in $ALL_MD; do
 done
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
-echo "[3/8] 索引整合チェック..."
+echo "[3/9] 索引整合チェック..."
 for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.claude/worktrees/*"); do
   # 明示的な索引セクションがある _README のみチェック対象
   # (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
@@ -106,7 +106,7 @@ for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.c
 done
 
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
-echo "[4/8] dead link チェック..."
+echo "[4/9] dead link チェック..."
 for f in $ALL_MD; do
   # archive / history 配下の md は dead link チェック対象外
   # (= 過去スナップショット記録、 link は当時の状態 = 派生固有の history/ 慣習も同性質)
@@ -156,7 +156,7 @@ done
 # (= 2026-06-30 docs-check スリム化、 step 5 削除で 9→8 step)
 
 # ===== 5. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
-echo "[5/8] placeholder 残し チェック..."
+echo "[5/9] placeholder 残し チェック..."
 # 真値 = projects/_template-project/ 配下の全 .md から自動抽出 (= 構造ベース、 exact 一致 list を hard-code しない)
 # 検出対象 = 雛形に登場する文字列のうち、 path 例示 false positive を構造的に分離:
 #   - 二重中括弧 {{...}} = 全部 (= path 例示で {{...}} は普通使われない、 強 signal)
@@ -200,7 +200,7 @@ fi
 rm -f "$ph_tmpfile"
 
 # ===== 6. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
-echo "[6/8] 動的検索パターン チェック..."
+echo "[6/9] 動的検索パターン チェック..."
 # エージェント 親 rule (= CLAUDE / always / lazy / 索引 _README) に「動的検索 / ls + head」 残骸がないか
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
@@ -217,7 +217,7 @@ done
 pass
 
 # ===== 7. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
-echo "[7/8] プロジェクト folder 整合 チェック..."
+echo "[7/9] プロジェクト folder 整合 チェック..."
 # folder 名 = 判定キーワード方式に移行済 (= mapping 表廃止)、 本 step は「_README.md ある folder は判定対象」 「無い folder は死蔵 or 未成立」 を識別
 for d in projects/*/; do
   name=$(basename "$d")
@@ -231,7 +231,7 @@ for d in projects/*/; do
 done
 pass
 
-echo "[8/8] synced-paths 整合 チェック..."
+echo "[8/9] synced-paths 整合 チェック..."
 # agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
 # 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
 # base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。
@@ -266,6 +266,46 @@ else
   # .synced-paths.txt が無い = agent-template 本体 or 派生でない repo、 skip
   pass
 fi
+
+
+# ===== [9/9] journal 整合 =====
+# 検査軸: filename session-NN ↔ frontmatter session / 日付フォルダ ↔ frontmatter date /
+#         normal 階層に mode≠normal (= 階層自己完結違反) / project 階層に mode=normal
+echo "[9/9] journal 整合 チェック..."
+j_fail=0
+while IFS= read -r jf; do
+  base="$(basename "$jf")"
+  nn="$(printf '%s' "$base" | sed -nE 's/^session-0*([0-9]+)\.md$/\1/p')"
+  [ -z "$nn" ] && continue
+  dir_date="$(basename "$(dirname "$jf")")"
+  fm="$(awk '/^---$/{c++; next} c==1{print} c>=2{exit}' "$jf")"
+  fm_session="$(printf '%s\n' "$fm" | sed -nE 's/^session: *"?0*([0-9]+)"?.*/\1/p' | head -1)"
+  fm_date="$(printf '%s\n' "$fm" | sed -nE 's/^date: *"?([0-9]{4}-[0-9]{2}-[0-9]{2})"?.*/\1/p' | head -1)"
+  fm_mode="$(printf '%s\n' "$fm" | sed -nE 's/^mode: *"?([^"]*)"?$/\1/p' | head -1)"
+  if [ -n "$fm_session" ] && [ "$fm_session" != "$nn" ]; then
+    fail "$jf: filename NN ($nn) と frontmatter session ($fm_session) が不一致"
+    j_fail=$((j_fail+1))
+  fi
+  if [ -n "$fm_date" ] && [ "$fm_date" != "$dir_date" ]; then
+    fail "$jf: 日付フォルダ ($dir_date) と frontmatter date ($fm_date) が不一致"
+    j_fail=$((j_fail+1))
+  fi
+  case "$jf" in
+    ./projects/*/journal/*|./projects/*/subprojects/*/journal/*)
+      if [ "$fm_mode" = "normal" ]; then
+        fail "$jf: project 階層の journal に mode: normal (= 階層取り違え)"
+        j_fail=$((j_fail+1))
+      fi
+      ;;
+    ./journal/*)
+      if [ -n "$fm_mode" ] && [ "$fm_mode" != "normal" ]; then
+        fail "$jf: normal 階層の journal に mode: $fm_mode (= 階層自己完結違反)"
+        j_fail=$((j_fail+1))
+      fi
+      ;;
+  esac
+done < <(find . -path ./.git -prune -o -type f -name 'session-*.md' -path '*/journal/*' -print 2>/dev/null)
+[ "$j_fail" -eq 0 ] && pass
 
 # ===== サマリ =====
 echo ""
