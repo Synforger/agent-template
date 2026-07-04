@@ -89,8 +89,11 @@ BRANCH_PREFIX = re.compile(r"^(feature|fix|hotfix|release|chore|origin)/")
 
 def path_exists(cand, md_dir):
     cand = cand.rstrip("/")
+    # base repo は派生に降ろす中身を src/ 下に持つが、 文書は派生 repo 視点
+    # (= prefix なし) で path を書く。 src/ root でも解決を試す。
     return (os.path.exists(os.path.join(ROOT, cand))
-            or os.path.exists(os.path.join(md_dir, cand)))
+            or os.path.exists(os.path.join(md_dir, cand))
+            or os.path.exists(os.path.join(ROOT, "src", cand)))
 
 TREE_CHARS = ("├", "└", "│")
 PLACEHOLDER = re.compile(r"[<>{}*$]|\.\.\.|…")
@@ -138,7 +141,8 @@ for md in md_files():
                             stack.append((depth, name.rstrip("/")))
                             full = os.path.join(root_dir,
                                                 *[n for _, n in stack])
-                            if not os.path.exists(os.path.join(ROOT, full)):
+                            if not (os.path.exists(os.path.join(ROOT, full))
+                                    or os.path.exists(os.path.join(ROOT, "src", full))):
                                 if not is_ignored(full):
                                     findings.append(
                                         f"{rel_md}:{ln}: tree entry not found:"
