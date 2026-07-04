@@ -68,4 +68,4 @@ capacity: 5KB
 - [ ] サブプロジェクトを持つ場合は `subprojects/_template-subproject/` から cp -R で配置 → 同様の placeholder 埋め (= `journal/_README.md` の `{{YYYY-MM-DD}}` 含む)
 - [ ] `bash <agent-repo-root>/.tooling/docs-check.sh` で FAIL 0 確認
 - [ ] CLAUDE.md は触らない (= プロジェクト判定は `_README.md` 冒頭の判定キーワード走査で動的編入される)
-- [ ] **`rules/always/meta.md` 容量表に新 project 専用 file (= 18KB 超の大型 rule 等) があれば追記** (= 一般的な _README は既存表項目でカバー済)
+- [ ] **`rules/always.md § meta` 容量表に新 project 専用 file (= 18KB 超の大型 rule 等) があれば追記** (= 一般的な _README は既存表項目でカバー済)

@@ -28,6 +28,9 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 
 OUT_PATH = ROOT / ".tooling" / "_output" / "duplicates.md"
+ALLOWLIST_PATH = ROOT / ".tooling" / "duplicates-allowlist.txt"
+# allowlist 形式: 1 行 1 ペア、 "labelA -- labelB" (= 順不同、 # 行と空行は無視)。
+# reference 判定済 (= 意図的な共通 command / path 参照) のペアを恒久 suppress する。
 MIN_PHRASE_LEN = 60  # 同一フレーズの最小長 (= 2026-06-24 60→90、 短コマンド片 3 件常駐の false positive 抑制)
 
 TARGET_GLOBS = [
@@ -113,8 +116,22 @@ def longest_common_substring(a: str, b: str) -> str:
     return a[best_end - best_len : best_end] if best_len else ""
 
 
+def load_allowlist() -> set[frozenset[str]]:
+    pairs: set[frozenset[str]] = set()
+    if ALLOWLIST_PATH.is_file():
+        for line in ALLOWLIST_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if " -- " in line:
+                a, b = line.split(" -- ", 1)
+                pairs.add(frozenset((a.strip(), b.strip())))
+    return pairs
+
+
 def main() -> int:
     summary_mode = "--summary" in sys.argv
+    allow = load_allowlist()
 
     targets = collect_targets()
     chunks: list[tuple[str, str]] = []
@@ -129,6 +146,8 @@ def main() -> int:
             label_b, body_b = chunks[j]
             # 同一 file 内は skip
             if label_a.split("#", 1)[0] == label_b.split("#", 1)[0]:
+                continue
+            if frozenset((label_a, label_b)) in allow:
                 continue
             lcs = longest_common_substring(normalize(body_a), normalize(body_b))
             if len(lcs) >= MIN_PHRASE_LEN:

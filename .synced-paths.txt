@@ -13,6 +13,7 @@
 # === 機構 script (= 真値は base、 派生で勝手に編集しない) ===
 .tooling/docs-check.sh
 .tooling/detect-duplicates.py
+.tooling/duplicates-allowlist.txt
 .tooling/detect-stale-rules.sh
 .tooling/extract-artifact-index.sh
 .tooling/first-prompt-pull.sh

@@ -1,0 +1,4 @@
+# detect-duplicates.py の恒久 suppress リスト
+# 形式: "labelA -- labelB" 1 行 1 ペア (= 順不同)。
+# 登録基準: reference 判定済 (= 同じ command / path の legitimate 参照、 真値分散ではない)。
+# 判定根拠は登録時の journal に残す。 真値分散と判明したら行を消して集約する。
