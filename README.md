@@ -1,62 +1,63 @@
 # agent-template
 
-> Claude Code / Anthropic SDK で動かす**長期エージェントの雛形**。 機構 + 構造テンプレ + 改訂文化を 1 つの base に集約し、 各派生エージェントは base から `init-new-agent.sh` で派生 → 双方向 sync で進化を共有する。
+> 🇯🇵 日本語版: [README.ja.md](README.ja.md)
 
-## 設計思想
+> A **scaffold for long-lived agents** running on Claude Code / the Anthropic SDK. Machinery, structural templates, and a revision culture live in one base; each derived agent is spun up with `init-new-agent.sh` and shares improvements through two-way sync.
 
-- **エージェントは「人格 + 固有プロジェクト + 機構」 で出来てる**。 機構部分を base に切り出し、 人格 + プロジェクトは派生に残す = 機構改善を全エージェントで共有
-- **継続的自己強化ループ**: 機構の品質は機械検出 (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`) で自動 sweep、 エージェントは出力に反応するだけ = context 浪費しない
-- **OSS 公開前提**: 個人情報・社内情報の混入はマシン常駐の guard-dispatcher (= git hooks dispatcher) が commit / push 境界で機械防止
-- **派生に縛りを最小化**: base が真値を持つのは「機構 + 必須 4 rule file + 構造テンプレ」 のみ、 残りは派生の自由領域
+## Design ideas
 
-## リポジトリ構成
+- **An agent is persona + its own projects + machinery.** The machinery is factored into this base; persona and projects stay in the derived repo — so machinery improvements are shared by every agent.
+- **A continuous self-reinforcement loop.** Machinery quality is swept mechanically (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`); the agent only reacts to the output, spending no context on re-derivation.
+- **Built to be published.** Personal and workplace identifiers are blocked mechanically at the commit / push boundary by the machine-resident guard-dispatcher (a separate repo).
+- **Minimal constraints on derivations.** The base owns only the machinery, the required rule file, and the structural templates; everything else is the derivation's free territory.
+
+## Repository layout
 
 ```
 agent-template/
 ├── LICENSE                            # Apache 2.0
-├── README.md                     # 本 file
-├── .gitignore                         # template リポ自体の gitignore
-├── .githooks/pre-commit               # branch guard (= anon scan は guard-dispatcher 委譲)
-├── .tooling/local-ci/                 # template リポ自体の OSS 運用 lint
+├── README.md / README.ja.md           # this file + Japanese version
+├── .gitignore                         # the template repo's own gitignore
+├── .githooks/pre-commit               # branch guard (anon scanning is delegated to guard-dispatcher)
+├── .tooling/local-ci/                 # the template repo's own docs lint
 │   ├── docs-lint.sh
-│   ├── docs-lint-ignore.txt
+│   ├── docs-check-ignore.txt
 │   └── setup-lib.sh
-├── .tooling/                          # template 運用 script
-│   ├── init-new-agent.sh              # 派生立ち上げ
-│   ├── sync-from-base.sh              # base → 派生 取り込み
-│   └── promote-to-base.sh             # 派生 → base 昇格
-├── .synced-paths.txt                  # 派生に降ろす path 列挙
-└── src/                               # ★ 派生に降りる中身
-    ├── CLAUDE.template.md             # 派生で CLAUDE.md として人格を書く
-    ├── .gitignore.template            # 派生で .gitignore に展開
-    ├── .tooling/                      # 機構 script (= 派生で動く真値)
-    │   ├── docs-check.sh              # 多軸 docs 検査
-    │   ├── detect-duplicates.py       # section 単位重複検出
-    │   ├── detect-stale-rules.sh      # 7 日無更新検出
-    │   ├── extract-artifact-index.sh  # SessionEnd hook 用
-    │   ├── first-prompt-pull.sh       # 複数 PC 同期用 (任意)
+├── .tooling/                          # template operation scripts
+│   ├── init-new-agent.sh              # spin up a derivation
+│   ├── sync-from-base.sh              # base → derivation (pull down)
+│   └── promote-to-base.sh             # derivation → base (promote up)
+├── .synced-paths.txt                  # the paths shipped down to derivations
+└── src/                               # ★ what a derived agent receives
+    ├── CLAUDE.template.md             # becomes the derivation's CLAUDE.md (persona)
+    ├── .gitignore.template            # expands to the derivation's .gitignore
+    ├── .tooling/                      # machinery scripts (the truth that runs in derivations)
+    │   ├── docs-check.sh              # multi-axis docs verification
+    │   ├── detect-duplicates.py       # section-level duplicate detection
+    │   ├── detect-stale-rules.sh      # 7-day-stale rule detection
+    │   ├── extract-artifact-index.sh  # for a SessionEnd hook
+    │   ├── first-prompt-pull.sh       # multi-machine sync (optional)
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
-    │   ├── startup-status.sh          # Phase B-共通 で実行
+    │   ├── startup-status.sh          # run at session boot
     │   └── _README.md
     ├── rules/
-    │   ├── always/meta.md             # ★ 必須: 容量管理 + 改訂文化 + 自己強化ループ
+    │   ├── always.md                  # ★ required: capacity management + revision culture + the loop
     │   └── lazy/
-    │       ├── _template.md           # 新 lazy 雛形
-    │       ├── automation-machinery.md
-    │       └── rule-promotion-format.md
-    ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
-    ├── journal/                       # session log 構造
-    ├── todos/                         # 横断タスク
-    ├── plans/                         # 横断計画
-    ├── research/                      # 横断調査
-    └── profile/                       # ユーザプロファイル構造
+    │       ├── _template.md           # scaffold for new lazy rules
+    │       └── automation-machinery.md
+    ├── projects/_template-project/    # project scaffold (nested subprojects included)
+    ├── journal/                       # session log structure
+    ├── todos/                         # cross-cutting tasks
+    ├── plans/                         # cross-cutting plans
+    ├── research/                      # cross-cutting research
+    └── profile/                       # user profile structure
         └── profile-core.template.md
 ```
 
-`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開する。
+Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root and expands every `*.template` into a real file.
 
-## 派生の立ち上げ
+## Spinning up a derivation
 
 ```bash
 git clone git@github.com:synforger/agent-template.git
@@ -64,95 +65,95 @@ cd agent-template
 ./.tooling/init-new-agent.sh ~/path/to/<new-agent>
 ```
 
-派生 dir で:
+Then, inside the derivation:
 
-1. `CLAUDE.md` を編集 (= 人格 / ユーザ関係 / エージェント構成)
-2. `profile/profile-core.md` を編集 (= ユーザの核 + 判断軸)
-3. マシン側の guard-dispatcher word list (= `~/.config/anon-words/`) に固有語彙を追記
-4. 派生固有の `rules/always/*-local.md` を追加 (= git 運用ルール / 禁止事項 等)
-5. `git remote add origin <your-repo>` + initial push
+1. Edit `CLAUDE.md` (persona / user relationship / agent constellation)
+2. Edit `profile/profile-core.md` (your primary user's core + judgement axes)
+3. Add your private vocabulary to the machine-side guard-dispatcher word list (`~/.config/anon-words/`)
+4. Add derivation-specific rules to `rules/always.md` (git conventions, prohibitions, and so on)
+5. `git remote add origin <your-repo>` and push
 
-## 双方向 sync 運用
+## Two-way sync
 
-### base → 派生 (= 下り)
+### Base → derivation (pull down)
 
-派生で base 最新を取り込みたい時:
+When a derivation wants the latest base:
 
 ```bash
 cd ~/path/to/<your-agent>
 ./.tooling/sync-from-base.sh
 ```
 
-`.synced-paths.txt` に列挙された path のみ base 最新で上書き。 派生固有 file (= synced-paths 外) は触らない。 `git diff` で確認後 commit。
+Only the paths listed in `.synced-paths.txt` are overwritten with the base version; derivation-specific files are never touched. Review with `git diff`, then commit.
 
-### 派生 → base (= 上り)
+### Derivation → base (promote up)
 
-派生で発見した機構改善を base に昇格:
+When a derivation discovers a machinery improvement worth sharing:
 
 ```bash
 cd ~/path/to/<your-agent>
-./.tooling/promote-to-base.sh "feat: 新 docs-check step 追加"
+./.tooling/promote-to-base.sh "feat: add a new docs-check step"
 ```
 
-base 側に feature branch を切って push、 PR 経由で merge。 synced-paths 外の派生固有 file は弾かれる。
+This cuts a feature branch on the base, pushes it, and the change lands via a pull request. Files outside `.synced-paths.txt` are rejected.
 
-### 競合解決
+### Conflict policy
 
-- promote する前に**必ず先に sync-from-base.sh を実行** (= 競合を派生側で解決)
-- 派生で base file を独自 override したい時の方針は派生側で決める (= 例: `<file>.local.md` で別名運用 / base への PR で改善提案 / `.synced-paths.txt` をローカル編集して除外)
+- **Always run `sync-from-base.sh` before promoting** (resolve conflicts on the derivation side).
+- If a derivation wants to override a base file permanently, the policy is the derivation's choice: keep a differently-named local file, propose the change upstream via PR, or edit its local `.synced-paths.txt` to exclude the path.
 
-## 必須 rule (= 派生で消さない)
+## Required rules (do not delete in derivations)
 
-agent-template が出荷する rule は以下のみ。 これ未満では機構が動かない。
+The template ships only these; below this floor the machinery stops working.
 
-- `rules/always.md § meta` — 容量管理 + 改訂文化 + 継続的自己強化ループ (= 形態 D、 1 file 統合)
-- `rules/lazy/_template.md` — 新 lazy 作成雛形
-- `rules/lazy/automation-machinery.md` — `.tooling/*` 運用真値
+- `rules/always.md § meta` — capacity management, revision culture, and the self-reinforcement loop (single-file form)
+- `rules/lazy/_template.md` — scaffold for new lazy rules
+- `rules/lazy/automation-machinery.md` — operational truth for `.tooling/*`
 
-派生固有の rule (= git 運用 / 禁止事項 / sub-agent 起動規律 / その他) は派生で `rules/always/*-local.md` `rules/lazy/*-local.md` 等として自由に追加。 sync 対象外。
+Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `rules/lazy/*.md`; rule content is not synced.
 
-## 機構の中核
+## Machinery core
 
 ### `docs-check.sh`
 
-セッション終了時に走らせ、 FAIL は同 session 内 fix 必須。 検査軸 (= 真値は script 自身の step 表示):
+Run at session end; any FAIL must be fixed within the same session. Verification axes (the script's own step output is the truth):
 
 1. frontmatter
-2. capacity (= file 自己宣言)
-3. 索引整合 (= `_README.md` ↔ 同フォルダ .md)
-4. dead link
-5. placeholder 残し (= 雛形 cp 後の埋め忘れ)
-6. 動的検索パターン残骸
-7. プロジェクト folder 整合
-8. synced-paths 整合 (= 派生のみ、 base と diff 検出)
+2. capacity (self-declared per file)
+3. index consistency (`_README.md` ↔ sibling .md files)
+4. dead links
+5. leftover placeholders (unfilled scaffolds)
+6. dynamic-search-pattern residue
+7. project folder consistency
+8. synced-paths consistency (derivations only, diffed against base)
 
 ### `detect-duplicates.py`
 
-H2/H3 section 単位で全 rule の LCS 比較、 真値分散の集約候補を出力。 reference 判定済 (= 意図的な共通参照) のペアは `.tooling/duplicates-allowlist.txt` に登録して恒久 suppress (= 毎 session の再判定を消す)。
+Compares every rule at H2/H3 section granularity via longest-common-substring and reports consolidation candidates for split truths. Pairs judged as intentional shared references go into `.tooling/duplicates-allowlist.txt` for permanent suppression — no re-judging every session.
 
 ### `detect-stale-rules.sh`
 
-7 日無更新 = 形骸化候補。 frontmatter `stable: true` + `_README.md` は機械除外、 真の dead 候補のみ報告。
+No update for 7 days = retirement candidate. Files with frontmatter `stable: true` and `_README.md` files are excluded mechanically, so only genuine dead-rule candidates are reported.
 
-### 自己拡張ループ
+### The self-extension loop
 
-弱点パターンを 2 回観測したら即 detector 化:
+Observe the same weakness twice, mechanise it immediately:
 
-1. 機械検出可能性を評価 (grep / awk / python)
-2. 可能なら `docs-check.sh` に step 追加 / `detect-*` の精度向上
-3. 機械化不能なら `rules/always/meta.md § ルール改訂文化` に規律として追記
+1. Assess whether it is machine-detectable (grep / awk / python)
+2. If so, add a step to `docs-check.sh` or sharpen a `detect-*` script
+3. If not, write it into `rules/always.md § meta` as discipline
 
-「detector 追加」 のハードルを意識的に下げる = 機械出力に反応するだけで品質維持。
+The bar for "add a detector" is kept deliberately low — quality holds because the agent only has to react to machine output.
 
-## 匿名性 (= OSS 公開向け)
+## Anonymity (for public publication)
 
-base 側は具体的なエージェント名・運用者個人情報ゼロで出荷。 スキャンの実体はマシン常駐の guard-dispatcher (= 別リポ) が持ち、 commit / push 境界で全リポ強制される (= word list はマシン config `~/.config/anon-words/` に置き、 リポには commit しない)。
+The base ships with zero concrete agent names or operator identifiers. Scanning itself lives in the machine-resident guard-dispatcher (a separate repo) and is enforced for every repo at the commit / push boundary; the word list lives in machine config (`~/.config/anon-words/`) and is never committed.
 
-## ライセンス
+## License
 
 [Apache License 2.0](./LICENSE)
 
-## 関連
+## Related
 
-- [Synforger](https://github.com/synforger) — 本 template の出元 organization
-- Claude Code (Anthropic) — このエージェント雛形が想定する harness
+- [Synforger](https://github.com/synforger) — the organisation this template ships from
+- Claude Code (Anthropic) — the harness this scaffold targets
