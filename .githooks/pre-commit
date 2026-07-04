@@ -11,3 +11,17 @@ if [[ ${branch} =~ \/*main$ ]] || [[ ${branch} =~ \/*develop$ ]]; then
     exit 1
 fi
 
+
+# -----------------------------------------------------------------------------
+# 2. Self docs gate: keep the template's own docs truthful on every commit.
+#    (anon scanning is NOT here — the machine-wide guard-dispatcher runs it
+#    as the baseline after this hook, AND-composed.)
+# -----------------------------------------------------------------------------
+if [ -f .tooling/local-ci/docs-lint.sh ]; then
+    bash .tooling/local-ci/docs-lint.sh || {
+        echo ""
+        echo "docs-lint failed: fix the stale reference or add an exception to"
+        echo ".tooling/local-ci/docs-check-ignore.txt before committing."
+        exit 1
+    }
+fi
