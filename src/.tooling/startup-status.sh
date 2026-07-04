@@ -9,7 +9,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || { echo "ROOT not found: $ROOT"; exit 2; }
 
-echo "===== エージェント startup status (= $(date '+%Y-%m-%d %H:%M:%S')) ====="
+echo "===== agent startup status ($(date '+%Y-%m-%d %H:%M:%S')) ====="
 
 # 0. PC 識別 (= 自宅 / 会社、 LocalHostName → label mapping)
 PC_LABELS_FILE="$ROOT/.tooling/pc-labels.txt"
@@ -21,7 +21,7 @@ fi
 if [ -n "$pc_label" ]; then
     echo "PC: $pc_label ($local_host)"
 else
-    echo "PC: unknown ($local_host) ← .tooling/pc-labels.txt に追記してください"
+    echo "PC: unknown ($local_host) — add it to .tooling/pc-labels.txt"
 fi
 
 # 1. rule 形骸化検出 (= 7 日無更新 = 退役候補)
@@ -59,7 +59,7 @@ overflows=()
 parent_files=(CLAUDE.md profile/profile-core.md rules/always.md)
 for f in rules/always/*.md; do [ -f "$f" ] && parent_files+=("$f"); done
 parent_size=$(sum_files "${parent_files[@]}")
-[ "$parent_size" -gt "$PARENT_LIMIT" ] && overflows+=("派生親: $((parent_size/1024))KB > 40KB")
+[ "$parent_size" -gt "$PARENT_LIMIT" ] && overflows+=("agent parent: $((parent_size/1024))KB > 40KB")
 
 for p_dir in projects/*/; do
     p_name=$(basename "$p_dir")
@@ -81,10 +81,10 @@ for p_dir in projects/*/; do
 done
 
 if [ "${#overflows[@]}" -gt 0 ]; then
-    echo "static_capacity: ${#overflows[@]} 件 上限超過"
+    echo "static_capacity: ${#overflows[@]} tier(s) over limit"
     for o in "${overflows[@]}"; do echo "  - $o"; done
 else
-    echo "static_capacity: OK (= 全階層上限内)"
+    echo "static_capacity: OK (all tiers within limits)"
 fi
 
 # 5. docs-check (= 最後の 1 行 summary)
@@ -97,6 +97,6 @@ fi
 
 echo "============================================"
 echo ""
-echo "行動指針:"
-echo "  - stale_rules / dup_pairs は起動時無視 (= 終了時 Step 2 でエージェントが走り切る)"
-echo "  - docs-check FAIL >= 1 → 同セッション内 fix 必須"
+echo "action policy:"
+echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
+echo "  - docs-check FAIL >= 1 -> must fix within the same session"
