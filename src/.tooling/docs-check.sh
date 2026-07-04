@@ -49,26 +49,26 @@ fi
 ALL_MD=$(find "${FIND_ARGS[@]}" | sort)
 
 # ===== 1. frontmatter 検査 =====
-echo "[1/9] frontmatter チェック..."
+echo "[1/9] frontmatter check..."
 for f in $ALL_MD; do
   if ! head -1 "$f" | grep -q '^---$'; then
-    fail "$f: frontmatter なし (= 先頭 --- 欠落)"
+    fail "$f: no frontmatter (missing leading ---)"
     continue
   fi
   # frontmatter ブロック抽出
   fm=$(awk '/^---$/{c++; if(c==2) exit; next} c==1' "$f")
   # title / description は全 .md 必須 (= journal も含む)
-  echo "$fm" | grep -qE '^title:' || fail "$f: frontmatter title 欠落"
-  echo "$fm" | grep -qE '^description:' || warn "$f: frontmatter description 欠落 (= 推奨)"
+  echo "$fm" | grep -qE '^title:' || fail "$f: frontmatter title missing"
+  echo "$fm" | grep -qE '^description:' || warn "$f: frontmatter description missing (recommended)"
   pass
 done
 
 # ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
-echo "[2/9] capacity チェック..."
+echo "[2/9] capacity check..."
 
 # CLAUDE.md 自身 (= frontmatter なし設計、 ハードコード)
 size=$(wc -c < CLAUDE.md)
-[ "$size" -gt 17408 ] && fail "CLAUDE.md: $size byte > 17KB 上限"
+[ "$size" -gt 17408 ] && fail "CLAUDE.md: $size bytes > 17KB limit"
 
 # 他全 file は frontmatter `capacity:` 宣言で自己宣言 (= 真値分散ゼロ)
 # 旧 _README.md ハードコード配列は 2026-06-30 廃止 (= 全 _README が frontmatter capacity 宣言済)
@@ -81,12 +81,12 @@ for f in $ALL_MD; do
   size=$(wc -c < "$f")
   declared=$((num * 1024))
   if [ "$size" -gt "$declared" ]; then
-    fail "$f: $size byte > frontmatter 宣言 ${num}KB"
+    fail "$f: $size bytes > declared capacity ${num}KB"
   fi
 done
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
-echo "[3/9] 索引整合チェック..."
+echo "[3/9] index consistency check..."
 for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.claude/worktrees/*"); do
   # 明示的な索引セクションがある _README のみチェック対象
   # (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
@@ -100,13 +100,13 @@ for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.c
     case "$name" in _README.md|_template.md|_template-*.md) continue;; esac
     base="${name%.md}"
     if ! grep -qF "$name" "$readme" && ! grep -qF "$base" "$readme"; then
-      warn "$readme: 同フォルダの $name に言及なし (= 索引漏れ?)"
+      warn "$readme: sibling $name not mentioned (missing from the index?)"
     fi
   done
 done
 
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
-echo "[4/9] dead link チェック..."
+echo "[4/9] dead link check..."
 for f in $ALL_MD; do
   # archive / history 配下の md は dead link チェック対象外
   # (= 過去スナップショット記録、 link は当時の状態 = 派生固有の history/ 慣習も同性質)
@@ -156,7 +156,7 @@ done
 # (= 2026-06-30 docs-check スリム化、 step 5 削除で 9→8 step)
 
 # ===== 5. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
-echo "[5/9] placeholder 残し チェック..."
+echo "[5/9] leftover placeholder check..."
 # 真値 = projects/_template-project/ 配下の全 .md から自動抽出 (= 構造ベース、 exact 一致 list を hard-code しない)
 # 検出対象 = 雛形に登場する文字列のうち、 path 例示 false positive を構造的に分離:
 #   - 二重中括弧 {{...}} = 全部 (= path 例示で {{...}} は普通使われない、 強 signal)
@@ -190,17 +190,17 @@ if [ -s "$ph_tmpfile" ]; then
       | grep -Ff "$ph_tmpfile" 2>/dev/null || true)
     if [ -n "$hits" ]; then
       while IFS= read -r line; do
-        fail "$f: placeholder 残し → $line"
+        fail "$f: leftover placeholder -> $line"
       done <<< "$hits"
     fi
   done
 else
-  warn "placeholder 真値 (= projects/_template-project) が空、 検査 skip"
+  warn "placeholder truth (projects/_template-project) is empty, skipping"
 fi
 rm -f "$ph_tmpfile"
 
 # ===== 6. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
-echo "[6/9] 動的検索パターン チェック..."
+echo "[6/9] dynamic-search-pattern check..."
 # エージェント 親 rule (= CLAUDE / always / lazy / 索引 _README) に「動的検索 / ls + head」 残骸がないか
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
@@ -210,14 +210,14 @@ for pat in 'ls\s+(projects|rules)/[^_]' 'head\s+[^|]+_README' '各.*_README\.md.
   hits=$(grep -rlnE "$pat" $DYN_TARGETS 2>/dev/null | grep -v '/journal/' | grep -v '/_archive/' || true)
   if [ -n "$hits" ]; then
     while IFS= read -r hit; do
-      [ -n "$hit" ] && warn "動的検索パターン残骸: $hit (= '$pat'、 mapping 集約候補)"
+      [ -n "$hit" ] && warn "dynamic-search residue: $hit (pattern '$pat', consider consolidating into a mapping)"
     done <<< "$hits"
   fi
 done
 pass
 
 # ===== 7. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
-echo "[7/9] プロジェクト folder 整合 チェック..."
+echo "[7/9] project folder consistency check..."
 # folder 名 = 判定キーワード方式に移行済 (= mapping 表廃止)、 本 step は「_README.md ある folder は判定対象」 「無い folder は死蔵 or 未成立」 を識別
 for d in projects/*/; do
   name=$(basename "$d")
@@ -225,13 +225,13 @@ for d in projects/*/; do
   if [ ! -f "$d/_README.md" ]; then
     # tracked file 0 (= gitignore 切離済 e.g. 会社プロジェクト残骸) は除外
     if git ls-tree -r HEAD --name-only 2>/dev/null | grep -q "^projects/$name/"; then
-      warn "folder 整合: projects/$name/ は _README.md 無し (= プロジェクト未成立、 _README 作成 or _archive 移送)"
+      warn "folder consistency: projects/$name/ has no _README.md (not a project yet — add _README or move to _archive)"
     fi
   fi
 done
 pass
 
-echo "[8/9] synced-paths 整合 チェック..."
+echo "[8/9] synced-paths consistency check..."
 # agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
 # 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
 # base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。
@@ -245,7 +245,7 @@ if [ -f "$SP_FILE" ]; then
     [ -z "$line" ] && continue
     target="$ROOT/$line"
     if [ ! -e "$target" ]; then
-      warn "synced-paths: $line 不在 (= sync 後に消えた可能性)"
+      warn "synced-paths: $line missing (possibly deleted after a sync)"
       missing=$((missing+1))
       continue
     fi
@@ -253,7 +253,7 @@ if [ -f "$SP_FILE" ]; then
       base_target="$BASE_REPO_PATH/src/$line"
       if [ -e "$base_target" ]; then
         if ! diff -rq "$target" "$base_target" > /dev/null 2>&1; then
-          warn "synced-paths: $line が base と diff あり (= sync or promote 検討)"
+          warn "synced-paths: $line differs from base (consider sync or promote)"
           drift=$((drift+1))
         fi
       fi
@@ -271,7 +271,7 @@ fi
 # ===== [9/9] journal 整合 =====
 # 検査軸: filename session-NN ↔ frontmatter session / 日付フォルダ ↔ frontmatter date /
 #         normal 階層に mode≠normal (= 階層自己完結違反) / project 階層に mode=normal
-echo "[9/9] journal 整合 チェック..."
+echo "[9/9] journal integrity check..."
 j_fail=0
 while IFS= read -r jf; do
   base="$(basename "$jf")"
@@ -283,23 +283,23 @@ while IFS= read -r jf; do
   fm_date="$(printf '%s\n' "$fm" | sed -nE 's/^date: *"?([0-9]{4}-[0-9]{2}-[0-9]{2})"?.*/\1/p' | head -1)"
   fm_mode="$(printf '%s\n' "$fm" | sed -nE 's/^mode: *"?([^"]*)"?$/\1/p' | head -1)"
   if [ -n "$fm_session" ] && [ "$fm_session" != "$nn" ]; then
-    fail "$jf: filename NN ($nn) と frontmatter session ($fm_session) が不一致"
+    fail "$jf: filename NN ($nn) does not match frontmatter session ($fm_session)"
     j_fail=$((j_fail+1))
   fi
   if [ -n "$fm_date" ] && [ "$fm_date" != "$dir_date" ]; then
-    fail "$jf: 日付フォルダ ($dir_date) と frontmatter date ($fm_date) が不一致"
+    fail "$jf: date folder ($dir_date) does not match frontmatter date ($fm_date)"
     j_fail=$((j_fail+1))
   fi
   case "$jf" in
     ./projects/*/journal/*|./projects/*/subprojects/*/journal/*)
       if [ "$fm_mode" = "normal" ]; then
-        fail "$jf: project 階層の journal に mode: normal (= 階層取り違え)"
+        fail "$jf: project-tier journal carries mode: normal (tier mix-up)"
         j_fail=$((j_fail+1))
       fi
       ;;
     ./journal/*)
       if [ -n "$fm_mode" ] && [ "$fm_mode" != "normal" ]; then
-        fail "$jf: normal 階層の journal に mode: $fm_mode (= 階層自己完結違反)"
+        fail "$jf: normal-tier journal carries mode: $fm_mode (tier self-containment violation)"
         j_fail=$((j_fail+1))
       fi
       ;;
@@ -309,7 +309,7 @@ done < <(find . -path ./.git -prune -o -type f -name 'session-*.md' -path '*/jou
 
 # ===== サマリ =====
 echo ""
-echo "===== docs-check 結果 ====="
+echo "===== docs-check results ====="
 green "PASS: $PASS"
 [ "$WARN" -gt 0 ] && yellow "WARN: $WARN" || echo "WARN: 0"
 [ "$FAIL" -gt 0 ] && red "FAIL: $FAIL" || green "FAIL: 0"
