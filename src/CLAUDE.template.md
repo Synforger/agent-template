@@ -75,7 +75,7 @@
 - `todos/` 配下 file (= `_README.md` / `_template.md` 除く) 全部 Read
 - **journal 最新 1 session Read**: `normal` 起動なら `journal/` 直下日付フォルダから最新 `session-NN.md` 1 個。 立ち上げ初期で 1 件も無いなら skip 可
 - <message-dir 設定時のみ> エージェント間メッセージ確認
-- **`bash .tooling/startup-status.sh` 実行**: docs-check FAIL のみ反応 (= FAIL ≥ 1 で同 session fix)、 stale_rules / dup_pairs / static_capacity 上限超過は起動時無視 (= 終了時 Step 2 で走り切る)
+- **`bash .tooling/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script 印字が真値、 本 file に重複記載しない)
 - **前 session の auto-index Read**: `journal/<前 date>/session-NN-auto-index.jsonl` 確認 (= PC ローカル artifact、 別 PC 不在 = skip OK、 cross-PC 真値は .md)
 - **lazy 索引取得**: `ls rules/lazy/` + 全 `projects/*/rules/lazy/` + 全 `projects/*/subprojects/*/rules/lazy/` を並列 ls。 title / filename から「シチュエーション該当時に読むべき lazy が居る」 事実を context に置く (= trigger 発火時に自発 Read できる前提を作る、 「知らないから読まない」 の再発防止)
 
@@ -130,7 +130,7 @@ session 中の後続発話に subproject keyword が出たら**動的切替**可
 - **階層自己完結 violations 禁止**:
   - normal journal に subproject session の pointer stub / 集約 stub 書くこと禁止 (= サブプロ session 成果物は subproject 独立 journal だけで完結)
   - 正規 location = 当 session 階層で .md 書く、 楽な方選ばない
-- **docs-check 実行**: `bash .tooling/docs-check.sh` で 8 step 検査。 FAIL は同 session 内 fix 必須。 詳細 = `rules/always.md § meta`
+- **docs-check 実行**: `bash .tooling/docs-check.sh` 全 step 検査。 FAIL は同 session 内 fix 必須。 詳細 = `rules/always.md § meta`
 - **`startup-status.sh` 実行 → stale_rules / dup_pairs / static_capacity 走り切り** (= 打診禁止、 判断で commit まで完遂): stale_rules ≥ 1 → dead rule 退役、 dup_pairs ≥ 1 → 集約、 static_capacity 超過 → 圧縮。 承認不要、 失敗は revert で戻す前提で走り切り。 報告は Step 3 締めで 1 行のみ
 
 #### Step 3 (= 直列、 必須)
