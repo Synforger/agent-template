@@ -1,16 +1,11 @@
 # Security Policy
 
-> Replace `{{repo_full_name}}` / `{{maintainer_handle}}` / `{{threat_model}}`
-> placeholders during `python personalize.py`. This file is a template;
-> derived repos should customise the threat model + supported versions
-> sections for their own deployment surface.
-
 ## Reporting a vulnerability
 
 Use **GitHub Security Advisories private vulnerability reporting** to
 disclose security issues responsibly:
 
-1. Open https://github.com/{{repo_full_name}}/security/advisories/new
+1. Open https://github.com/Synforger/agent-template/security/advisories/new
 2. Fill in the affected version + reproduction + impact estimate
 3. Maintainer will acknowledge within 7 days
 
@@ -18,7 +13,7 @@ Do not file public Issues or PRs for security-relevant findings. Public
 discussion only after a fix has shipped and end users have had time to
 update.
 
-If GitHub access is unavailable, reach `{{maintainer_handle}}` via the
+If GitHub access is unavailable, reach `@Synforger` via the
 contact channel listed in the repo's README.
 
 ## Supported versions
@@ -35,15 +30,12 @@ your environment requires reproducibility.
 
 ## Threat model
 
-`{{threat_model}}` — fill this in with the deployment context. Example
-shapes:
-
-- "Local CLI installed by individual developers" — threats = malicious
-  input files, dependency confusion, sandbox escape
-- "Public web service" — threats = unauthenticated request handling,
-  rate limit bypass, secret leakage in logs
-- "Library consumed by third-party apps" — threats = privilege
-  escalation via embedded usage, supply chain via published artefact
+Template scaffold whose shell / Python scripts run locally on the
+deriving operator's machine with that operator's privileges — no
+network service, no secret storage. Main threats: supply-chain
+tampering of the scripts between clone and first run (mitigated by
+pinning a tag), and unsafe handling of operator-provided paths inside
+the tooling scripts.
 
 ## In scope
 
@@ -69,7 +61,7 @@ audit via guard-dispatcher) at least every 6 months. Findings + resolutions are 
 
 | date | findings | resolution |
 |---|---|---|
-| YYYY-MM-DD | (initial) | template scaffold |
+| 2026-07-05 | (initial) | placeholders filled, no findings |
 
 ## Upstream redirect
 
