@@ -130,8 +130,7 @@ session 中の後続発話に subproject keyword が出たら**動的切替**可
 - **階層自己完結 violations 禁止**:
   - normal journal に subproject session の pointer stub / 集約 stub 書くこと禁止 (= サブプロ session 成果物は subproject 独立 journal だけで完結)
   - 正規 location = 当 session 階層で .md 書く、 楽な方選ばない
-- **docs-check 実行**: `bash .tooling/docs-check.sh` 全 step 検査。 FAIL は同 session 内 fix 必須。 詳細 = `rules/always.md § meta`
-- **`startup-status.sh` 実行 → stale_rules / dup_pairs / static_capacity 走り切り** (= 打診禁止、 判断で commit まで完遂): stale_rules ≥ 1 → dead rule 退役、 dup_pairs ≥ 1 → 集約、 static_capacity 超過 → 圧縮。 承認不要、 失敗は revert で戻す前提で走り切り。 報告は Step 3 締めで 1 行のみ
+- **`startup-status.sh` 実行 → 全指標走り切り** (= docs-check 内包、 二重実行しない。 打診禁止、 判断で commit まで完遂): docs-check FAIL ≥ 1 → `docs-check.sh` 単体で詳細出力して同 session fix、 stale_rules ≥ 1 → dead rule 退役、 dup_pairs ≥ 1 → 集約 or allowlist、 static_capacity 超過 → 圧縮。 承認不要、 失敗は revert で戻す前提で走り切り。 報告は Step 3 締めで 1 行のみ
 
 #### Step 3 (= 直列、 必須)
 
