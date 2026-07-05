@@ -39,9 +39,9 @@ else
 fi
 
 # 4. 静的 rule 容量監視 (= 階層別合計)
-#    派生親 = CLAUDE + profile-core + always (= 40 KB default)
-#    project = _README + always (= 20 KB default)
-#    subproject = _README + always (= 10 KB default)
+#    親 = CLAUDE + profile-core + always (= 40 KB)
+#    project = _README + always (= 20 KB)
+#    subproject = _README + always (= 10 KB)
 #    形態 D 移行中: rules/always.md (新) + rules/always/*.md (旧) 両対応で合算
 PARENT_LIMIT=40960
 PROJECT_LIMIT=20480
@@ -97,6 +97,26 @@ fi
 
 echo "============================================"
 echo ""
+# 6. anon word-list distribution freshness (truth -> machine config, one-way).
+#    A stale machine copy silently weakens every repo's scanning, so a drift
+#    is repaired automatically, not just reported.
+WORDS_TRUTH="rules/anon-words.txt"
+MASTER="$HOME/.config/anon-words/master.txt"
+if [ -f "$WORDS_TRUTH" ]; then
+    if [ -f "$MASTER" ] && diff -q "$WORDS_TRUTH" "$MASTER" >/dev/null 2>&1; then
+        echo "anon_words: master.txt in sync"
+    else
+        mkdir -p "$(dirname "$MASTER")"
+        cp "$WORDS_TRUTH" "$MASTER"
+        echo "anon_words: master.txt was stale -> redistributed"
+    fi
+    # operator-specific extra distributions (e.g. filtered subsets) live in a
+    # local, non-synced hook so the base stays generic
+    if [ -f .tooling/anon-dist-local.sh ]; then
+        bash .tooling/anon-dist-local.sh
+    fi
+fi
+
 echo "action policy:"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
 echo "  - docs-check FAIL >= 1 -> must fix within the same session"
