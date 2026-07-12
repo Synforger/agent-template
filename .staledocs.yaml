@@ -1,0 +1,40 @@
+# staledocs — deterministic code<->docs drift detection (docs:coherence gate).
+# This repo's "code" is its shell machinery; README documents it and is the
+# paired doc. The markdown payload under src/ is the product itself, not docs
+# about code, so it stays out of scope.
+version: 1
+gate: strict
+
+source:
+  include:
+    - ".tooling/**"
+  exclude: []
+
+docs:
+  include:
+    - "README.md"
+    - "README.ja.md"
+  exclude: []
+
+pairs:
+  - doc: README.md
+    code: [".tooling/**"]
+
+mirror:
+  enabled: false
+
+standalone: []
+
+global:
+  - README.ja.md
+
+anchors:
+  min_length: 3
+  ignore:
+    # exists as profile-core.template.md until init-new-agent.sh renames it
+    - "profile/profile-core.md"
+    # name pattern for src/.tooling/detect-*.{sh,py}, not a repo path
+    - "detect-*"
+  include_fenced: false
+  # README describes the payload from the deployed agent's perspective
+  path_roots: [src]
