@@ -19,6 +19,7 @@ tasks:
     desc: Guard-independent quality gates — same entry point locally and in CI
     cmds:
       - bash .tooling/local-ci/docs-lint.sh
+      - bash .tooling/local-ci/staledocs-check.sh
 
   publish:check:
     desc: Pre-publication gate for flipping a repo private -> public (full-history audits + OSS surface checks)
