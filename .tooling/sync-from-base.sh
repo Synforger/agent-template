@@ -48,12 +48,14 @@ else
     git clone --depth=1 --branch="$BASE_BRANCH" "$DEFAULT_BASE_URL" "$BASE_DIR"
 fi
 
-# .synced-paths.txt を読む (= 1 行 1 path、 # コメント / 空行 skip)
+# .synced-paths.txt を読む (= 1 行 1 path、 # コメント / 空行 skip、
+# `!` prefix = sync 対象外の明示宣言なので読み飛ばす)
 sync_paths=()
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%#*}"
     line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$line" ] && continue
+    case "$line" in "!"*) continue ;; esac
     sync_paths+=("$line")
 done < "$SYNCED_PATHS_FILE"
 
@@ -63,6 +65,7 @@ if [ "${#sync_paths[@]}" -eq 0 ]; then
 fi
 
 echo "==> sync ${#sync_paths[@]} paths from base/src/ → $AGENT_DIR/"
+missing_paths=()
 for p in "${sync_paths[@]}"; do
     src="$BASE_DIR/src/$p"
     dst="$AGENT_DIR/$p"
@@ -74,7 +77,10 @@ for p in "${sync_paths[@]}"; do
         mkdir -p "$(dirname "$dst")"
         cp "$src" "$dst"
     else
+        # 中間 stderr は完了バナーまでスクロールで流れる。 集計して末尾で再掲する
+        # (= 運ばれなかった事実が「✓ sync complete」 と同じ画面に必ず並ぶ)
         echo "  warn: $src not found in base, skip" >&2
+        missing_paths+=("$p")
     fi
 done
 
@@ -84,7 +90,18 @@ cd "$AGENT_DIR"
 git status --short || true
 
 echo ""
-echo "✓ sync complete. Review with 'git diff', then commit:"
+if [ "${#missing_paths[@]}" -gt 0 ]; then
+    echo "! ${#missing_paths[@]} listed path(s) do not exist in base — nothing was synced for them:"
+    for p in "${missing_paths[@]}"; do
+        echo "    - $p"
+    done
+    echo "  Either the base retired them (drop the line from .synced-paths.txt),"
+    echo "  or your .synced-paths.txt is ahead of the base you synced from."
+    echo ""
+    echo "✓ sync complete with ${#missing_paths[@]} skipped. Review with 'git diff', then commit:"
+else
+    echo "✓ sync complete. Review with 'git diff', then commit:"
+fi
 echo "  git add -A && git commit -m 'chore: sync from agent-template'"
 echo ""
 echo "if a derived-side change was overwritten, revert it individually:"

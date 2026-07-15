@@ -87,6 +87,8 @@ while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%#*}"
     line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$line" ] && continue
+    # `!` prefix = sync 対象外の明示宣言 (= 昇格対象でもない)
+    case "$line" in "!"*) continue ;; esac
     all_sync_paths+=("$line")
 done < "$SYNCED_PATHS_FILE"
 
