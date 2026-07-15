@@ -20,7 +20,7 @@ agent-template/
 ├── .gitignore                         # the template repo's own gitignore
 ├── .githooks/pre-commit               # branch guard (anon scanning is delegated to guard-dispatcher)
 ├── .tooling/local-ci/                 # the template repo's own docs lint
-│   ├── docs-lint.sh
+│   ├── docs-check.sh
 │   ├── docs-check-ignore.txt
 │   └── setup-lib.sh
 ├── .tooling/                          # template operation scripts
