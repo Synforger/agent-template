@@ -16,16 +16,15 @@
 .tooling/duplicates-allowlist.txt
 .tooling/detect-stale-rules.sh
 .tooling/extract-artifact-index.sh
-.tooling/first-prompt-pull.sh
+.tooling/go-gate-reminder.sh
 .tooling/precommit-conflict-check.sh
 .tooling/setup-hooks.sh
 .tooling/startup-status.sh
 .tooling/_README.md
 .tooling/pc-labels.example.txt
 
-# === rules 必須 4 file (= 機構の真値書類) ===
+# === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
-rules/always/meta.md
 rules/lazy/_template.md
 rules/lazy/automation-machinery.md
 rules/lazy/rule-promotion-format.md
@@ -43,8 +42,14 @@ research/_template.md
 profile/_README.md
 profile/_template.md
 
-# === 派生立ち上げ時のみ展開、 sync 対象外 (= init-new-agent.sh が *.template → 実 file に変換) ===
-# 以下は明示的に sync 対象から除外:
-# - CLAUDE.md             (init で CLAUDE.template.md から展開、 派生で書き換える)
-# - .gitignore            (init で .gitignore.template から展開、 派生で加筆する)
-# - profile/profile-core.md (init で profile-core.template.md から展開、 派生で書く)
+# === sync 対象外の宣言 (= `!` prefix、 理由コメント必須) ===
+# src/ に出荷しているが sync では降ろさない file。 init (= src/ 丸ごと rsync) で
+# 一度だけ届き、 以降は派生の持ち物になるもの。
+# 宣言漏れは `.tooling/local-ci/synced-paths-check.sh` が FAIL で検出する
+# (= 「列挙も除外宣言もされていない出荷 file」 = 降ろし忘れの機械検出)。
+!CLAUDE.md                  # init で CLAUDE.template.md から展開、 派生で書き換える
+!.gitignore                 # init で .gitignore.template から展開、 派生で加筆する
+!profile/profile-core.md    # init で profile-core.template.md から展開、 派生で書く
+!rules/always.md            # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge
+!rules/lazy/_README.md      # 索引の中身は派生固有の lazy 一覧 (= sync すると派生の索引が base の 2 件に潰れる)
+!.staledocs.yaml            # pair / ignore が派生固有、 base 版は雛形として参照するもの
