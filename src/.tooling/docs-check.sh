@@ -226,8 +226,10 @@ echo "[6/9] dynamic-search-pattern check..."
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
 # 除外: CLAUDE.md / projects/_README.md (= 判定動線説明の真値 file、 ls projects/ 言及は設計の中核説明として必要)
+# 対象外: `ls projects/<P>/...` の placeholder 形 (= 確定済 1 プロジェクト配下の列挙、
+# 事故動線は「全プロジェクト走査」 なので placeholder 経由は構造的に別物)
 DYN_TARGETS="rules/always.md rules/always/*.md rules/lazy/*.md rules/_README.md profile/_README.md .tooling/_README.md"
-for pat in 'ls\s+(projects|rules)/[^_]' 'head\s+[^|]+_README' '各.*_README\.md.*(冒頭の|head する|を順次)' '順次走査' '動的検索方式'; do
+for pat in 'ls\s+(projects|rules)/[^_<]' 'head\s+[^|]+_README' '各.*_README\.md.*(冒頭の|head する|を順次)' '順次走査' '動的検索方式'; do
   hits=$(grep -rlnE "$pat" $DYN_TARGETS 2>/dev/null | grep -v '/journal/' | grep -v '/_archive/' || true)
   if [ -n "$hits" ]; then
     while IFS= read -r hit; do
