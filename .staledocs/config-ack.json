@@ -1,6 +1,14 @@
 {
   "accepted": {
     "anchors": {
+      "branch_prefixes": [
+        "chore",
+        "feature",
+        "fix",
+        "hotfix",
+        "origin",
+        "release"
+      ],
       "ignore": [
         "detect-*",
         "profile/profile-core.md"
@@ -10,9 +18,10 @@
     },
     "docs_exclude": [],
     "docs_include": [
-      "README.ja.md",
-      "README.md"
+      "*.md",
+      ".github/**/*.md"
     ],
+    "examples_wired": [],
     "gate": "strict",
     "pair_docs": [
       "README.md"
@@ -22,7 +31,7 @@
       ".tooling/**"
     ]
   },
-  "at": "2026-07-15T08:45:00+00:00",
-  "note": "initial config baseline (staledocs 1.0 rollout)",
+  "at": "2026-07-15T19:52:46+00:00",
+  "note": "advanced by pair ack (no weakening)",
   "schema": 1
 }

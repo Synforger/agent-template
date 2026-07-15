@@ -95,6 +95,30 @@ else
     echo "docs-check: (script not found)"
 fi
 
+# 5b. staledocs (= code<->docs 整合、 warn 運用の実測フェーズ。 CLI 不在 = skip、 起動を止めない)
+if [ -f .staledocs.yaml ]; then
+    SD_BIN=""
+    if command -v staledocs >/dev/null 2>&1; then
+        SD_BIN="staledocs"
+    elif [ -x "$HOME/.cache/staledocs/venv/bin/staledocs" ]; then
+        SD_BIN="$HOME/.cache/staledocs/venv/bin/staledocs"
+    fi
+    if [ -n "$SD_BIN" ]; then
+        sd_summary=$("$SD_BIN" check 2>/dev/null | grep -E "^staledocs: " | head -1)
+        echo "${sd_summary:-staledocs: (no summary line)}"
+    else
+        echo "staledocs: (CLI not found, skipped)"
+    fi
+fi
+
+# 6. local leak detector (= 派生 opt-in: 混入してはいけない語彙の検出 script を
+#    .tooling/detect-company-terms.sh として置くと自動で走る、 無ければ skip)
+if [ -x .tooling/detect-company-terms.sh ]; then
+    bash .tooling/detect-company-terms.sh --summary 2>/dev/null
+else
+    echo "company_terms: (skipped, script not found)"
+fi
+
 echo "============================================"
 echo ""
 # 6. anon word-list distribution freshness (truth -> machine config, one-way).
@@ -120,3 +144,5 @@ fi
 echo "action policy:"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
 echo "  - docs-check FAIL >= 1 -> must fix within the same session"
+echo "  - staledocs red >= 1 -> read the findings; fix real drift, ack verified pairs (warn gate)"
+echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
