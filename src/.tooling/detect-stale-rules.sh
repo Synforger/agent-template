@@ -59,6 +59,7 @@ for f in $TARGETS; do
     esac
     total=$((total + 1))
     last_ts=$(git log -1 --format=%at -- "$f" 2>/dev/null || echo 0)
+    [ -n "$last_ts" ] || last_ts=0  # untracked / gitignored 配下は 0 扱い
     if [ "$last_ts" -lt "$cutoff_7d" ] && [ "$last_ts" -gt 0 ]; then
         stale_list+=("$f")
     fi
