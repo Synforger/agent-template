@@ -10,5 +10,5 @@
 
 <!-- Run what applies and note the results. -->
 
-- [ ] `task docs-lint`
+- [ ] `task docs:check`
 - [ ] `task audit:deep` (before publishing)
