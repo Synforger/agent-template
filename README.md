@@ -26,7 +26,8 @@ agent-template/
 ├── .tooling/                          # template operation scripts
 │   ├── init-new-agent.sh              # spin up a derivation
 │   ├── sync-from-base.sh              # base → derivation (pull down)
-│   └── promote-to-base.sh             # derivation → base (promote up)
+│   ├── promote-to-base.sh             # derivation → base (promote up)
+│   └── local-ci/synced-paths-check.sh # .synced-paths.txt vs the shipped payload
 ├── .synced-paths.txt                  # the paths shipped down to derivations
 └── src/                               # ★ what a derived agent receives
     ├── CLAUDE.template.md             # becomes the derivation's CLAUDE.md (persona)
@@ -86,7 +87,9 @@ cd ~/path/to/<your-agent>
 ./.tooling/sync-from-base.sh
 ```
 
-Only the paths listed in `.synced-paths.txt` are overwritten with the base version; derivation-specific files are never touched. Review with `git diff`, then commit.
+Only the paths listed in `.synced-paths.txt` are overwritten with the base version; derivation-specific files are never touched. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries. Review with `git diff`, then commit.
+
+`.synced-paths.txt` is the single truth for both directions, and it declares both halves: listed paths ship, and `!path  # why` lines record what the base deliberately keeps derivation-owned (an index whose content is the derivation's own, a rule file the derivation merges by hand). Anything shipped under `src/.tooling/` or `src/rules/` that is neither listed nor declared fails the base's own CI (`task synced-paths`) — the control file cannot sync itself, so a forgotten entry would otherwise mean "the base ships it, but no derivation receives it" with nothing to catch it.
 
 ### Derivation → base (promote up)
 

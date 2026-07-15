@@ -2,3 +2,7 @@
 # 形式: "labelA -- labelB" 1 行 1 ペア (= 順不同)。
 # 登録基準: reference 判定済 (= 同じ command / path の legitimate 参照、 真値分散ではない)。
 # 判定根拠は登録時の journal に残す。 真値分散と判明したら行を消して集約する。
+
+# base 構造由来 (= どの派生でも同じ dup が出る): 親テンプレとサブテンプレは
+# 同じ lazy 索引の雛形を持つ設計、 各階層で自己完結させるための意図的重複。
+projects/_template-project/rules/lazy/_README.md:(全体) -- projects/_template-project/subprojects/_template-subproject/rules/lazy/_README.md:(全体)
