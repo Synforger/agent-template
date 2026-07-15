@@ -19,6 +19,7 @@ tasks:
     desc: Guard-independent quality gates — same entry point locally and in CI
     cmds:
       - bash .tooling/local-ci/docs-check.sh
+      - bash .tooling/local-ci/synced-paths-check.sh
       - bash .tooling/local-ci/staledocs-check.sh
 
   publish:check:
@@ -47,6 +48,11 @@ tasks:
     desc: Verify template docs conventions (task names / tree diagrams / conflict markers vs reality)
     cmds:
       - bash .tooling/local-ci/docs-check.sh
+
+  synced-paths:
+    desc: Verify .synced-paths.txt matches the shipped payload (dead entries / undeclared files)
+    cmds:
+      - bash .tooling/local-ci/synced-paths-check.sh
 
   install-hooks:
     desc: git hooks install (= .githooks/pre-commit)

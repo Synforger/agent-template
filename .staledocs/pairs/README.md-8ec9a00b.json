@@ -1,6 +1,6 @@
 {
   "ack": {
-    "at": "2026-07-15T19:52:46+00:00",
+    "at": "2026-07-15T22:08:31+00:00",
     "code_blobs": {
       ".tooling/init-new-agent.sh": "4d3a592316127ce55c9e0d5ad9e1d77dcf22f2c3",
       ".tooling/local-ci/docs-check-ignore.txt": "e7343ff108edc95885a47b1b6bfc4c7110a56a83",
@@ -8,12 +8,13 @@
       ".tooling/local-ci/publish-check.sh": "aebe60bf92d3c697141f43605858340305dfbc78",
       ".tooling/local-ci/setup-lib.sh": "1def0b59ae9ae3286d8cc9e45579a256ae779892",
       ".tooling/local-ci/staledocs-check.sh": "34d54b7f6e5e777d77d5b72abc63fc5aa3633655",
-      ".tooling/promote-to-base.sh": "c9c6cccd971ace6556d55a77ca0f9358071e9fcf",
-      ".tooling/sync-from-base.sh": "c4e87d222cdc53a6ab151d8152387afe55ba416e"
+      ".tooling/local-ci/synced-paths-check.sh": "400eabb74ca49d61f247984284a71767168ffd4d",
+      ".tooling/promote-to-base.sh": "85edc1e528fbee0d5f22a2482624a5df26564f3c",
+      ".tooling/sync-from-base.sh": "5dd4bc84449c11525dab02acc76c56182f8c068d"
     },
-    "commit": "7cc45ebf3bd36cca8cf515b545664adc0d2f9a59",
-    "doc_blob": "3897336b59b04cccb3eacec51c63070b2264d005",
-    "note": "README.md payload trees updated for this change set: first-prompt-pull.sh retired in favor of go-gate-reminder.sh, lazy _README index + rule-promotion-format shipped; .tooling machinery rows verified against src/.tooling contents"
+    "commit": "61af1d60031fb7befc6b88f6a7234ba06e281b2f",
+    "doc_blob": "dd49176a0d01677295d69245374b46f1a019a6a0",
+    "note": "README.md sync section rewritten for this change: sync-from-base.sh now surfaces dead entries in the completion summary, .synced-paths.txt declares both halves (listed + !excluded), and local-ci/synced-paths-check.sh enforces it in base CI"
   },
   "doc": "README.md",
   "schema": 1
