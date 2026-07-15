@@ -21,7 +21,7 @@ capacity: 7KB
 | `.tooling/detect-duplicates.py` | startup-status から + SessionEnd hook | rule file 全 H2/H3 section の LCS 比較 | `.tooling/_output/duplicates.md` (= 上書き) |
 | `.tooling/extract-artifact-index.sh` | SessionEnd hook | git log (= transcript 最初 ts 以降) + gh pr | `journal/<date>/session-NN-auto-index.jsonl` (= NN = `.md` 最大 + 1) |
 | `.tooling/precommit-conflict-check.sh` | git pre-commit hook | 改訂 file vs 既存 rule file | stderr で重複警告 (= blocking なし) |
-| `.tooling/docs-check.sh` | 終了時 Step 2 + 手動 | 全 .md 機械検査 (9 step) | PASS / WARN / FAIL (= FAIL ≥ 1 は同 session fix) |
+| `.tooling/docs-check.sh` | 終了時 Step 2 + 手動 | 全 .md 機械検査 (9 step、 dead link は `status: snapshot` / archive 配下を除外) | PASS / WARN / FAIL (= FAIL ≥ 1 は同 session fix) |
 | `.tooling/go-gate-reminder.sh` | UserPromptSubmit hook | 毎発話 | GO 判定リセットの極短注入 (= 判定本体は `rules/always.md § forbidden`、 hook は再武装のみ) |
 | `staledocs` (= 外部 CLI + `.staledocs.yaml`) | startup-status から | 起動 + 終了 | rules 層の code<->docs 整合 (= pair 台帳 + アンカー生存、 同スコープの dead link は docs-check step 4 が skip) |
 

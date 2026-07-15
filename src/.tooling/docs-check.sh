@@ -115,11 +115,15 @@ done
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
 echo "[4/9] dead link check..."
 for f in $ALL_MD; do
-  # archive / history 配下の md は dead link チェック対象外
-  # (= 過去スナップショット記録、 link は当時の状態 = 派生固有の history/ 慣習も同性質)
+  # 過去記録は dead link チェック対象外 (= link は当時の状態、 遡及修正しない)。
+  # path 慣習 (= archive / history 配下) と frontmatter 宣言 (= status: snapshot)
+  # の 2 経路。 後者は「削除せず status で管理する」 運用 (= research 等) の逃げ道
   case "$f" in
     *archive/*|*history/*) continue;;
   esac
+  if awk '/^---$/{c++; if(c==2) exit; next} c==1' "$f" 2>/dev/null | grep -qE '^status: *snapshot'; then
+    continue
+  fi
   # .staledocs.yaml の docs スコープは staledocs がアンカー生存を担当
   # (= 同一 file の二重検証禁止)。 skip 範囲は .staledocs.yaml docs.include と
   # 対で保守する (= スコープ拡大時はここも広げる)
@@ -147,9 +151,11 @@ for f in $ALL_MD; do
         dir=$(dirname "$f")
         if [ ! -f "$dir/$ref" ] && [ ! -f "$ref" ]; then
           refname=$(basename "$ref")
-          # README.md 引用は _README.md 慣習との対応 (= エージェント配下は _README.md
-          # を使う、 README.md は外部 repo の引用慣習)
-          if [ "$refname" = "README.md" ]; then continue; fi
+          # 外部 repo の root 慣習 file 引用 (= エージェント配下は _README.md 慣習で
+          # これらを持たない設計、 単体 file 名での引用は外部 repo 指しと確定)
+          case "$refname" in
+            README.md|CONTRIBUTING.md|SECURITY.md|ROADMAP.md|CHANGELOG.md|THIRD_PARTY_NOTICES.md) continue;;
+          esac
           if [ -z "$(find . -name "$refname" -not -path "./.git/*" -not -path "./.claude/worktrees/*" -not -path "./.tooling/*" -print -quit 2>/dev/null)" ]; then
             # 第 1 階層 segment が エージェント配下に無い path は外部 repo 引用と推定 skip
             # (= work repo の `sdk/...` `app/...` `docs/...` `prototypes/...` 等、
