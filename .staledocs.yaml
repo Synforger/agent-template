@@ -10,10 +10,12 @@ source:
     - ".tooling/**"
   exclude: []
 
+# Every tracked .md outside the src/ payload is in scope: staledocs owns
+# path/anchor liveness (docs-check.sh keeps only template-convention axes).
 docs:
   include:
-    - "README.md"
-    - "README.ja.md"
+    - "*.md"
+    - ".github/**/*.md"
   exclude: []
 
 pairs:
@@ -23,7 +25,11 @@ pairs:
 mirror:
   enabled: false
 
-standalone: []
+standalone:
+  - CONTRIBUTING.md
+  - SECURITY.md
+  - THIRD_PARTY_NOTICES.md
+  - ".github/**"
 
 global:
   - README.ja.md

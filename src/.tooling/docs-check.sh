@@ -81,7 +81,13 @@ for f in $ALL_MD; do
   size=$(wc -c < "$f")
   declared=$((num * 1024))
   if [ "$size" -gt "$declared" ]; then
-    fail "$f: $size bytes > declared capacity ${num}KB"
+    # lazy 文書庫 + profile lazy = 目安 (WARN、 肥大許容、 byte 潰し強制しない)。
+    # 常時 load 層 (= always.md / profile core / _README / CLAUDE) はハード FAIL。
+    # 階層合計のハード制限は startup-status.sh static_capacity が担当。
+    case "$f" in
+      */lazy/*) warn "$f: $size bytes > soft capacity ${num}KB (目安)" ;;
+      *) fail "$f: $size bytes > declared capacity ${num}KB" ;;
+    esac
   fi
 done
 
@@ -113,6 +119,14 @@ for f in $ALL_MD; do
   case "$f" in
     *archive/*|*history/*) continue;;
   esac
+  # .staledocs.yaml の docs スコープは staledocs がアンカー生存を担当
+  # (= 同一 file の二重検証禁止)。 skip 範囲は .staledocs.yaml docs.include と
+  # 対で保守する (= スコープ拡大時はここも広げる)
+  if [ -f "$ROOT/.staledocs.yaml" ]; then
+    case "$f" in
+      ./rules/*) continue;;
+    esac
+  fi
   # `path/to/file.md` 形式の参照を抜く (= バックティック内)
   refs=$(grep -oE '`[a-zA-Z0-9_/.~-]+\.md`' "$f" 2>/dev/null | tr -d '`' | sort -u)
   for ref in $refs; do
