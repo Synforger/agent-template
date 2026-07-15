@@ -258,6 +258,8 @@ if [ -f "$SP_FILE" ]; then
     line="${line%%#*}"
     line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$line" ] && continue
+    # `!` prefix = sync 対象外の明示宣言 (= 派生に降ろさない file、 実在検査の対象外)
+    case "$line" in "!"*) continue ;; esac
     target="$ROOT/$line"
     if [ ! -e "$target" ]; then
       warn "synced-paths: $line missing (possibly deleted after a sync)"
