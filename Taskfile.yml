@@ -18,7 +18,7 @@ tasks:
   ci:
     desc: Guard-independent quality gates — same entry point locally and in CI
     cmds:
-      - bash .tooling/local-ci/docs-lint.sh
+      - bash .tooling/local-ci/docs-check.sh
       - bash .tooling/local-ci/staledocs-check.sh
 
   publish:check:
@@ -30,7 +30,7 @@ tasks:
     desc: template リポ自体の lint (= docs + anon)
     cmds:
       - bash "$HOME/.git-hooks/scanners/anon-scan.sh"
-      - bash .tooling/local-ci/docs-lint.sh
+      - bash .tooling/local-ci/docs-check.sh
 
   anon:
     desc: 禁止語彙 scan (= pre-commit と同じ)
@@ -43,10 +43,10 @@ tasks:
       - bash "$HOME/.git-hooks/scanners/anon-audit-deep.sh"
 
 
-  docs-lint:
-    desc: docs 鮮度 lint
+  docs:check:
+    desc: Verify template docs conventions (task names / tree diagrams / conflict markers vs reality)
     cmds:
-      - bash .tooling/local-ci/docs-lint.sh
+      - bash .tooling/local-ci/docs-check.sh
 
   install-hooks:
     desc: git hooks install (= .githooks/pre-commit)

@@ -20,8 +20,8 @@ agent-template/
 ├── .gitignore                         # template リポ自体の gitignore
 ├── .githooks/pre-commit               # branch guard (= anon scan は guard-dispatcher 委譲)
 ├── .tooling/local-ci/                 # template リポ自体の OSS 運用 lint
-│   ├── docs-lint.sh
-│   ├── docs-lint-ignore.txt
+│   ├── docs-check.sh
+│   ├── docs-check-ignore.txt
 │   └── setup-lib.sh
 ├── .tooling/                          # template 運用 script
 │   ├── init-new-agent.sh              # 派生立ち上げ
