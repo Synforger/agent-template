@@ -77,7 +77,7 @@
 - <message-dir 設定時のみ> エージェント間メッセージ確認
 - **`bash .tooling/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script 印字が真値、 本 file に重複記載しない)
 - **前 session の auto-index Read**: `journal/<前 date>/session-NN-auto-index.jsonl` 確認 (= PC ローカル artifact、 別 PC 不在 = skip OK、 cross-PC 真値は .md)
-- **lazy 索引取得**: `ls rules/lazy/` + 全 `projects/*/rules/lazy/` + 全 `projects/*/subprojects/*/rules/lazy/` を並列 ls。 title / filename から「シチュエーション該当時に読むべき lazy が居る」 事実を context に置く (= trigger 発火時に自発 Read できる前提を作る、 「知らないから読まない」 の再発防止)
+- **lazy 索引取得 (= 必須)**: `rules/lazy/_README.md` + 全 `projects/*/rules/lazy/_README.md` + 全 `projects/*/subprojects/*/rules/lazy/_README.md` を並列 Read。 各 lazy file 名 + 1 文 summary を context に置く (= trigger 発火時に自発 Read できる前提を作る、 「知らないから読まない」 の再発防止)。 新 lazy 追加時は同階層 `_README.md` に必ず 1 行追記
 
 #### Phase B-プロジェクト固有 (= 判定後、 並列一括)
 
