@@ -20,7 +20,7 @@ agent-template/
 ├── .gitignore                         # the template repo's own gitignore
 ├── .githooks/pre-commit               # branch guard (anon scanning is delegated to guard-dispatcher)
 ├── .tooling/local-ci/                 # the template repo's own docs lint
-│   ├── docs-lint.sh
+│   ├── docs-check.sh
 │   ├── docs-check-ignore.txt
 │   └── setup-lib.sh
 ├── .tooling/                          # template operation scripts
@@ -36,7 +36,7 @@ agent-template/
     │   ├── detect-duplicates.py       # section-level duplicate detection
     │   ├── detect-stale-rules.sh      # 7-day-stale rule detection
     │   ├── extract-artifact-index.sh  # for a SessionEnd hook
-    │   ├── first-prompt-pull.sh       # multi-machine sync (optional)
+    │   ├── go-gate-reminder.sh        # per-utterance GO-gate reminder hook
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # run at session boot
@@ -44,8 +44,10 @@ agent-template/
     ├── rules/
     │   ├── always.md                  # ★ required: capacity management + revision culture + the loop
     │   └── lazy/
+    │       ├── _README.md             # lazy index, read at boot
     │       ├── _template.md           # scaffold for new lazy rules
-    │       └── automation-machinery.md
+    │       ├── automation-machinery.md
+    │       └── rule-promotion-format.md
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
     ├── journal/                       # session log structure
     ├── todos/                         # cross-cutting tasks

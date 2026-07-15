@@ -22,8 +22,9 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 | `.tooling/detect-duplicates.py` | startup-status から + SessionEnd hook | rule file 全 H2/H3 section の LCS 比較 | `.tooling/_output/duplicates.md` (= 上書き) |
 | `.tooling/extract-artifact-index.sh` | SessionEnd hook | git log (= 当 transcript の最初 ts 以降) + gh pr | `journal/<date>/session-NN-auto-index.jsonl` (= 上書き、 NN = `.md` 最大 + 1) |
 | `.tooling/precommit-conflict-check.sh` | git pre-commit hook | 改訂 file vs 既存 rule file | stderr で重複警告 (= blocking なし) |
-| `.tooling/first-prompt-pull.sh` | Claude Code UserPromptSubmit hook | session 初回発話 (= flag file で区別) | `git pull --rebase --autostash` 実行 (= 複数 PC 同期運用時) |
-| `.tooling/docs-check.sh` | 終了時 Step 2 + 任意手動起動 | 全 .md 機械検査 (8 step) | PASS / WARN / FAIL カウント (= FAIL ≥ 1 で同 session fix 必須) |
+| `.tooling/docs-check.sh` | 終了時 Step 2 + 任意手動起動 | 全 .md 機械検査 (9 step) | PASS / WARN / FAIL カウント (= FAIL ≥ 1 で同 session fix 必須) |
+| `.tooling/go-gate-reminder.sh` | Claude Code UserPromptSubmit hook | 毎発話 | GO 判定リセットの極短注入 (= 判定本体は rules/always.md § forbidden が真値、 hook は再武装の 1 行のみ) |
+| `staledocs` (= 外部 CLI + `.staledocs.yaml`) | startup-status.sh から | 起動 + 終了 | rules 層 + CLAUDE.md の code<->docs 整合 (= pair 台帳 + アンカー生存。 同スコープの dead link は docs-check step 4 が skip、 warn 運用) |
 
 ## 反応規律
 
