@@ -68,7 +68,7 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 
 ## 継続的自己強化ループ
 
-真値 = `rules/always/meta.md § 継続的自己強化ループ` 参照。 本 file からは機構の具体実装 (= 上記 § 機構と発火 / 反応規律 / 新 script 追加手順) に集中し、 弱点パターン発見時の運用フローは meta.md に集約。
+真値 = `rules/always.md § meta` (= 弱点パターン発見時の機構自己拡張) 参照。 本 file からは機構の具体実装 (= 上記 § 機構と発火 / 反応規律 / 新 script 追加手順) に集中し、 弱点パターン発見時の運用フローは always.md § meta に集約。
 
 ## base 同期の正規経路
 
