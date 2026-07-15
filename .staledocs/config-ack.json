@@ -1,0 +1,28 @@
+{
+  "accepted": {
+    "anchors": {
+      "ignore": [
+        "detect-*",
+        "profile/profile-core.md"
+      ],
+      "include_fenced": false,
+      "min_length": 3
+    },
+    "docs_exclude": [],
+    "docs_include": [
+      "README.ja.md",
+      "README.md"
+    ],
+    "gate": "strict",
+    "pair_docs": [
+      "README.md"
+    ],
+    "source_exclude": [],
+    "source_include": [
+      ".tooling/**"
+    ]
+  },
+  "at": "2026-07-15T08:45:00+00:00",
+  "note": "initial config baseline (staledocs 1.0 rollout)",
+  "schema": 1
+}
