@@ -1,19 +1,19 @@
 {
   "ack": {
-    "at": "2026-07-12T20:23:00+00:00",
+    "at": "2026-07-15T17:43:14+00:00",
     "code_blobs": {
       ".tooling/init-new-agent.sh": "4d3a592316127ce55c9e0d5ad9e1d77dcf22f2c3",
       ".tooling/local-ci/docs-check-ignore.txt": "e7343ff108edc95885a47b1b6bfc4c7110a56a83",
-      ".tooling/local-ci/docs-lint.sh": "634054e1b75ad15863a7aa9d1bc259b7937bf7b5",
+      ".tooling/local-ci/docs-check.sh": "0808b820c6b48a8349ade47249ea49a31185e12b",
       ".tooling/local-ci/publish-check.sh": "aebe60bf92d3c697141f43605858340305dfbc78",
       ".tooling/local-ci/setup-lib.sh": "1def0b59ae9ae3286d8cc9e45579a256ae779892",
       ".tooling/local-ci/staledocs-check.sh": "34d54b7f6e5e777d77d5b72abc63fc5aa3633655",
       ".tooling/promote-to-base.sh": "c9c6cccd971ace6556d55a77ca0f9358071e9fcf",
       ".tooling/sync-from-base.sh": "c4e87d222cdc53a6ab151d8152387afe55ba416e"
     },
-    "commit": "db03a6afdd145366c980fcfc2bc11400cee5a9d9",
-    "doc_blob": "26b8b1abdce06922ad2896896fff42f67beddf5b",
-    "note": "onboarding baseline (README read-verified against .tooling machinery)"
+    "commit": "ad4bf3eeb96c3e826ce82c399d9b8ef73764f7dd",
+    "doc_blob": "6182a934733b0b449b88a4c86eacbd697af8dd6e",
+    "note": "verified: docs-lint.sh renamed to docs-check.sh (single truth copy from personal-template, axis A retired); README/README.ja tree lines updated to docs-check.sh, ja drift docs-lint-ignore.txt fixed to docs-check-ignore.txt; Taskfile ci/lint/docs:check now call docs-check.sh"
   },
   "doc": "README.md",
   "schema": 1
