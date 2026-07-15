@@ -85,7 +85,8 @@ for f in $ALL_MD; do
     # 常時 load 層 (= always.md / profile core / _README / CLAUDE) はハード FAIL。
     # 階層合計のハード制限は startup-status.sh static_capacity が担当。
     case "$f" in
-      */lazy/*) warn "$f: $size bytes > soft capacity ${num}KB (目安)" ;;
+      */profile/profile-core.md) fail "$f: $size bytes > declared capacity ${num}KB" ;;
+      */lazy/*|*/profile/profile-*.md) warn "$f: $size bytes > soft capacity ${num}KB (目安)" ;;
       *) fail "$f: $size bytes > declared capacity ${num}KB" ;;
     esac
   fi
@@ -124,7 +125,7 @@ for f in $ALL_MD; do
   # 対で保守する (= スコープ拡大時はここも広げる)
   if [ -f "$ROOT/.staledocs.yaml" ]; then
     case "$f" in
-      ./rules/*) continue;;
+      ./rules/*|./profile/profile-core.md) continue;;
     esac
   fi
   # `path/to/file.md` 形式の参照を抜く (= バックティック内)

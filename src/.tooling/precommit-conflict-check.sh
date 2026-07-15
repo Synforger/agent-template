@@ -38,7 +38,13 @@ while IFS= read -r new_sec; do
     [ -z "$new_sec" ] && continue
     # diff の section 名と同 prefix の section が他 file にあるか
     matches=$(grep -l -F "$new_sec" $ALL_RULE_FILES 2>/dev/null | head -5)
-    count=$(echo "$matches" | grep -c . || echo 0)
+    # 空 stdin に grep -c . は "0" を吐きつつ exit 1 で `|| echo 0` も発火し
+    # count が "0\n0" になる。 空を先に振り分けて非空時のみ count 取る。
+    if [ -z "$matches" ]; then
+        count=0
+    else
+        count=$(printf '%s\n' "$matches" | grep -c .)
+    fi
     if [ "$count" -gt 1 ]; then
         if [ "$WARNED" -eq 0 ]; then
             echo "" >&2
@@ -61,7 +67,10 @@ fi
 # rules/always.md § meta の容量表が変わった commit に他の rule/profile/CLAUDE 本体が混在 = reflex sign
 META_CAP_LINES=$(git diff --cached -- rules/always.md 2>/dev/null | grep -E '^\+.*\|.*[0-9]+\s*KB' | head -3)
 if [ -n "$META_CAP_LINES" ]; then
-    OTHER_FILES=$(git diff --cached --name-only -- \
+    # 削除 (D) / rename (R) は「容量緩和 reflex + 内容追加」 の反例。
+    # 形態 D 移行のような cleanup 系 rename が誤警告を出していたため、
+    # 追加 (A) + 変更 (M) のみを反 reflex 判定の対象にする。
+    OTHER_FILES=$(git diff --cached --name-only --diff-filter=AM -- \
         CLAUDE.md 'profile/*.md' 'rules/lazy/*.md' \
         'projects/*/rules/always.md' 'projects/*/rules/lazy/*.md' \
         'projects/*/subprojects/*/rules/always.md' 'projects/*/subprojects/*/rules/lazy/*.md' \

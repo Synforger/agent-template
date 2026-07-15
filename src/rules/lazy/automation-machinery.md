@@ -1,7 +1,8 @@
 ---
 title: 自動化機構運用 + 文書庫運用 (= lazy)
 description: 自動化 script の発火経路 / 出力 / 反応規律 + lazy 文書庫の設計原則 (= 機構改修 / 新 lazy 追加時の参照)
-updated: 2026-06-29
+updated: 2026-07-16
+stable: true
 triggers: 自動化機構 (`.tooling/*`) を改修する直前 / 新 lazy file を追加する直前 / settings.json の hook 配列を編集する直前
 capacity: 7KB
 ---
@@ -68,3 +69,9 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 ## 継続的自己強化ループ
 
 真値 = `rules/always/meta.md § 継続的自己強化ループ` 参照。 本 file からは機構の具体実装 (= 上記 § 機構と発火 / 反応規律 / 新 script 追加手順) に集中し、 弱点パターン発見時の運用フローは meta.md に集約。
+
+## base 同期の正規経路
+
+- agent-template との `.tooling` 同期は `sync-from-base.sh` / `promote-to-base.sh` 経由、 手 cp 禁止
+  - Why: 手 cp は synced-paths 契約と履歴を素通りし、 drift の出所が追えなくなる
+- 昇格時の匿名化 (= 操作者固有記述の除去) は promote 前に派生側 file で済ませる (= base 側で直すと次の promote で戻る)
