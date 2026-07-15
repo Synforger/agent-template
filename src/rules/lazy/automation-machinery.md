@@ -74,6 +74,8 @@ agent-template が出荷する自動化は全部 LLM 不使用、 `git log` + `r
 
 - agent-template との `.tooling` 同期は `sync-from-base.sh` / `promote-to-base.sh` 経由、 手 cp 禁止
   - Why: 手 cp は synced-paths 契約と履歴を素通りし、 drift の出所が追えなくなる
+  - **例外は sync 機構自身の 2 file** (= `sync-from-base.sh` / `promote-to-base.sh`)。 `.synced-paths.txt` の対象外で自分を運べないため、 base checkout からの手 cp が唯一の更新経路 (= bootstrap 問題、 init 時にのみ配布される)
+  - How to apply: 手 cp したら commit message に base の版 (= tag or sha) を明記する (= 履歴が追えなくなる Why への最小の埋め合わせ)
 - 昇格時の匿名化 (= 操作者固有記述の除去) は promote 前に派生側 file で済ませる (= base 側で直すと次の promote で戻る)
 - **base に payload file を足したら `.synced-paths.txt` に列挙か `!` 除外宣言のどちらかを必ず書く** (= 制御 file 自身は sync 対象外なので、 忘れると「base は出荷しているのに派生に降りない」 が無検出で成立する)
   - Why: 出荷と配布経路が別 file に分かれている構造的な穴、 base CI の `synced-paths-check.sh` が両方向 (= 死に entry / 宣言漏れ) を機械検出する
