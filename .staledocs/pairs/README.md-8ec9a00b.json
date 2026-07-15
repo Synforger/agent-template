@@ -1,6 +1,6 @@
 {
   "ack": {
-    "at": "2026-07-15T17:43:14+00:00",
+    "at": "2026-07-15T19:52:46+00:00",
     "code_blobs": {
       ".tooling/init-new-agent.sh": "4d3a592316127ce55c9e0d5ad9e1d77dcf22f2c3",
       ".tooling/local-ci/docs-check-ignore.txt": "e7343ff108edc95885a47b1b6bfc4c7110a56a83",
@@ -11,9 +11,9 @@
       ".tooling/promote-to-base.sh": "c9c6cccd971ace6556d55a77ca0f9358071e9fcf",
       ".tooling/sync-from-base.sh": "c4e87d222cdc53a6ab151d8152387afe55ba416e"
     },
-    "commit": "ad4bf3eeb96c3e826ce82c399d9b8ef73764f7dd",
-    "doc_blob": "6182a934733b0b449b88a4c86eacbd697af8dd6e",
-    "note": "verified: docs-lint.sh renamed to docs-check.sh (single truth copy from personal-template, axis A retired); README/README.ja tree lines updated to docs-check.sh, ja drift docs-lint-ignore.txt fixed to docs-check-ignore.txt; Taskfile ci/lint/docs:check now call docs-check.sh"
+    "commit": "7cc45ebf3bd36cca8cf515b545664adc0d2f9a59",
+    "doc_blob": "3897336b59b04cccb3eacec51c63070b2264d005",
+    "note": "README.md payload trees updated for this change set: first-prompt-pull.sh retired in favor of go-gate-reminder.sh, lazy _README index + rule-promotion-format shipped; .tooling machinery rows verified against src/.tooling contents"
   },
   "doc": "README.md",
   "schema": 1

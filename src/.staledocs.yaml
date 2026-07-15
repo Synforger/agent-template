@@ -1,0 +1,52 @@
+# staledocs — エージェント状態 tree の code<->docs 整合 (warn 運用)。
+# 初期スコープ = rules 層 + CLAUDE.md のみ (= 外部 repo 参照が多い plans /
+# research / projects は運用が安定してから段階拡大)。 この範囲の dead link
+# 検査は docs-check.sh step 4 が skip する (= 同一 file の二重検証ゼロ、
+# skip 範囲と本 file の docs.include は対で保守)。
+# 発火点 = startup-status.sh (= CLI 不在なら skip、 起動を止めない)。
+version: 1
+
+# warn = 報告のみ。 red/amber の出方を観測してから strict を検討。
+gate: warn
+
+source:
+  include:
+    - ".tooling/**"
+  exclude:
+    - ".tooling/_output/**"
+    - ".tooling/pc-labels.txt"
+
+docs:
+  include:
+    - "CLAUDE.md"
+    - "rules/**/*.md"
+  exclude: []
+
+pairs:
+  # script 群を説明する doc — 本命ペア
+  - doc: rules/lazy/automation-machinery.md
+    code: [".tooling/**"]
+  # docs↔docs 連鎖: CLAUDE.md は常時 load 層の索引 + 起動/終了プロトコル真値。
+  # 派生の profile core file 名に合わせて code 側へ追記し、 docs.include にも
+  # 同 file を足すこと (= scope 外の code 記述は out_of_scope 警告になる)
+  - doc: CLAUDE.md
+    code: ["rules/always.md"]
+  # docs↔docs 連鎖: lazy 索引 ↔ lazy 本体 (追加し忘れ検出、 自己ペアは自動除外)
+  - doc: rules/lazy/_README.md
+    code: ["rules/lazy/*.md"]
+
+mirror:
+  enabled: false
+
+# code 側を持たない運用 doc (path アンカーだけ repo 全域で生存検証)
+standalone:
+  - "rules/_README.md"
+  - "rules/lazy/_template.md"
+  - "rules/lazy/rule-promotion-format.md"
+
+global: []
+
+anchors:
+  min_length: 3
+  ignore: []
+  include_fenced: false

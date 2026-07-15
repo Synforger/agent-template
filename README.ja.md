@@ -36,7 +36,7 @@ agent-template/
     │   ├── detect-duplicates.py       # section 単位重複検出
     │   ├── detect-stale-rules.sh      # 7 日無更新検出
     │   ├── extract-artifact-index.sh  # SessionEnd hook 用
-    │   ├── first-prompt-pull.sh       # 複数 PC 同期用 (任意)
+    │   ├── go-gate-reminder.sh        # 毎発話 GO-gate リマインダ hook
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # Phase B-共通 で実行
@@ -44,8 +44,10 @@ agent-template/
     ├── rules/
     │   ├── always.md                  # ★ 必須: 容量管理 + 改訂文化 + 自己強化ループ (形態 D)
     │   └── lazy/
+    │       ├── _README.md             # lazy 索引 (起動時 Read)
     │       ├── _template.md           # 新 lazy 雛形
-    │       └── automation-machinery.md
+    │       ├── automation-machinery.md
+    │       └── rule-promotion-format.md
     ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
     ├── journal/                       # session log 構造
     ├── todos/                         # 横断タスク
