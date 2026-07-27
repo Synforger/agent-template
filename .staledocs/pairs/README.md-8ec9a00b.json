@@ -1,6 +1,24 @@
 {
   "ack": {
-    "at": "2026-07-15T22:08:31+00:00",
+    "anchors": [
+      "*.template",
+      ".synced-paths.txt",
+      ".tooling/*",
+      ".tooling/duplicates-allowlist.txt",
+      "CLAUDE.md",
+      "_README.md",
+      "docs-check.sh",
+      "init-new-agent.sh",
+      "rules/always.md",
+      "rules/lazy/*.md",
+      "rules/lazy/_template.md",
+      "rules/lazy/automation-machinery.md",
+      "src/",
+      "src/.tooling/",
+      "src/rules/",
+      "sync-from-base.sh"
+    ],
+    "at": "2026-07-27T04:19:57+00:00",
     "code_blobs": {
       ".tooling/init-new-agent.sh": "4d3a592316127ce55c9e0d5ad9e1d77dcf22f2c3",
       ".tooling/local-ci/docs-check-ignore.txt": "e7343ff108edc95885a47b1b6bfc4c7110a56a83",
@@ -12,9 +30,9 @@
       ".tooling/promote-to-base.sh": "85edc1e528fbee0d5f22a2482624a5df26564f3c",
       ".tooling/sync-from-base.sh": "5dd4bc84449c11525dab02acc76c56182f8c068d"
     },
-    "commit": "61af1d60031fb7befc6b88f6a7234ba06e281b2f",
+    "commit": "f81b451c1ca8a00801f53acd714cccb88fdda3ab",
     "doc_blob": "dd49176a0d01677295d69245374b46f1a019a6a0",
-    "note": "README.md sync section rewritten for this change: sync-from-base.sh now surfaces dead entries in the completion summary, .synced-paths.txt declares both halves (listed + !excluded), and local-ci/synced-paths-check.sh enforces it in base CI"
+    "note": "v2 anchor-baseline migration: arm every claim that resolves today; unarmed shortlist was empty"
   },
   "doc": "README.md",
   "schema": 1
