@@ -16,6 +16,7 @@ set -uo pipefail
 # `!path` 行)。 宣言があるものは B から除外され、 コメントでなく機械が読む形で
 # 意図が残る。 判定対象は機構と rule の payload のみ (= 下記 ENFORCED_GLOBS)。
 # 雛形 dir (= projects/_template-project/ 等) は dir 単位列挙なので対象外。
+# 機構の payload は sub-dir も見る (= lib/ に検査本体を置く形が増えたため)。
 #
 # 呼び出し元: `task ci`
 # Exit code: 0 = clean / 1 = 不一致あり
@@ -35,6 +36,7 @@ SYNCED_PATHS_FILE="$ROOT/.synced-paths.txt"
 ENFORCED_GLOBS=(
     "src/.tooling/*.sh"
     "src/.tooling/*.py"
+    "src/.tooling/lib/*.py"
     "src/rules/*.md"
     "src/rules/lazy/*.md"
 )
