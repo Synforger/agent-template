@@ -23,6 +23,14 @@
 .tooling/_README.md
 .tooling/pc-labels.example.txt
 
+# docs-check が呼ぶ検査本体 (= step が増えた分は lib/ に置き、 script 側は薄く保つ)
+.tooling/lib/docs-scan.py
+.tooling/lib/journal-integrity.py
+.tooling/lib/check-rule-references.py
+.tooling/lib/check-rule-hits.py
+.tooling/lib/check-vision-shape.py
+.tooling/lib/capacity-candidates.py
+
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
 rules/lazy/_template.md
@@ -48,6 +56,7 @@ profile/_template.md
 # 宣言漏れは `.tooling/local-ci/synced-paths-check.sh` が FAIL で検出する
 # (= 「列挙も除外宣言もされていない出荷 file」 = 降ろし忘れの機械検出)。
 !CLAUDE.md                  # init で CLAUDE.template.md から展開、 派生で書き換える
+!vision.md                  # init で vision.template.md から展開、 派生が状態を書く
 !.gitignore                 # init で .gitignore.template から展開、 派生で加筆する
 !profile/profile-core.md    # init で profile-core.template.md から展開、 派生で書く
 !rules/always.md            # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge

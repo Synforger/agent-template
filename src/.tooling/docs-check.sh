@@ -13,6 +13,9 @@ cd "$ROOT" || { echo "repo root not found: $ROOT"; exit 2; }
 PASS=0
 FAIL=0
 WARN=0
+# 自分がどれだけ待たせたかを最後に名乗る (= 遅くなったことに気づけるのは数字が出ている時だけ。
+# 閾値で止めはしない ― 仕方ないのか壊れているのかは、数字を見てから中身を読んで決める)
+_T0="${EPOCHREALTIME:-$(date +%s)}"
 
 red()    { printf "\033[31m%s\033[0m\n" "$*"; }
 yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
@@ -22,154 +25,57 @@ fail() { red   "  FAIL: $*"; FAIL=$((FAIL+1)); }
 warn() { yellow "  WARN: $*"; WARN=$((WARN+1)); }
 pass() { PASS=$((PASS+1)); }
 
-# 対象 .md 全列挙
-# 除外: CLAUDE.md (= 根本 config、 frontmatter なし設計) / journal (= 履歴、 遡及修正しない)
-# 除外: _template (= 雛形、 docs 未実装) / messages (= 別系統)
-# 除外: drafts/ (= 作業中ドラフト + Issue/notes 本文コピー、 frontmatter 不要)
+# 走査系 5 step (= frontmatter / capacity / 索引整合 / dead link / placeholder) は
+# 同じ .md を何度も開き直し、 対象列挙のために ツリーを何周もしていた。 走査も読み込みも
+# 1 回で足りるので docs-scan.py に集約し、 ここでは結果を受け取るだけにする。
 #
-# 派生固有除外: .tooling/local-excludes.txt があれば 1 行 1 path pattern を読んで動的追加
-# (= 派生固有の dir を派生で宣言、 base には混入させない)
-FIND_ARGS=(. -name "*.md"
-  -not -path "./.git/*"
-  -not -path "./.tooling/*"
-  -not -path "./.claude/worktrees/*"
-  -not -path "*/journal/*"
-  -not -path "*/drafts/*"
-  -not -path "*/_template*"
-  -not -name "CLAUDE.md")
-LOCAL_EXCLUDES="$ROOT/.tooling/local-excludes.txt"
-if [ -f "$LOCAL_EXCLUDES" ]; then
-  while IFS= read -r line || [ -n "$line" ]; do
-    line="${line%%#*}"
-    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-    [ -z "$line" ] && continue
-    FIND_ARGS+=(-not -path "$line")
-  done < "$LOCAL_EXCLUDES"
-fi
-ALL_MD=$(find "${FIND_ARGS[@]}" | sort)
+# 検査対象 = 全 .md から以下を除いたもの:
+#   CLAUDE.md (= 根本 config、 frontmatter なし設計) / journal (= 履歴、 遡及修正しない)
+#   _template (= 雛形) / drafts (= 作業中ドラフト) / _scratch (= 残す前提の無い一時 file)
+# 派生固有除外: .tooling/local-excludes.txt (= 1 行 1 path pattern、 base に混入させない)
+SCAN_OUT=$(mktemp)
+trap 'rm -f "$SCAN_OUT"' EXIT
+python3 .tooling/lib/docs-scan.py --local-excludes "$ROOT/.tooling/local-excludes.txt" > "$SCAN_OUT"
+
+# scan 結果のうち指定 step の行だけを元の loop 順で出す
+emit_step() {
+  local want="$1" s lvl msg
+  while IFS=$'\t' read -r s lvl msg; do
+    [ "$s" = "$want" ] || continue
+    case "$lvl" in
+      fail) fail "$msg" ;;
+      warn) warn "$msg" ;;
+      pass) PASS=$((PASS + msg)) ;;
+    esac
+  done < "$SCAN_OUT"
+}
 
 # ===== 1. frontmatter 検査 =====
-echo "[1/9] frontmatter check..."
-for f in $ALL_MD; do
-  if ! head -1 "$f" | grep -q '^---$'; then
-    fail "$f: no frontmatter (missing leading ---)"
-    continue
-  fi
-  # frontmatter ブロック抽出
-  fm=$(awk '/^---$/{c++; if(c==2) exit; next} c==1' "$f")
-  # title / description は全 .md 必須 (= journal も含む)
-  echo "$fm" | grep -qE '^title:' || fail "$f: frontmatter title missing"
-  echo "$fm" | grep -qE '^description:' || warn "$f: frontmatter description missing (recommended)"
-  pass
-done
+echo "[1/14] frontmatter check..."
+# title / description は全 .md 必須 (= journal も含む)
+emit_step 1
 
 # ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
-echo "[2/9] capacity check..."
-
-# CLAUDE.md 自身 (= frontmatter なし設計、 ハードコード)
-size=$(wc -c < CLAUDE.md)
-[ "$size" -gt 17408 ] && fail "CLAUDE.md: $size bytes > 17KB limit"
-
-# 他全 file は frontmatter `capacity:` 宣言で自己宣言 (= 真値分散ゼロ)
-# 旧 _README.md ハードコード配列は 2026-06-30 廃止 (= 全 _README が frontmatter capacity 宣言済)
-for f in $ALL_MD; do
-  cap_decl=$(awk '/^---$/{c++; if(c==2) exit; next} c==1 && /^capacity:/' "$f" | head -1)
-  [ -z "$cap_decl" ] && continue
-  # "capacity: 10KB" or "10KB上限" 等 から数値抽出
-  num=$(echo "$cap_decl" | grep -oE '[0-9]+' | head -1)
-  [ -z "$num" ] && continue
-  size=$(wc -c < "$f")
-  declared=$((num * 1024))
-  if [ "$size" -gt "$declared" ]; then
-    # lazy 文書庫 + profile lazy = 目安 (WARN、 肥大許容、 byte 潰し強制しない)。
-    # 常時 load 層 (= always.md / profile core / _README / CLAUDE) はハード FAIL。
-    # 階層合計のハード制限は startup-status.sh static_capacity が担当。
-    case "$f" in
-      */profile/profile-core.md) fail "$f: $size bytes > declared capacity ${num}KB" ;;
-      */lazy/*|*/profile/profile-*.md) warn "$f: $size bytes > soft capacity ${num}KB (目安)" ;;
-      *) fail "$f: $size bytes > declared capacity ${num}KB" ;;
-    esac
-  fi
-done
+echo "[2/14] capacity check..."
+# CLAUDE.md 自身は frontmatter なし設計なので 17KB をハードコード、 他全 file は
+# frontmatter `capacity:` の自己宣言 (= 真値分散ゼロ)。 lazy 文書庫と profile lazy は
+# 目安 (= WARN)、 常時 load 層はハード FAIL。 階層合計は startup-status.sh が担当。
+emit_step 2
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
-echo "[3/9] index consistency check..."
-for readme in $(find . -name "_README.md" -not -path "./.git/*" -not -path "./.claude/worktrees/*"); do
-  # 明示的な索引セクションがある _README のみチェック対象
-  # (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
-  if ! grep -qE '^##\s*(エントリ|ファイル|索引|各環境ファイル|エントリポイント)' "$readme"; then
-    continue
-  fi
-  dir=$(dirname "$readme")
-  for sibling in "$dir"/*.md; do
-    [ -f "$sibling" ] || continue
-    name=$(basename "$sibling")
-    case "$name" in _README.md|_template.md|_template-*.md) continue;; esac
-    base="${name%.md}"
-    if ! grep -qF "$name" "$readme" && ! grep -qF "$base" "$readme"; then
-      warn "$readme: sibling $name not mentioned (missing from the index?)"
-    fi
-  done
-done
+echo "[3/14] index consistency check..."
+# 明示的な索引セクションがある _README のみチェック対象
+# (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
+emit_step 3
 
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
-echo "[4/9] dead link check..."
-for f in $ALL_MD; do
-  # 過去記録は dead link チェック対象外 (= link は当時の状態、 遡及修正しない)。
-  # path 慣習 (= archive / history 配下) と frontmatter 宣言 (= status: snapshot)
-  # の 2 経路。 後者は「削除せず status で管理する」 運用 (= research 等) の逃げ道
-  case "$f" in
-    *archive/*|*history/*) continue;;
-  esac
-  if awk '/^---$/{c++; if(c==2) exit; next} c==1' "$f" 2>/dev/null | grep -qE '^status: *snapshot'; then
-    continue
-  fi
-  # .staledocs.yaml の docs スコープは staledocs がアンカー生存を担当
-  # (= 同一 file の二重検証禁止)。 skip 範囲は .staledocs.yaml docs.include と
-  # 対で保守する (= スコープ拡大時はここも広げる)
-  if [ -f "$ROOT/.staledocs.yaml" ]; then
-    case "$f" in
-      ./rules/*|./profile/profile-core.md) continue;;
-    esac
-  fi
-  # `path/to/file.md` 形式の参照を抜く (= バックティック内)
-  refs=$(grep -oE '`[a-zA-Z0-9_/.~-]+\.md`' "$f" 2>/dev/null | tr -d '`' | sort -u)
-  for ref in $refs; do
-    # placeholder / 雛形パターン + 自動生成出力は skip
-    # (= .tooling/_output/* は .gitignore 対象で派生で run 前は不在、 false positive 抑制)
-    case "$ref" in
-      *kebab-case*|*session-NN*|*_template*|*YYYY-MM*|*0000-*|*000X-*) continue;;
-      *.tooling/_output/*) continue;;
-    esac
-    case "$ref" in
-      # 外部絶対 path (= `~/...` / `/...`) は info、 警告しない
-      "~/"*|"/"*) continue;;
-      *)
-        # エージェント 内部相対参照: $dir/$ref → $ref (リポルート) → リポ内同名ファイル
-        # 最後の段は「ファイル名引用が dead 扱いされる」 false positive 対策
-        # (= 切離済 file 名を inline-code で引用しただけのケース等)
-        dir=$(dirname "$f")
-        if [ ! -f "$dir/$ref" ] && [ ! -f "$ref" ]; then
-          refname=$(basename "$ref")
-          # 外部 repo の root 慣習 file 引用 (= エージェント配下は _README.md 慣習で
-          # これらを持たない設計、 単体 file 名での引用は外部 repo 指しと確定)
-          case "$refname" in
-            README.md|CONTRIBUTING.md|SECURITY.md|ROADMAP.md|CHANGELOG.md|THIRD_PARTY_NOTICES.md) continue;;
-          esac
-          if [ -z "$(find . -name "$refname" -not -path "./.git/*" -not -path "./.claude/worktrees/*" -not -path "./.tooling/*" -print -quit 2>/dev/null)" ]; then
-            # 第 1 階層 segment が エージェント配下に無い path は外部 repo 引用と推定 skip
-            # (= work repo の `sdk/...` `app/...` `docs/...` `prototypes/...` 等、
-            #  エージェント 内には該当階層がない引用は警告しない)
-            first_seg="${ref%%/*}"
-            if [ "$ref" = "$first_seg" ] || [ -d "$first_seg" ]; then
-              warn "$f: dead link → $ref"
-            fi
-          fi
-        fi
-        ;;
-    esac
-  done
-done
+echo "[4/14] dead link check..."
+# 過去記録は対象外 (= link は当時の状態、 遡及修正しない)。 path 慣習 (= archive /
+# history 配下) と frontmatter 宣言 (= status: snapshot) の 2 経路。
+# .staledocs.yaml の docs スコープは staledocs がアンカー生存を担当 (= 二重検証禁止)。
+# 判定は「$dir/$ref → $ref → repo 内同名 file」 の 3 段で、 最後の段は file 名引用を
+# dead 扱いしないための false positive 対策。
+emit_step 4
 
 # ===== 重複検出は detect-duplicates.py に集約 (= section 単位 LCS、 project / subproject まで拡張済) =====
 # 旧 step 5 (= CLAUDE.md ↔ rules/always の 15 字連続日本語 fragment 検出) は廃止
@@ -177,51 +83,17 @@ done
 # (= 2026-06-30 docs-check スリム化、 step 5 削除で 9→8 step)
 
 # ===== 5. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
-echo "[5/9] leftover placeholder check..."
+echo "[5/14] leftover placeholder check..."
 # 真値 = projects/_template-project/ 配下の全 .md から自動抽出 (= 構造ベース、 exact 一致 list を hard-code しない)
 # 検出対象 = 雛形に登場する文字列のうち、 path 例示 false positive を構造的に分離:
 #   - 二重中括弧 {{...}} = 全部 (= path 例示で {{...}} は普通使われない、 強 signal)
 #   - 山括弧 <...> = 日本語文字 含むもののみ (= `<rule タイトル>` 等)。 短い英語識別子
 #     (= `<project>` `<sub>` 等) は path 例示で多用されるため除外
-# 除外: ALL_MD は既に _template* / journal / drafts 除外済、 追加で _archive / _output を除外
-TEMPLATE_PLACEHOLDERS_RAW=$(find projects/_template-project -name "*.md" 2>/dev/null \
-  -exec grep -hoE '\{\{[^}]+\}\}|<[^>]{1,80}>' {} \; \
-  | sort -u)
-ph_tmpfile=$(mktemp)
-echo "$TEMPLATE_PLACEHOLDERS_RAW" | while IFS= read -r ph; do
-  [ -z "$ph" ] && continue
-  case "$ph" in
-    '{{'*) echo "$ph" ;;
-    '<'*)
-      if echo "$ph" | grep -qE '[一-龯ぁ-んァ-ヶ]'; then
-        echo "$ph"
-      fi
-      ;;
-  esac
-done > "$ph_tmpfile"
-if [ -s "$ph_tmpfile" ]; then
-  for f in $ALL_MD; do
-    case "$f" in
-      */_archive/*) continue ;;
-      */_output/*)  continue ;;
-    esac
-    # fenced code block (= ```...```) 内は除外 (= 例示用 placeholder 慣習)。
-    # 行番号付きで fenced 外行のみ抽出してから grep
-    hits=$(awk 'BEGIN{infence=0} /^```/{infence=!infence; next} !infence {print NR ":" $0}' "$f" 2>/dev/null \
-      | grep -Ff "$ph_tmpfile" 2>/dev/null || true)
-    if [ -n "$hits" ]; then
-      while IFS= read -r line; do
-        fail "$f: leftover placeholder -> $line"
-      done <<< "$hits"
-    fi
-  done
-else
-  warn "placeholder truth (projects/_template-project) is empty, skipping"
-fi
-rm -f "$ph_tmpfile"
+# fenced code block 内は例示用 placeholder の慣習なので除外する
+emit_step 5
 
 # ===== 6. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
-echo "[6/9] dynamic-search-pattern check..."
+echo "[6/14] dynamic-search-pattern check..."
 # エージェント 親 rule (= CLAUDE / always / lazy / 索引 _README) に「動的検索 / ls + head」 残骸がないか
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
@@ -240,21 +112,25 @@ done
 pass
 
 # ===== 7. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
-echo "[7/9] project folder consistency check..."
+echo "[7/14] project folder consistency check..."
 # folder 名 = 判定キーワード方式に移行済 (= mapping 表廃止)、 本 step は「_README.md ある folder は判定対象」 「無い folder は死蔵 or 未成立」 を識別
+# tracked file 一覧は 1 度だけ取る。 パイプの後段に grep -q を置くと、 早期終了が
+# 前段を SIGPIPE で殺し pipefail が非ゼロを返すので、 判定が常に false になる
+# (= 索引を引く側の条件が丸ごと死ぬ)。 here-string で受けてパイプを挟まない。
+TRACKED_FILES=$(git ls-tree -r HEAD --name-only 2>/dev/null || true)
 for d in projects/*/; do
   name=$(basename "$d")
   case "$name" in _*) continue ;; esac  # _template-project / _archive 等は除外
   if [ ! -f "$d/_README.md" ]; then
     # tracked file 0 (= gitignore 切離済 e.g. 会社プロジェクト残骸) は除外
-    if git ls-tree -r HEAD --name-only 2>/dev/null | grep -q "^projects/$name/"; then
+    if grep -q "^projects/$name/" <<< "$TRACKED_FILES"; then
       warn "folder consistency: projects/$name/ has no _README.md (not a project yet — add _README or move to _archive)"
     fi
   fi
 done
 pass
 
-echo "[8/9] synced-paths consistency check..."
+echo "[8/14] synced-paths consistency check..."
 # agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
 # 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
 # base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。
@@ -293,44 +169,91 @@ else
 fi
 
 
-# ===== [9/9] journal 整合 =====
+# ===== [9/14] journal 整合 =====
 # 検査軸: filename session-NN ↔ frontmatter session / 日付フォルダ ↔ frontmatter date /
 #         normal 階層に mode≠normal (= 階層自己完結違反) / project 階層に mode=normal
-echo "[9/9] journal integrity check..."
+echo "[9/14] journal integrity check..."
 j_fail=0
-while IFS= read -r jf; do
-  base="$(basename "$jf")"
-  nn="$(printf '%s' "$base" | sed -nE 's/^session-0*([0-9]+)\.md$/\1/p')"
-  [ -z "$nn" ] && continue
-  dir_date="$(basename "$(dirname "$jf")")"
-  fm="$(awk '/^---$/{c++; next} c==1{print} c>=2{exit}' "$jf")"
-  fm_session="$(printf '%s\n' "$fm" | sed -nE 's/^session: *"?0*([0-9]+)"?.*/\1/p' | head -1)"
-  fm_date="$(printf '%s\n' "$fm" | sed -nE 's/^date: *"?([0-9]{4}-[0-9]{2}-[0-9]{2})"?.*/\1/p' | head -1)"
-  fm_mode="$(printf '%s\n' "$fm" | sed -nE 's/^mode: *"?([^"]*)"?$/\1/p' | head -1)"
-  if [ -n "$fm_session" ] && [ "$fm_session" != "$nn" ]; then
-    fail "$jf: filename NN ($nn) does not match frontmatter session ($fm_session)"
-    j_fail=$((j_fail+1))
-  fi
-  if [ -n "$fm_date" ] && [ "$fm_date" != "$dir_date" ]; then
-    fail "$jf: date folder ($dir_date) does not match frontmatter date ($fm_date)"
-    j_fail=$((j_fail+1))
-  fi
-  case "$jf" in
-    ./projects/*/journal/*|./projects/*/subprojects/*/journal/*)
-      if [ "$fm_mode" = "normal" ]; then
-        fail "$jf: project-tier journal carries mode: normal (tier mix-up)"
-        j_fail=$((j_fail+1))
-      fi
-      ;;
-    ./journal/*)
-      if [ -n "$fm_mode" ] && [ "$fm_mode" != "normal" ]; then
-        fail "$jf: normal-tier journal carries mode: $fm_mode (tier self-containment violation)"
-        j_fail=$((j_fail+1))
-      fi
-      ;;
-  esac
-done < <(find . -path ./.git -prune -o -type f -name 'session-*.md' -path '*/journal/*' -print 2>/dev/null)
+while IFS= read -r v; do
+  [ -z "$v" ] && continue
+  fail "$v"
+  j_fail=$((j_fail+1))
+done < <(python3 .tooling/lib/journal-integrity.py 2>/dev/null)
 [ "$j_fail" -eq 0 ] && pass
+
+# ===== 10. 階層インターフェース =====
+# project / subproject の必須 file / dir 検査 (= 真値 = projects/_README.md § 階層インターフェース)
+# _ prefix folder (= 雛形 / system) は除外。 gitignore 済み project も同一契約 (= 存在するものは検査)
+echo "[10/14] hierarchy interface check..."
+h_fail=0
+for p in projects/*/ projects/*/subprojects/*/; do
+  [ -d "$p" ] || continue
+  h_base="$(basename "$p")"
+  case "$h_base" in _*) continue ;; esac
+  case "$p" in */_template-project/*) continue ;; esac
+  for req in _README.md rules/always.md rules/lazy/_README.md; do
+    [ -f "${p}${req}" ] || { fail "$p: hierarchy interface missing file → $req"; h_fail=1; }
+  done
+  for req in journal todos; do
+    [ -d "${p}${req}" ] || { fail "$p: hierarchy interface missing dir → $req"; h_fail=1; }
+  done
+  # vision.md は移行中のため WARN (= 既存階層は次にその階層で起動した session で作る)
+  [ -f "${p}vision.md" ] || warn "$p: vision.md not created yet (write it at session end for this tier)"
+done
+[ "$h_fail" -eq 0 ] && pass
+
+# ===== 11. ルール台帳の整合 =====
+# rules/registry.jsonl が全 rule section を網羅しているか (= 発火記録の宛先が切れていないか)。
+# 見出しの改名 / section の増減で紐付けが切れるので、 本体を触った session 内で検出する。
+echo "[11/14] rule registry check..."
+reg_out=$(python3 .tooling/build-rule-registry.py --check 2>/dev/null)
+if [ -n "$reg_out" ] && ! printf '%s' "$reg_out" | grep -q "in sync"; then
+  while IFS= read -r rl; do
+    [ -n "$rl" ] && warn "$rl"
+  done <<< "$reg_out"
+else
+  pass
+fi
+
+# ===== 12. ルール参照先の実在 =====
+# ルールが指す repo 内 file が消えた / 改名された時に、 書いた場所で落とす
+# (= 陳腐化した記述は「在る」 と思って探す時間を奪う。 真値 = rules/always.md § meta ③)
+# work repo の path / 裸の file 名 / placeholder はこの repo から実在を測れないので対象外
+echo "[12/14] rule reference check..."
+r_fail=0
+while IFS=$'\t' read -r rfile rref; do
+  [ -z "$rfile" ] && continue
+  fail "rule reference: $rfile → $rref (not found — fix the path or drop the line)"
+  r_fail=$((r_fail+1))
+done < <(python3 .tooling/lib/check-rule-references.py 2>/dev/null)
+[ "$r_fail" -eq 0 ] && pass
+
+# ===== 13. 発火記録の書き漏らし =====
+# 発火実績は「どのルールを捨てるか」 の唯一の根拠なので、 書かれない session があると
+# 根拠が欠け、 容量が詰まった時に「古いものから捨てる」 へ戻る。
+# その階層が記録を書き始めた日以降だけを見る (= 機構より前の journal は遡って責めない)
+echo "[13/14] rule-hits coverage check..."
+m_warn=0
+while IFS= read -r mj; do
+  [ -z "$mj" ] && continue
+  warn "rule-hits missing: $mj (no session-NN-rule-hits.jsonl beside it)"
+  m_warn=$((m_warn+1))
+done < <(python3 .tooling/lib/check-rule-hits.py 2>/dev/null)
+[ "$m_warn" -eq 0 ] && pass
+
+# ===== 14. vision の形 =====
+# vision は「長期の状態」 を 1 枚で持つ file だが、 実作業が毎日走る階層ほど
+# 「その日わかったこと」 が段落として積まれ、 journal の要約に化ける。
+# 文章側には既に「段落を増やさず既にある行を書き換える」 と書いてあり、
+# 守られなかったので機械で赤くする (= 節名と上限の根拠は script の docstring)。
+echo "[14/14] vision shape check..."
+v_fail=0
+while IFS=$'\t' read -r vfile vmsg; do
+  [ -z "$vfile" ] && continue
+  fail "$vfile: $vmsg"
+  v_fail=$((v_fail+1))
+done < <(python3 .tooling/lib/check-vision-shape.py 2>/dev/null)
+[ "$v_fail" -eq 0 ] && pass
 
 # ===== サマリ =====
 echo ""
@@ -338,6 +261,7 @@ echo "===== docs-check results ====="
 green "PASS: $PASS"
 [ "$WARN" -gt 0 ] && yellow "WARN: $WARN" || echo "WARN: 0"
 [ "$FAIL" -gt 0 ] && red "FAIL: $FAIL" || green "FAIL: 0"
+awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" 'BEGIN{printf "elapsed: %.1fs\n", b-a}'
 
 if [ "$FAIL" -gt 0 ]; then
   exit 1
