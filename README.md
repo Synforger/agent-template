@@ -41,6 +41,7 @@ agent-template/
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # run at session boot
+    │   ├── lib/                       # check bodies docs-check calls
     │   └── _README.md
     ├── rules/
     │   ├── always.md                  # ★ required: capacity management + revision culture + the loop
@@ -54,8 +55,9 @@ agent-template/
     ├── todos/                         # cross-cutting tasks
     ├── plans/                         # cross-cutting plans
     ├── research/                      # cross-cutting research
-    └── profile/                       # user profile structure
-        └── profile-core.template.md
+    ├── profile/                       # user profile structure
+    │   └── profile-core.template.md
+    └── vision.template.md             # where the agent currently stands (state only)
 ```
 
 Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root and expands every `*.template` into a real file.
@@ -131,6 +133,12 @@ Run at session end; any FAIL must be fixed within the same session. Verification
 6. dynamic-search-pattern residue
 7. project folder consistency
 8. synced-paths consistency (derivations only, diffed against base)
+9. journal integrity (filename ↔ frontmatter ↔ date folder ↔ tier)
+10. tier interface (each project / subproject carries the required files and dirs)
+11. rule registry (every rule section still has an entry to record hits against)
+12. rule references (paths a rule points at still exist)
+13. rule-hits coverage (sessions that recorded no fired / violated rules)
+14. vision shape (the state sections are present and have not grown by accretion)
 
 ### `detect-duplicates.py`
 
