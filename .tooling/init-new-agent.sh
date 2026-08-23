@@ -85,6 +85,10 @@ fi
 if [ -f "$AGENT_DIR/CLAUDE.template.md" ]; then
     mv "$AGENT_DIR/CLAUDE.template.md" "$AGENT_DIR/CLAUDE.md"
 fi
+# vision.template.md → vision.md
+if [ -f "$AGENT_DIR/vision.template.md" ]; then
+    mv "$AGENT_DIR/vision.template.md" "$AGENT_DIR/vision.md"
+fi
 # profile/profile-core.template.md → profile/profile-core.md
 if [ -f "$AGENT_DIR/profile/profile-core.template.md" ]; then
     mv "$AGENT_DIR/profile/profile-core.template.md" "$AGENT_DIR/profile/profile-core.md"

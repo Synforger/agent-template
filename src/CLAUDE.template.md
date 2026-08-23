@@ -66,6 +66,7 @@
 常時 load file 群:
 
 - `CLAUDE.md` (= 本 file)
+- `vision.md` (= 現在地、 長期の状態 1 枚。 やること・タスクは書かない)
 - `profile/profile-core.md` (= ユーザプロファイル核、 省略禁止)
 - `rules/always.md` (= メタ + 派生追記 section 統合)
 
@@ -81,13 +82,14 @@
 
 #### Phase B-プロジェクト固有 (= 判定後、 並列一括)
 
-`normal` 以外なら: `<P>/_README.md` Read + **`<P>/rules/always.md` Read** (= 形態 D) + **`<P>/journal/` 最新 1 session Read**。 サブプロも同時 hit なら親 journal skip。
+`normal` 以外なら: `<P>/_README.md` Read + **`<P>/vision.md` Read** (= その階層の現在地) + **`<P>/rules/always.md` Read** (= 形態 D) + **`<P>/journal/` 最新 1 session Read**。 サブプロも同時 hit なら親 journal skip。
 
 #### Phase B-サブプロ固有 (= 上記判定手順 2 で hit、 親と並列)
 
 `ls projects/<親>/subprojects/` と「親 folder 名以降の発話文」 部分一致照合、 hit で採用。
 
 - `<S>/_README.md` Read
+- **`<S>/vision.md` Read** (= その階層の現在地)
 - **`<S>/rules/always.md` Read**
 - **`<S>/journal/` 最新 1 session Read** (= サブプロ独立 journal、 親 journal skip)
 
@@ -126,6 +128,7 @@ session 中の後続発話に subproject keyword が出たら**動的切替**可
     - **親+サブ両方** = 両階層に 1 回ずつ実行 (= 引数を変えて 2 回呼ぶ)
   - `python3 .tooling/detect-duplicates.py` (= 重複 section cache 更新)
 - **TODO 更新** (= 必須): 関連 file あれば**必ず**最新化 (= 無ければ新規作成しない)。 完了マーク / 新規残タスク追加 / state snapshot (= develop/main tip / open PR / branch) 更新 / 古い時点記述掃除まで全部。 触った領域の行は全部見直す。 横断 = `todos/` 直下、 プロジェクト固有 = `projects/<P>/todos/`
+- **vision 更新** (= 現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**、 動いていなければ**触らない** (= 毎 session の更新義務はない)。 状態のみ、 やること禁止、 無ければ作る。 **足さない** ― 段落を増やさず既にある行を書き換える (= 節と段落数は `docs-check` step 14 が見る)
 - **ジャーナル記入**: **触れた階層全部に 1 本ずつ書く** (= 階層自己完結)。 `normal` = `journal/YYYY-MM-DD/session-NN.md`、 project = `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、 subproject = `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md`。 親+サブ両方触ったら両階層 1 本ずつ (= 採番各階層独立)。 **NN 採番 = 該当日付フォルダの既存 `.md` 最大 NN + 1** (= jsonl は採番に使わない、 別 PC で同 NN 既存ないか必ず ls 確認)。 フォーマット = `journal/_README.md`
 - **階層自己完結 violations 禁止**:
   - normal journal に subproject session の pointer stub / 集約 stub 書くこと禁止 (= サブプロ session 成果物は subproject 独立 journal だけで完結)
@@ -143,6 +146,7 @@ session 中の後続発話に subproject keyword が出たら**動的切替**可
 セッション開始時 Phase B-共通で全文 Read (= 容量上限 = `rules/always.md § meta`):
 
 - `CLAUDE.md` (= 本 file)
+- `vision.md`
 - `profile/profile-core.md`
 - `rules/always.md`
 
