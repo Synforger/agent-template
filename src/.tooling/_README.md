@@ -23,9 +23,11 @@ updated: 2026-06-29
   - `duplicates.md` dup_pairs ≥ 1 → 横断昇格候補打診 (= `rules/lazy/rule-promotion-format.md` 書式)
 - `stale_rules` / `dup_pairs` は起動時は無視 (= 終了時 Step 2 で走り切る運用)
 
-### 終了時 (= Step 2)
+### 終了時
 
-何もしない。 SessionEnd hook が 2 script を自動発火する (= extract-artifact-index + detect-duplicates)。 hook install されてない時のみ手動起動。
+- **Step 0** = `session-end-precheck.py <journal-dir>...` (= 終了発話の一次ソース / 容量 headroom / journal 採番 / staledocs ack 手順を 1 回で取る、 以降の Step で再探索しない)
+- **Step 2** = `extract-artifact-index.sh <journal-dir>` + `detect-duplicates.py` を手動実行 (= 階層引数が session ごとに変わるので hook 化しない)
+- **Step 2 末** = `startup-status.sh` で全指標走り切り
 
 ### commit 時
 
@@ -35,9 +37,9 @@ updated: 2026-06-29
 
 SessionEnd hook + 起動時 startup-status の出力先。 session 毎に丸ごと再生成される派生物なので **gitignore 済 (= 追跡しない)**。 各 PC ローカルで再生成、 複数 PC 同期の固定名衝突を避ける目的。 フォルダだけ `.gitkeep` で保持。
 
-## docs-check.sh の検査ステップ (= 8/8)
+## docs-check.sh の検査ステップ (= 14/14)
 
-1. **frontmatter チェック** — 全 .md に `---` 区切り + title 必須、 description 推奨
+1. **frontmatter チェック** — 全 .md に `---` 区切り + title 必須、 description 推奨 (= `journal/` / `drafts/` / `_scratch/` / `_template*` は対象外、 残す前提の無い file に体裁を求めない)
 2. **capacity チェック** — CLAUDE.md 容量表 + 各 file の frontmatter `capacity:` 宣言に対する突き合わせ
 3. **索引整合チェック** — `_README.md` に「索引 / ファイル / エントリ」 section があれば同フォルダ .md を全部言及してるか
 4. **dead link チェック** — `` `*.md` `` 形式の相対参照が実在するか (= archive / 雛形 / 外部リポ参照は skip)
@@ -45,6 +47,12 @@ SessionEnd hook + 起動時 startup-status の出力先。 session 毎に丸ご�
 6. **動的検索パターン残骸** — `ls + head` 動線等の旧式参照パターン検出
 7. **プロジェクト folder 整合** — `projects/<name>/_README.md` 不在 = プロジェクト未成立検出
 8. **synced-paths 整合** — `.synced-paths.txt` 列挙 path が実在することをチェック (= 派生 repo の場合)、 `BASE_REPO_PATH` 環境変数指定時は base ↔ 派生 diff も検出
+9. **journal 整合** — `lib/journal-integrity.py` で全 journal の file 名 / frontmatter / 階層を単一パス検査
+10. **階層インターフェース** — project / subproject の必須 file (`_README.md` / `rules/always.md` / `rules/lazy/_README.md`) + 必須 dir (`journal/` / `todos/`) の実在検査 (= 真値 = `projects/_README.md § 階層インターフェース`)。 `vision.md` 未作成は WARN
+11. **ルール台帳整合** — `build-rule-registry.py --check` で `rules/registry.jsonl` が全 rule section を網羅しているか (= 見出し改名 / section 増減で発火記録の宛先が切れるのを検出)
+12. **ルール参照整合** — `lib/check-rule-references.py` で全階層の rule file が指す repo 内 path の実在検査 (= 外部 repo の path / 裸の file 名 / placeholder は測れないので対象外)
+13. **発火記録の網羅** — `lib/check-rule-hits.py` で session の .md と隣の `-rule-hits.jsonl` を突合 (= 記録を書き漏らした session を検出、 その階層が記録を始めた日以降のみ対象)
+14. **vision の形** — `lib/check-vision-shape.py` で全階層の `vision.md` の必須節欠落と段落数超過を検査 (= 上限は実測由来で script の docstring が根拠)
 
 > 旧 step 5 (= CLAUDE.md ↔ rules/always 重複 = 15 字日本語 fragment) は 2026-06-30 廃止。 重複検出は `detect-duplicates.py` (= section 単位 LCS、 全 rule file 網羅) に集約。
 
