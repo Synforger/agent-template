@@ -3,7 +3,7 @@
 
 対象 file (= 起動時必読の常時 load 群):
   - CLAUDE.md
-  - profile/profile-core.md
+  - profile/profile*.md
   - rules/always/*.md
   - rules/lazy/*.md
 
@@ -35,7 +35,7 @@ MIN_PHRASE_LEN = 60  # 同一フレーズの最小長 (= 2026-06-24 60→90、 �
 
 TARGET_GLOBS = [
     "CLAUDE.md",
-    "profile/profile-core.md",
+    "profile/profile*.md",
     "rules/always/*.md",
     "rules/lazy/*.md",
     "projects/*/rules/always/*.md",
@@ -116,6 +116,18 @@ def longest_common_substring(a: str, b: str) -> str:
     return a[best_end - best_len : best_end] if best_len else ""
 
 
+def windows(s: str, size: int = MIN_PHRASE_LEN) -> set[int]:
+    """長さ size の全部分文字列のハッシュ集合 (= ペア絞り込み用)。
+
+    共通部分文字列が size 以上あるなら、 両者は必ず同じ size 窓を含む。 よって
+    窓集合が交わらないペアは DP を回すまでもなく閾値未満と確定できる (= 見落とし
+    なしの前段フィルタ)。 ハッシュ衝突があっても後段の DP が実体を検証する。
+    """
+    if len(s) < size:
+        return set()
+    return {hash(s[i : i + size]) for i in range(len(s) - size + 1)}
+
+
 def load_allowlist() -> set[frozenset[str]]:
     pairs: set[frozenset[str]] = set()
     if ALLOWLIST_PATH.is_file():
@@ -138,18 +150,26 @@ def main() -> int:
     for t in targets:
         chunks.extend(chunk_by_section(t))
 
+    # 正規化と窓集合は chunk ごとに 1 回だけ作る (= 旧実装はペアごとに正規化し直し、
+    # 全ペアへ DP を回していたため chunk 数の 2 乗で伸びていた)
+    prepared = [
+        (label, label.split("#", 1)[0], norm, windows(norm))
+        for label, norm in ((label, normalize(body)) for label, body in chunks)
+    ]
+
     duplicates: list[tuple[str, str, str]] = []
-    n = len(chunks)
+    n = len(prepared)
     for i in range(n):
+        label_a, file_a, norm_a, win_a = prepared[i]
         for j in range(i + 1, n):
-            label_a, body_a = chunks[i]
-            label_b, body_b = chunks[j]
-            # 同一 file 内は skip
-            if label_a.split("#", 1)[0] == label_b.split("#", 1)[0]:
+            label_b, file_b, norm_b, win_b = prepared[j]
+            if file_a == file_b:  # 同一 file 内は skip
                 continue
             if frozenset((label_a, label_b)) in allow:
                 continue
-            lcs = longest_common_substring(normalize(body_a), normalize(body_b))
+            if win_a.isdisjoint(win_b):  # 閾値長の共通窓なし = DP を回すまでもない
+                continue
+            lcs = longest_common_substring(norm_a, norm_b)
             if len(lcs) >= MIN_PHRASE_LEN:
                 duplicates.append((label_a, label_b, lcs))
 

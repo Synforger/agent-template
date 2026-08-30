@@ -2,7 +2,8 @@
 title: 横断昇格提案 出力 template (= lazy)
 description: 複数プロジェクト共通の反復違反 / 重複が見つかった時、 横断 rule への昇格提案を書く書式
 updated: 2026-07-16
-triggers: 横断 rule (= CLAUDE.md / profile-core / rules/always.md §) 昇格 commit を作る直前 / 横断昇格判断を出す時
+stable: true
+triggers: 横断 rule (= CLAUDE.md / profile/ / rules/always.md §) 昇格 commit を作る直前 / 横断昇格判断を出す時
 capacity: 5KB
 ---
 
