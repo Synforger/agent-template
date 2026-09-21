@@ -18,21 +18,21 @@ capacity: 10KB
 | script | 発火 | 出力 |
 |---|---|---|
 | `.tooling/startup-status.sh` | 起動時 Phase B-共通 | stdout 1 ブロック (= 冒頭 `PC: <label>` 行) |
-| `.tooling/pc-labels.txt` | startup-status から | PC 識別 (= 新 PC は 1 行追記、 雛形 = `pc-labels.example.txt`) |
+| `.tooling/pc-labels.txt` | startup-status から | PC 識別 (= 雛形 = `pc-labels.example.txt`) |
 | `.tooling/detect-stale-rules.sh` | startup-status から | 7 日無更新 rule 一覧 (= `stable: true` + `_README.md` は除外) |
 | `.tooling/detect-duplicates.py` | startup-status + SessionEnd hook | `.tooling/_output/duplicates.md` |
 | `.tooling/extract-artifact-index.sh` | SessionEnd hook | `journal/<date>/session-NN-auto-index.jsonl` (= commit subject は 100 字で切る) |
 | `.tooling/precommit-conflict-check.sh` | git pre-commit hook | stderr で重複警告 (= blocking なし) |
 | `.tooling/docs-check.sh` | 終了時 Step 2 + 手動 | PASS / WARN / FAIL (= FAIL ≥ 1 は同 session fix) |
-| `.tooling/lib/docs-scan.py` | docs-check step 1-5 | `step \| level \| message` の TSV (= 判定と文言は docs-check.sh と 1 対 1) |
+| `.tooling/lib/docs-scan.py` | docs-check step 1-5 | `step \| level \| message` の TSV (= 文言は docs-check.sh と 1 対 1) |
 | `.tooling/lib/journal-integrity.py` | docs-check step 9 | 違反 1 行ずつ (= 単一パスで数百 file を捌く) |
-| `.tooling/lib/check-rule-references.py` | docs-check step 12 | 実在しない参照 1 行ずつ (= work repo の path / 裸の file 名 / placeholder は測れないので対象外) |
+| `.tooling/lib/check-rule-references.py` | docs-check step 12 | 実在しない参照 1 行ずつ (= 常時 load / lazy に加えて `_README.md` と `vision.md` も見る。 階層が `## repo` で宣言した repo は、 実在する入口 dir で始まる綴りだけ測る。 裸の file 名 / placeholder / `external-paths: true` の file は対象外) |
 | `.tooling/lib/check-rule-hits.py` | docs-check step 13 | 記録を書き漏らした session 1 行ずつ (= その階層が記録を始めた日以降のみ対象) |
-| `.tooling/lib/check-vision-shape.py` | docs-check step 14 | 必須節の欠落と段落数超過 1 行ずつ (= 上限は実測由来で script の docstring が根拠) |
+| `.tooling/lib/check-vision-shape.py` | docs-check step 14 | 必須節の欠落と段落数超過 1 行ずつ (= 上限の根拠は script の docstring) |
 | `.tooling/build-rule-registry.py` | 手動 + docs-check step 11 (`--check`) | **階層ごと**の `<tier>/rules/registry.jsonl` (= ID 台帳、 ID は階層内で一意かつ不変。 書式と使い方 = `rules/lazy/rule-registry.md`) |
-| `.tooling/lib/capacity-candidates.py` | 派生の容量 script が超過を出した時 | バイト数降順の削減候補 + 発火 / 違反の実績 (= 「少し削って測り直す」 の往復を作らない) |
+| `.tooling/lib/capacity-candidates.py` | 派生の容量 script が超過を出した時 | バイト数降順の削減候補 + 発火実績 (= 「少し削って測り直す」 の往復を作らない) |
 | `.tooling/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入 (= 判定本体は `rules/always.md § forbidden`、 hook は再武装のみ) |
-| `staledocs` (= 外部 CLI + `.staledocs.yaml`) | startup-status から | rules 層の code<->docs 整合 (= pair 台帳 + アンカー生存、 同スコープの dead link は docs-check step 4 が skip) |
+| `staledocs` (= 外部 CLI + `.staledocs.yaml`) | startup-status から | rules 層の code<->docs 整合 (= pair 台帳 + アンカー生存。 同スコープの dead link は docs-check step 4 が skip) |
 | git hook guard (= startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧 (= git は hooksPath を 1 つしか見ず、 local 上書き 1 個で scan が丸ごと死ぬ) |
 
 派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 階層別容量 (`check-static-capacity.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計 (= 台帳と記録は base 出荷、 どう集計するかは派生の持ち物)。
@@ -53,7 +53,6 @@ capacity: 10KB
 ### detector を書く時の実装規律
 
 - **opt-out / suppress marker は「対象行の上」も見る**: 理由を書く長さのコメントは行末に収まらないので上に書かれる。 同一行だけ見る実装は、 既に打たれている marker を黙って無効化する
-  - Why: 同一行限定の path gate が、 数か月前から打たれていた marker を読まず fresh clone で常時赤だった。 marker を同一行に押し込む対症より判定側を広げるのが正
 - **環境で赤くなる検出を作らない**: build 生成物 / 実行時生成物への参照は「未 build なら赤」になる。 opt-out を用意するだけでなく**既存の全該当箇所に打ってから** landed させる
 - **allow-list は構造で書く**: exact 一致の行は次の 1 件で破れる (= 雛形とその複製のような「構造上かならず一致する組」 は、 判定側で外す)
 - **baseline 方式の出力に「どこに残っているか」を含める**: 件数だけ出すと、 1 箇所直しても数が減らない時 (= basename 単位 dedup 等) に担当が判断できない
@@ -64,7 +63,6 @@ capacity: 10KB
   - Why: 検査 tool を強くする方向より、 主張を強い守り手へ押し込む方向が効く
 - **同じ事実を 2 箇所に書くのは運用上あり**。 条件 = **宣言結線** (= pair / mirror 化)。 敵は複製そのものでなく**未宣言の複製** (= 誰にも結線されず別々に育って割れる)
 - **恒常 WARN は 0 が定常**。 掃除は「除外で黙らせる」 でなく対象別に正しい形 (= 機械修正 / 参照修正 / 構造 skip) を選ぶ
-- ユーザの「表示が違う」 報告は、 成果物より先に配信経路 (= キャッシュ / 常駐 service) の故障を疑う
 
 ## 文書庫運用 (= lazy 設計原則)
 
