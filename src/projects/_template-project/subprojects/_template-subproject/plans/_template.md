@@ -34,4 +34,4 @@ updated: YYYY-MM-DD
 
 ## 関連
 
-- 関連 plan / research / todos / journal の link
+- 関連 plan / research / journal の link

@@ -13,7 +13,6 @@
 # === 機構 script (= 真値は base、 派生で勝手に編集しない) ===
 .tooling/docs-check.sh
 .tooling/detect-duplicates.py
-.tooling/duplicates-allowlist.txt
 .tooling/detect-stale-rules.sh
 .tooling/extract-artifact-index.sh
 .tooling/go-gate-reminder.sh
@@ -21,7 +20,6 @@
 .tooling/setup-hooks.sh
 .tooling/startup-status.sh
 .tooling/_README.md
-.tooling/pc-labels.example.txt
 
 # docs-check が呼ぶ検査本体 (= step が増えた分は lib/ に置き、 script 側は薄く保つ)
 .tooling/lib/docs-scan.py
@@ -31,20 +29,24 @@
 .tooling/lib/check-vision-shape.py
 .tooling/lib/capacity-candidates.py
 
+# docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
+.tooling/build-rule-registry.py
+
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
 rules/lazy/_template.md
-rules/lazy/automation-machinery.md
 rules/lazy/rule-promotion-format.md
+rules/lazy/rule-registry.md
 
-# === 構造テンプレ (= 雛形 file 集) ===
+# === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
+# folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。
+# 雛形 dir は中身ごと往復させる (= 階層インターフェースの形そのものが契約)。
 projects/_README.md
 projects/_template-project/
 journal/_README.md
 journal/_template.md
-todos/_README.md
-todos/_template.md
 plans/_README.md
+plans/_template.md
 research/_README.md
 research/_template.md
 profile/_README.md
@@ -55,10 +57,13 @@ profile/_template.md
 # 一度だけ届き、 以降は派生の持ち物になるもの。
 # 宣言漏れは `.tooling/local-ci/synced-paths-check.sh` が FAIL で検出する
 # (= 「列挙も除外宣言もされていない出荷 file」 = 降ろし忘れの機械検出)。
-!CLAUDE.md                  # init で CLAUDE.template.md から展開、 派生で書き換える
-!vision.md                  # init で vision.template.md から展開、 派生が状態を書く
-!.gitignore                 # init で .gitignore.template から展開、 派生で加筆する
-!profile/profile-core.md    # init で profile-core.template.md から展開、 派生で書く
-!rules/always.md            # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge
-!rules/lazy/_README.md      # 索引の中身は派生固有の lazy 一覧 (= sync すると派生の索引が base の 2 件に潰れる)
-!.staledocs.yaml            # pair / ignore が派生固有、 base 版は雛形として参照するもの
+!CLAUDE.md                          # init で CLAUDE.template.md から展開、 派生で書き換える
+!vision.md                          # init で vision.template.md から展開、 派生が状態を書く
+!.gitignore                         # init で .gitignore.template から展開、 派生で加筆する
+!profile/profile.md                 # init で profile.template.md から展開、 派生が書く
+!rules/always.md                    # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge
+!rules/lazy/_README.md              # 索引の中身は派生固有の lazy 一覧 (= sync すると派生の索引が base の 2 件に潰れる)
+!rules/lazy/automation-machinery.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
+!.tooling/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
+!.tooling/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
+!.staledocs.yaml                    # pair / ignore が派生固有、 base 版は雛形として参照するもの

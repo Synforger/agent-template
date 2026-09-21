@@ -194,7 +194,7 @@ for p in projects/*/ projects/*/subprojects/*/; do
   for req in _README.md rules/always.md rules/lazy/_README.md; do
     [ -f "${p}${req}" ] || { fail "$p: hierarchy interface missing file → $req"; h_fail=1; }
   done
-  for req in journal todos; do
+  for req in journal plans; do
     [ -d "${p}${req}" ] || { fail "$p: hierarchy interface missing dir → $req"; h_fail=1; }
   done
   # vision.md は移行中のため WARN (= 既存階層は次にその階層で起動した session で作る)
@@ -206,7 +206,13 @@ done
 # rules/registry.jsonl が全 rule section を網羅しているか (= 発火記録の宛先が切れていないか)。
 # 見出しの改名 / section の増減で紐付けが切れるので、 本体を触った session 内で検出する。
 echo "[11/14] rule registry check..."
-reg_out=$(python3 .tooling/build-rule-registry.py --check 2>/dev/null)
+if [ ! -f .tooling/build-rule-registry.py ]; then
+  # 台帳 script が無い環境で黙って pass すると、 検査していないのに緑が出る
+  warn "rule registry: .tooling/build-rule-registry.py not found (step skipped, not verified)"
+  reg_out="in sync"
+else
+  reg_out=$(python3 .tooling/build-rule-registry.py --check 2>/dev/null)
+fi
 if [ -n "$reg_out" ] && ! printf '%s' "$reg_out" | grep -q "in sync"; then
   while IFS= read -r rl; do
     [ -n "$rl" ] && warn "$rl"

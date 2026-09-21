@@ -19,10 +19,18 @@ esac
 
 # 対象 file = rule + profile + CLAUDE + 各プロジェクト rule (= glob で自動編入、 ハードコード廃止)
 # 除外 = _template.md (= 雛形) / _archive/* (= 履歴)。 個別 file は frontmatter `stable: true` で除外
+# 対象は rule / profile / _README だけなので、 記録と作業用の枝は歩かない
+# (= journal / drafts / plans / research / todos 配下に対象 path は 1 つも無い)
 TARGETS=$(find . \
   -path "./.git" -prune -o \
   -path "./.claude/worktrees" -prune -o \
   -path "*/_archive" -prune -o \
+  -path "*/journal" -prune -o \
+  -path "*/drafts" -prune -o \
+  -path "*/plans" -prune -o \
+  -path "*/research" -prune -o \
+  -path "*/todos" -prune -o \
+  -path "*/_scratch" -prune -o \
   \( \
     -path "./CLAUDE.md" -o \
     -path "./profile/*.md" -o \
@@ -44,25 +52,34 @@ TARGETS=$(find . \
 now_ts=$(date +%s)
 cutoff_7d=$(( now_ts - 7 * 86400 ))
 
+# 判定に要るのは「7 日以内に触られたか」だけなので、 履歴全体を遡らず境界から先だけ見る。
+# file ごとに `git log -1` を起こすと対象数だけ全履歴走査が走っていた (= 所要時間の大半)。
+# 日付の実値は退役候補の表示にだけ要るので、 該当した file にのみ後から引く。
+RECENT_FILES=$(git -c core.quotePath=false log --since="@$cutoff_7d" --format= --name-only -- $TARGETS 2>/dev/null | sort -u)
+TRACKED_FILES=$(git -c core.quotePath=false ls-files -- $TARGETS 2>/dev/null)
+
+# frontmatter `stable: true` (= 永続原則 file、 触らないのが正常) を 1 回の awk で拾う。
+# file ごとに awk と grep を起こすと対象数ぶんプロセスが増える。
+STABLE_FILES=$(awk 'FNR==1{c=0; done=0} done{next} /^---$/{c++; if(c==2) done=1; next} c==1 && /^stable:[[:space:]]*true/{print FILENAME; done=1}' $TARGETS 2>/dev/null)
+
+# 改行区切りの一覧に対する所属判定 (= 外部コマンドを起こさない)
+in_list() { case $'\n'"$2"$'\n' in *$'\n'"$1"$'\n'*) return 0 ;; esac; return 1; }
+
 stale_list=()
 total=0
 for f in $TARGETS; do
     [ -f "$f" ] || continue
-    # 除外 1: frontmatter `stable: true` 宣言 = 永続原則 file (= 触らないのが正常)
-    if awk '/^---$/{c++; if(c==2) exit; next} c==1 && /^stable:[[:space:]]*true/' "$f" | grep -q true; then
-        continue
-    fi
+    in_list "$f" "$STABLE_FILES" && continue
     # 除外 2: _README.md = 構造/仕様説明 file (= 仕様改修時のみ触る性質、 単独 stale 判定意味薄。
     #         索引漏れ / mapping 不整合は docs-check step 3 / 8 で別途検出)
-    case "$(basename "$f")" in
+    case "${f##*/}" in
         _README.md) continue ;;
     esac
     total=$((total + 1))
-    last_ts=$(git log -1 --format=%at -- "$f" 2>/dev/null || echo 0)
-    [ -n "$last_ts" ] || last_ts=0  # untracked / gitignored 配下は 0 扱い
-    if [ "$last_ts" -lt "$cutoff_7d" ] && [ "$last_ts" -gt 0 ]; then
-        stale_list+=("$f")
-    fi
+    rel="${f#./}"
+    # untracked / gitignored 配下は判定対象外 (= 旧実装の last_ts=0 扱いと同じ)
+    in_list "$rel" "$TRACKED_FILES" || continue
+    in_list "$rel" "$RECENT_FILES" || stale_list+=("$f")
 done
 stale_count=${#stale_list[@]}
 

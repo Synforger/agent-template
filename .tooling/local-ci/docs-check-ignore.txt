@@ -13,7 +13,7 @@ task release:cut    # same — intentionally hypothetical, not a stale reference
 
 # derived-runtime artefacts: これらは派生エージェントの実運用で生成される path で、
 # base repo には存在しない (= template 文書は派生視点で書く設計)
-profile/profile-core.md
+profile/profile.md
 YYYY-MM-DD/session-NN.md
 .tooling/pc-labels.txt
 .tooling/_output/duplicates.md

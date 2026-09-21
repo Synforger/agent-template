@@ -14,6 +14,9 @@
   - 裸の file 名 (= `release-cut.sh`)。 この repo の script か work repo の script か区別できない
     → この repo の機構を指すなら `.tooling/` から書く
   - placeholder を含む綴り (= `<P>` `{{...}}` `session-NN.md` 等、 埋める前提のもの)
+  - 実行時に生まれる生成物 (= `.tooling/_output/*`) と、 雛形から作る実体
+    (= `pc-labels.txt` に対する `pc-labels.example.txt`)。 未生成 / 未作成の段階で
+    赤にすると、 clone 直後の派生が常時赤になって検査そのものが無視される
 
 解決は「その階層の root からの相対」 → 「repo root からの相対」 の順 (= 各階層の
 rules/always.md が `rules/lazy/x.md` と書いたら自階層のそれを指す)。
@@ -40,7 +43,7 @@ TARGET_GLOBS = [
 ]
 
 # この repo に固有の綴り (= work repo が同名の dir を持たない。 全階層で測る)
-INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "meetings/", "templates/", ".staledocs/")
+INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "templates/", ".staledocs/")
 INTERNAL_FILES = ("CLAUDE.md", "vision.md")
 
 # work repo 側にも同名で存在しうる dir (= 親階層の file から書かれた時だけ repo 内と判る。
@@ -60,6 +63,9 @@ def _home_prefix(root: str):
 
 
 HOME_PREFIX = _home_prefix(ROOT)
+
+# 実行時に生まれる生成物 (= gitignore 済、 走らせるまで存在しない)
+GENERATED_PREFIXES = (".tooling/_output/",)
 
 # 埋める前提の綴りを含むものは測らない
 PLACEHOLDER = re.compile(r"[<>{}]|\bNN\b|\bYYYY\b|\bP\b|\bS\b")
@@ -93,10 +99,30 @@ def is_internal_reference(token: str, tier: str) -> bool:
 def exists(candidate: str) -> bool:
     if "*" in candidate:
         return bool(glob.glob(candidate, recursive=True))
-    return os.path.exists(candidate)
+    if os.path.exists(candidate):
+        return True
+    return has_scaffold(candidate)
+
+
+def has_scaffold(candidate: str) -> bool:
+    """`a/b.txt` の実体が無くても `a/b.example.txt` / `a/b.template.txt` が在れば在り扱い。
+
+    雛形から各環境で作る file は、 作る前の段階では存在しない。 雛形の在処で判定する。
+    """
+    directory, name = os.path.split(candidate)
+    stem, dot, ext = name.partition(".")
+    if not dot:
+        return False
+    return any(
+        os.path.exists(os.path.join(directory, f"{stem}.{kind}.{ext}"))
+        for kind in ("example", "template")
+    )
 
 
 def resolve(token: str, tier: str) -> bool:
+    # 実行時に生まれる生成物は測らない (= 走らせる前は必ず無い)
+    if token.startswith(GENERATED_PREFIXES):
+        return True
     if HOME_PREFIX and token.startswith(HOME_PREFIX):
         token = token[len(HOME_PREFIX):]
         return exists(os.path.join(ROOT, token))

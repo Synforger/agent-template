@@ -67,10 +67,10 @@ session_nn=$(printf "%02d" $((max_nn + 1)))
 OUT_FILE="$DATE_DIR/session-${session_nn}-auto-index.jsonl"
 
 # エージェント配下で触った file (= session 開始 ts 以降の commit のみ)
-ark_files=$(git -C "$ROOT" log --since="$SINCE_ARG" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || true)
+ark_files=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || true)
 
 # 当 session の commit (= エージェント配下)
-ark_commits=$(git -C "$ROOT" log --since="$SINCE_ARG" --format='%H %s' 2>/dev/null || true)
+ark_commits=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --format='%H %s' 2>/dev/null || true)
 
 # 当日 関連 PR (= gh があれば)
 gh_prs=""
@@ -92,7 +92,17 @@ python3 - "$ark_files" "$ark_commits" "$gh_prs" "$today" "$session_nn" "$OUT_FIL
 import sys, json
 from datetime import datetime
 ark_files = [l for l in sys.argv[1].split("\n") if l.strip()]
-ark_commits = [l for l in sys.argv[2].split("\n") if l.strip()]
+
+# commit subject は hash 12 桁 + 先頭 100 字に切る。 エージェントの session-end subject は
+# journal の description と同じ本文を丸ごと持つため、 全文を載せると次の起動が読む
+# auto-index の 9 割を占める (= 全文の真値は git log と journal 側)。
+SUBJECT_MAX = 100
+def _trim(line):
+    h, _, subj = line.partition(" ")
+    if len(subj) > SUBJECT_MAX:
+        subj = subj[:SUBJECT_MAX] + "…"
+    return f"{h[:12]} {subj}"
+ark_commits = [_trim(l) for l in sys.argv[2].split("\n") if l.strip()]
 gh_prs = [l for l in sys.argv[3].split("\n") if l.strip()]
 date_str = sys.argv[4]
 session_nn = sys.argv[5]
