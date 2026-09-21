@@ -5,12 +5,16 @@
 読んだ側は在ると思って探し、 無いと分かるまで時間を使う。 「時間と共に無効になる」
 の最も多い形がこれなので、 書いた場所で落とす。
 
-対象 = 各階層の常時 load と lazy (= CLAUDE.md / profile / rules/always.md / rules/lazy/*.md)。
+対象 = 各階層の常時 load と lazy に加えて、 folder の運用 1 本と各階層の玄関
+(= `<kind>/_README.md` / `<tier>/_README.md` / `vision.md`)。
 検出 = バッククォート内の **この repo 内を明示的に指す path** のうち、 実在しないもの。
 
 測れないものは検査しない (= 偽陽性を出すと、 黙らせるための除外が増えて検知が死ぬ):
-  - work repo の file (= `Taskfile.yml` `configs/eval.yaml` 等)。 repo の場所は階層ごとに
-    違い gitignored でもあるので、 この repo からは実在を測れない
+  - work repo の file のうち、 **その repo に実在する top-level dir で始まらないもの**。
+    階層の `_README.md § repo` が宣言した repo が手元に在り、 `docs/` のように repo 側に
+    実体のある入口で始まる綴りだけ測る (= branch 名 / owner+repo / 別 repo の path /
+    リモートの絶対 path は、 この条件で自然に外れる)
+  - `external-paths: true` を宣言した file の全参照 (= 自階層の repo でなく別の場所の話)
   - 裸の file 名 (= `release-cut.sh`)。 この repo の script か work repo の script か区別できない
     → この repo の機構を指すなら `.tooling/` から書く
   - placeholder を含む綴り (= `<P>` `{{...}}` `session-NN.md` 等、 埋める前提のもの)
@@ -33,11 +37,20 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 TARGET_GLOBS = [
     "CLAUDE.md",
+    "vision.md",
     "profile/profile.md",
     "rules/always.md",
     "rules/lazy/*.md",
+    # folder の運用 1 本と各階層の玄関 (= ここが指す path も「在ると思って探す時間」 を奪う。
+    # rule file だけを見ていた頃、 消えた dir への参照が _README に何か月も残っていた)
+    "*/_README.md",
+    "projects/*/_README.md",
+    "projects/*/vision.md",
     "projects/*/rules/always.md",
     "projects/*/rules/lazy/*.md",
+    "projects/*/subprojects/_README.md",
+    "projects/*/subprojects/*/_README.md",
+    "projects/*/subprojects/*/vision.md",
     "projects/*/subprojects/*/rules/always.md",
     "projects/*/subprojects/*/rules/lazy/*.md",
 ]
@@ -73,6 +86,66 @@ PLACEHOLDER = re.compile(r"[<>{}]|\bNN\b|\bYYYY\b|\bP\b|\bS\b")
 BACKTICK = re.compile(r"`([^`\n]+)`")
 
 
+def tier_repo(tier: str):
+    """その階層の `_README.md` が `## repo` で宣言している repo root (= 手元に在る時だけ)。"""
+    readme = os.path.join(ROOT, tier, "_README.md") if tier else os.path.join(ROOT, "_README.md")
+    if not os.path.isfile(readme):
+        return None
+    try:
+        text = open(readme, encoding="utf-8").read()
+    except OSError:
+        return None
+    section = re.search(r"^##\s+repo\s*$(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+    if not section:
+        return None
+    for token in BACKTICK.findall(section.group(1)):
+        token = token.strip()
+        if token.startswith("~/") and os.path.isdir(os.path.expanduser(token)):
+            return os.path.expanduser(token)
+    return None
+
+
+TIER_REPO_CACHE = {}
+
+
+def repo_for(tier: str):
+    if tier not in TIER_REPO_CACHE:
+        TIER_REPO_CACHE[tier] = tier_repo(tier)
+    return TIER_REPO_CACHE[tier]
+
+
+EXTERNAL_DECL = re.compile(r"^external-paths:\s*true\b", re.M)
+
+
+def declares_external_paths(text: str) -> bool:
+    """frontmatter の `external-paths: true` = この file は自階層の repo 以外を指す。
+
+    1 つの階層が 2 つ目の repo やリモートホストの中身を書く手順書は、 宣言した repo で
+    解決できないのが正しい姿なので測らない (= 行ごとの allow-list ではなく、 file が
+    「どこの話か」 を宣言する形にしてある)。
+    """
+    head = text.split("---", 2)
+    return bool(head) and bool(EXTERNAL_DECL.search(head[1] if len(head) > 2 else text))
+
+
+def measurable_in_repo(token: str, tier: str, external: bool = False):
+    """repo 側で実在を測れる綴りなら repo root を返す。
+
+    測るのは **その repo に実在する top-level dir で始まる相対 path** だけ
+    (= `docs/...` は repo に docs/ が在る時だけ測る)。 branch 名 / owner+repo /
+    別 repo の path / リモートホストの絶対 path は、 この条件で自然に外れる。
+    """
+    if external or token.startswith("/") or "/" not in token:
+        return None
+    repo = repo_for(tier)
+    if not repo:
+        return None
+    head = token.split("/")[0]
+    if head and os.path.isdir(os.path.join(repo, head)):
+        return repo
+    return None
+
+
 def tier_root(rel_path: str) -> str:
     """その file が属する階層の root を repo 相対で返す (= `projects/X/` 等、 親なら空)。"""
     parts = rel_path.split("/")
@@ -83,7 +156,7 @@ def tier_root(rel_path: str) -> str:
     return os.path.dirname(rel_path)
 
 
-def is_internal_reference(token: str, tier: str) -> bool:
+def is_internal_reference(token: str, tier: str, external: bool = False) -> bool:
     if PLACEHOLDER.search(token) or " " in token.strip():
         return False
     if HOME_PREFIX and token.startswith(HOME_PREFIX):
@@ -92,8 +165,10 @@ def is_internal_reference(token: str, tier: str) -> bool:
         return False  # この repo の下でない home path は測れない
     if token.startswith(INTERNAL_PREFIXES) or token in INTERNAL_FILES:
         return True
-    # 曖昧な dir 名は親階層から書かれた時だけ repo 内と確定する
-    return tier == "" and token.startswith(AMBIGUOUS_PREFIXES)
+    if tier == "" and token.startswith(AMBIGUOUS_PREFIXES):
+        return True
+    # その階層の repo に実在する top-level dir で始まるなら repo 側で測れる
+    return measurable_in_repo(token, tier, external) is not None
 
 
 def exists(candidate: str) -> bool:
@@ -119,14 +194,18 @@ def has_scaffold(candidate: str) -> bool:
     )
 
 
-def resolve(token: str, tier: str) -> bool:
+def resolve(token: str, tier: str, external: bool = False) -> bool:
     # 実行時に生まれる生成物は測らない (= 走らせる前は必ず無い)
     if token.startswith(GENERATED_PREFIXES):
         return True
     if HOME_PREFIX and token.startswith(HOME_PREFIX):
         token = token[len(HOME_PREFIX):]
         return exists(os.path.join(ROOT, token))
-    for base in ([os.path.join(ROOT, tier)] if tier else []) + [ROOT]:
+    bases = ([os.path.join(ROOT, tier)] if tier else []) + [ROOT]
+    repo = measurable_in_repo(token, tier, external)
+    if repo:
+        bases.append(repo)
+    for base in bases:
         if exists(os.path.join(base, token)):
             return True
     return False
@@ -145,14 +224,15 @@ def main() -> int:
                 text = open(path, encoding="utf-8").read()
             except OSError:
                 continue
+            external = declares_external_paths(text)
             seen = set()
             for token in BACKTICK.findall(text):
                 token = token.strip()
-                if token in seen or not is_internal_reference(token, tier):
+                if token in seen or not is_internal_reference(token, tier, external):
                     continue
                 seen.add(token)
                 checked += 1
-                if not resolve(token, tier):
+                if not resolve(token, tier, external):
                     missing.append((rel, token))
 
     for rel, token in missing:
