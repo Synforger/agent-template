@@ -9,6 +9,8 @@
 - **An agent is persona + its own projects + machinery.** The machinery is factored into this base; persona and projects stay in the derived repo — so machinery improvements are shared by every agent.
 - **A continuous self-reinforcement loop.** Machinery quality is swept mechanically (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`); the agent only reacts to the output, spending no context on re-derivation.
 - **Built to be published.** Personal and workplace identifiers are blocked mechanically at the commit / push boundary by the machine-resident guard-dispatcher (a separate repo).
+- **One truth per folder, one boot procedure per tier.** How a folder is used is written once, at the top of the tree; the root, a project, and a subproject are all entered by reading the *same six files in the same order*, and that list lives in `CLAUDE.md` alone — a tier's own `_README.md` only names what is extra there.
+- **Rules are written as instructions, and kept short enough to be followed.** Always-loaded files stay under 200 lines; what does not fit is pushed down to trigger-gated `rules/lazy/`, chosen by which sections actually fire rather than by which are longest.
 - **Minimal constraints on derivations.** The base owns only the machinery, the required rule file, and the structural templates; everything else is the derivation's free territory.
 
 ## Repository layout
@@ -44,23 +46,22 @@ agent-template/
     │   ├── lib/                       # check bodies docs-check calls
     │   └── _README.md
     ├── rules/
-    │   ├── always.md                  # ★ required: capacity management + revision culture + the loop
+    │   ├── always.md                  # ★ required: capacity, how rules grow and retire, the loop
     │   └── lazy/
     │       ├── _README.md             # lazy index, read at boot
     │       ├── _template.md           # scaffold for new lazy rules
     │       ├── automation-machinery.md
     │       └── rule-promotion-format.md
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
-    ├── journal/                       # session log structure
-    ├── todos/                         # cross-cutting tasks
-    ├── plans/                         # cross-cutting plans
-    ├── research/                      # cross-cutting research
+    ├── journal/                       # session log structure (append only)
+    ├── plans/                         # what to do and how (tasks live as headings inside a plan)
+    ├── research/                      # what has been looked up
     ├── profile/                       # user profile structure
-    │   └── profile-core.template.md
+    │   └── profile.template.md
     └── vision.template.md             # where the agent currently stands (state only)
 ```
 
-Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root and expands every `*.template` into a real file.
+Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root, expands every `*.template` into a real file, and fills the date placeholders in the expanded ones. It deliberately leaves `core.hooksPath` unset: git honours exactly one hooks path, so setting it per-repo would switch off the machine-wide guard (which already delegates to the repo's `.githooks/`).
 
 ## Spinning up a derivation
 
@@ -73,7 +74,7 @@ cd agent-template
 Then, inside the derivation:
 
 1. Edit `CLAUDE.md` (persona / user relationship / agent constellation)
-2. Edit `profile/profile-core.md` (your primary user's core + judgement axes)
+2. Edit `profile/profile.md` (your primary user's core + judgement axes, kept in one file)
 3. Add your private vocabulary to the machine-side guard-dispatcher word list (`~/.config/anon-words/`)
 4. Add derivation-specific rules to `rules/always.md` (git conventions, prohibitions, and so on)
 5. `git remote add origin <your-repo>` and push
@@ -113,7 +114,7 @@ This cuts a feature branch on the base, pushes it, and the change lands via a pu
 
 The template ships only these; below this floor the machinery stops working.
 
-- `rules/always.md § meta` — capacity management, revision culture, and the self-reinforcement loop (single-file form)
+- `rules/always.md § meta` — capacity, how rules are written, how they grow and retire, and the self-reinforcement loop (single-file form)
 - `rules/lazy/_template.md` — scaffold for new lazy rules
 - `rules/lazy/automation-machinery.md` — operational truth for `.tooling/*`
 

@@ -48,7 +48,7 @@ SessionEnd hook + 起動時 startup-status の出力先。 session 毎に丸ご�
 7. **プロジェクト folder 整合** — `projects/<name>/_README.md` 不在 = プロジェクト未成立検出
 8. **synced-paths 整合** — `.synced-paths.txt` 列挙 path が実在することをチェック (= 派生 repo の場合)、 `BASE_REPO_PATH` 環境変数指定時は base ↔ 派生 diff も検出
 9. **journal 整合** — `lib/journal-integrity.py` で全 journal の file 名 / frontmatter / 階層を単一パス検査
-10. **階層インターフェース** — project / subproject の必須 file (`_README.md` / `rules/always.md` / `rules/lazy/_README.md`) + 必須 dir (`journal/` / `todos/`) の実在検査 (= 真値 = `projects/_README.md § 階層インターフェース`)。 `vision.md` 未作成は WARN
+10. **階層インターフェース** — project / subproject の必須 file (`_README.md` / `rules/always.md` / `rules/lazy/_README.md`) + 必須 dir (`journal/` / `plans/`) の実在検査 (= 真値 = `projects/_README.md § 階層インターフェース`)。 `vision.md` 未作成は WARN
 11. **ルール台帳整合** — `build-rule-registry.py --check` で `rules/registry.jsonl` が全 rule section を網羅しているか (= 見出し改名 / section 増減で発火記録の宛先が切れるのを検出)
 12. **ルール参照整合** — `lib/check-rule-references.py` で全階層の rule file が指す repo 内 path の実在検査 (= 外部 repo の path / 裸の file 名 / placeholder は測れないので対象外)
 13. **発火記録の網羅** — `lib/check-rule-hits.py` で session の .md と隣の `-rule-hits.jsonl` を突合 (= 記録を書き漏らした session を検出、 その階層が記録を始めた日以降のみ対象)
