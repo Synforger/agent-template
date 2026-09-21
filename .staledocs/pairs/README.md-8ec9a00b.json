@@ -2,37 +2,41 @@
   "ack": {
     "anchors": [
       "*.template",
+      ".githooks/",
       ".synced-paths.txt",
       ".tooling/*",
       ".tooling/duplicates-allowlist.txt",
       "CLAUDE.md",
       "_README.md",
+      "core.hooksPath",
       "docs-check.sh",
       "init-new-agent.sh",
       "rules/always.md",
+      "rules/lazy/",
       "rules/lazy/*.md",
       "rules/lazy/_template.md",
       "rules/lazy/automation-machinery.md",
+      "rules/lazy/rule-registry.md",
       "src/",
       "src/.tooling/",
       "src/rules/",
       "sync-from-base.sh"
     ],
-    "at": "2026-08-23T11:13:44+00:00",
+    "at": "2026-09-21T16:15:11+00:00",
     "code_blobs": {
-      ".tooling/init-new-agent.sh": "91700b3c4eafcef9a81f82de12f1f959e65c695b",
-      ".tooling/local-ci/docs-check-ignore.txt": "e7343ff108edc95885a47b1b6bfc4c7110a56a83",
+      ".tooling/init-new-agent.sh": "ddab886219dd11fc7d62082cc040ea1ba098a6d6",
+      ".tooling/local-ci/docs-check-ignore.txt": "b46a4ae91a3aba81bd994032363836412693a1a3",
       ".tooling/local-ci/docs-check.sh": "0808b820c6b48a8349ade47249ea49a31185e12b",
       ".tooling/local-ci/publish-check.sh": "aebe60bf92d3c697141f43605858340305dfbc78",
       ".tooling/local-ci/setup-lib.sh": "1def0b59ae9ae3286d8cc9e45579a256ae779892",
       ".tooling/local-ci/staledocs-check.sh": "34d54b7f6e5e777d77d5b72abc63fc5aa3633655",
       ".tooling/local-ci/synced-paths-check.sh": "8542c3f73ceffef61c4b485b149717152c17121a",
-      ".tooling/promote-to-base.sh": "85edc1e528fbee0d5f22a2482624a5df26564f3c",
+      ".tooling/promote-to-base.sh": "0797c1f915dcf2b1d332ba4a9576fe68a14351ea",
       ".tooling/sync-from-base.sh": "5dd4bc84449c11525dab02acc76c56182f8c068d"
     },
-    "commit": "e9565d0b0282a4f58c6c77e8f1d1f3617a976ce8",
-    "doc_blob": "6afde388341e0fe9d2a3c0d9e630ac06176bf6b3",
-    "note": "init-new-agent.sh now expands vision.template.md, and synced-paths-check enforces src/.tooling/lib/*.py; the README tree and the docs-check axis list carry both"
+    "commit": "2fafa2e7e16a038253d600934a4bd079db889b61",
+    "doc_blob": "bf38de143041f51ad1d24667d4062666b10eb862",
+    "note": "README tree and init walkthrough now cover .tooling/build-rule-registry.py and rules/lazy/rule-registry.md, which .tooling/init-new-agent.sh builds at bootstrap"
   },
   "doc": "README.md",
   "schema": 1

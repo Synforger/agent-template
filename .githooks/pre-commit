@@ -17,10 +17,10 @@ fi
 #    (anon scanning is NOT here — the machine-wide guard-dispatcher runs it
 #    as the baseline after this hook, AND-composed.)
 # -----------------------------------------------------------------------------
-if [ -f .tooling/local-ci/docs-lint.sh ]; then
-    bash .tooling/local-ci/docs-lint.sh || {
+if [ -f .tooling/local-ci/docs-check.sh ]; then
+    bash .tooling/local-ci/docs-check.sh || {
         echo ""
-        echo "docs-lint failed: fix the stale reference or add an exception to"
+        echo "docs-check failed: fix the stale reference or add an exception to"
         echo ".tooling/local-ci/docs-check-ignore.txt before committing."
         exit 1
     }

@@ -15,15 +15,15 @@ set -euo pipefail
 # 動作:
 #   1. agent-dir が既存なら error (= --force で上書き)
 #   2. base の src/ 配下を agent-dir 直下に rsync (= 派生の中身が一気に展開)
-#   3. base の運用 file (LICENSE / .gitignore.template / .github / .githooks /
-#      .tooling/local-ci / .synced-paths.txt) を agent-dir にも同梱
+#   3. base の運用 file (LICENSE / .githooks/pre-commit / .synced-paths.txt) を
+#      agent-dir にも同梱
 #   4. base の sync-from-base.sh / promote-to-base.sh を派生 .tooling/ に配置
 #   5. *.template 拡張子を実 file に rename (= CLAUDE.template.md → CLAUDE.md 等)
 #   6. agent-dir で git init -b main + initial commit
 #
 # 完了後:
-#   派生 dir で CLAUDE.md / profile/profile-core.md / rules/always/*-local.md
-#   などを書いていく。
+#   派生 dir で CLAUDE.md / profile/profile.md / rules/always.md の personal section
+#   を書いていく。
 # =============================================================================
 
 FORCE=0
@@ -57,18 +57,14 @@ rsync -a --exclude='.gitkeep' "$BASE_DIR/src/" "$AGENT_DIR/"
 # .gitkeep は dir 構造保持のため別途コピー (rsync --exclude 後)
 ( cd "$BASE_DIR/src" && find . -name '.gitkeep' -exec rsync -R {} "$AGENT_DIR/" \; )
 
-echo "==> copy operational files (LICENSE / .github / .githooks / local-ci / .synced-paths.txt)"
+echo "==> copy operational files (LICENSE / .githooks / .synced-paths.txt)"
 cp "$BASE_DIR/LICENSE" "$AGENT_DIR/LICENSE"
 cp "$BASE_DIR/.synced-paths.txt" "$AGENT_DIR/.synced-paths.txt"
-mkdir -p "$AGENT_DIR/.github/workflows" "$AGENT_DIR/.githooks" "$AGENT_DIR/.tooling/local-ci"
-cp "$BASE_DIR/.github/workflows/anon-check.yml" "$AGENT_DIR/.github/workflows/anon-check.yml"
+mkdir -p "$AGENT_DIR/.githooks"
 cp "$BASE_DIR/.githooks/pre-commit" "$AGENT_DIR/.githooks/pre-commit"
-cp "$BASE_DIR/.tooling/local-ci/anon-scan.sh" "$AGENT_DIR/.tooling/local-ci/anon-scan.sh"
-cp "$BASE_DIR/.tooling/local-ci/anon-words.example.txt" "$AGENT_DIR/.tooling/local-ci/anon-words.example.txt"
-cp "$BASE_DIR/.tooling/local-ci/docs-lint.sh" "$AGENT_DIR/.tooling/local-ci/docs-lint.sh"
 chmod +x "$AGENT_DIR/.githooks/pre-commit"
-chmod +x "$AGENT_DIR/.tooling/local-ci/anon-scan.sh"
-chmod +x "$AGENT_DIR/.tooling/local-ci/docs-lint.sh"
+# 禁止語彙の scan は派生 repo に配らない (= マシン常駐の guard-dispatcher が
+# 全 repo の commit / push 境界で回す、 word list はマシン config 側)
 
 echo "==> install sync-from-base / promote-to-base scripts"
 cp "$BASE_DIR/.tooling/sync-from-base.sh" "$AGENT_DIR/.tooling/sync-from-base.sh"
@@ -89,22 +85,30 @@ fi
 if [ -f "$AGENT_DIR/vision.template.md" ]; then
     mv "$AGENT_DIR/vision.template.md" "$AGENT_DIR/vision.md"
 fi
-# profile/profile-core.template.md → profile/profile-core.md
-if [ -f "$AGENT_DIR/profile/profile-core.template.md" ]; then
-    mv "$AGENT_DIR/profile/profile-core.template.md" "$AGENT_DIR/profile/profile-core.md"
+# profile/profile.template.md → profile/profile.md
+if [ -f "$AGENT_DIR/profile/profile.template.md" ]; then
+    mv "$AGENT_DIR/profile/profile.template.md" "$AGENT_DIR/profile/profile.md"
 fi
+
+# 展開した実 file の日付 placeholder だけ埋める (= 機械が確実に書ける 1 箇所を
+# 人の宿題に回さない。 雛形 dir 配下の `{{YYYY-MM-DD}}` は雛形のまま残す)
+TODAY="$(date +%F)"
+for _f in CLAUDE.md vision.md profile/profile.md; do
+    [ -f "$AGENT_DIR/$_f" ] && sed -i '' "s/{{YYYY-MM-DD}}/${TODAY}/g" "$AGENT_DIR/$_f"
+done
 
 # pc-labels.example.txt は派生に降ろさない (= 各派生で必要なら手動 cp)
 if [ -f "$AGENT_DIR/.tooling/pc-labels.example.txt" ]; then
     : # 残置: 派生先で cp pc-labels.example.txt pc-labels.txt して書く
 fi
 
-# anon-words.example.txt は派生先で実体を別途作る
-if [ ! -f "$AGENT_DIR/.tooling/local-ci/anon-words.txt" ]; then
-    echo "# add agent-specific forbidden words here (one PCRE fragment per line)" \
-        > "$AGENT_DIR/.tooling/local-ci/anon-words.txt"
-    echo "# (this file is gitignored — example values live in anon-words.example.txt)" \
-        >> "$AGENT_DIR/.tooling/local-ci/anon-words.txt"
+# 台帳を建ててから commit する (= 建てないと docs-check step 11 が全 section を
+# 未登録として並べ、 台帳を指す参照も dead になる。 機械が建てられるものを宿題にしない)
+echo "==> build the rule ledger"
+if command -v python3 > /dev/null 2>&1; then
+    ( cd "$AGENT_DIR" && python3 .tooling/build-rule-registry.py )
+else
+    echo "  warn: python3 not found — run .tooling/build-rule-registry.py by hand" >&2
 fi
 
 echo "==> git init + initial commit"
@@ -112,12 +116,16 @@ cd "$AGENT_DIR"
 if [ ! -d .git ]; then
     git init -b main
 fi
-git config core.hooksPath .githooks
+# core.hooksPath は local に設定しない (= git は hooksPath を 1 つしか見ないので、
+# local 上書きはマシン常駐の guard-dispatcher を丸ごと無効化する。 dispatcher が
+# repo の .githooks/ へ委譲するため、 branch guard は設定なしでも効く)
 git add -A
 if git diff --cached --quiet; then
     echo "(no files to commit)"
 else
-    git commit -m "chore: bootstrap from agent-template" -q || true
+    # bootstrap commit だけは hook を通さない (= pre-commit の branch guard が main を
+    # 弾くので、 そのまま通すと派生は commit 0 本のまま「初期化成功」と表示される)
+    git -c core.hooksPath=.git/hooks-disabled commit -m "chore: bootstrap from agent-template" -q
 fi
 
 echo ""
@@ -125,7 +133,7 @@ echo "✓ Agent initialized at: $AGENT_DIR"
 echo ""
 echo "Next steps in $AGENT_DIR:"
 echo "  1. Edit CLAUDE.md (persona / boot protocol)"
-echo "  2. Edit profile/profile-core.md (core profile of your primary user)"
+echo "  2. Edit profile/profile.md (the profile of your primary user, one file)"
 echo "  3. Add your word list to the machine config (~/.config/anon-words/, via guard-dispatcher)"
 echo "  4. Add agent-specific rules to rules/always.md (single-file form)"
 echo "  5. (optional) cp .tooling/pc-labels.example.txt .tooling/pc-labels.txt and edit"
