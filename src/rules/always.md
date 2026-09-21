@@ -136,14 +136,24 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 
 ---
 
-## 派生で追加する section (= 例、 personal rule)
+## § git
 
-派生エージェントは以下のような section を本 file 直下に追記して 1 file 運用:
+commit 規約 / branch flow / 匿名性 / merge の判断軸 / 記録の置き場と棚卸しをここに書く。 出荷時は空で、 派生が最初の規律を書いた時点で中身が入る。
 
-- `## § git` = commit 規約 / branch flow / 匿名性 / merge 判断軸
-- `## § quality` = build エラー扱い / test 網羅 / debug log 集約 / context rot 対策
-- `## § style` = path 表記 / 出力簡潔 / 表現 / ツール呼び出し / ユーザ指示解釈
-- `## § sub-agent` = Agent tool 起動方針 / prompt 構造 / エージェント責務
-- `## § forbidden` = 第三者操作 / 破壊操作 / session 進行中断 / 規模理由の妥協 / 明示 GO まで読み取り専用 (= `go-gate-reminder.sh` hook と対で運用)
+## § quality
 
-Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、 § 見出しで section 検索性維持。 200 行に収まらなくなったら、 発火実績の下位から `rules/lazy/` へ降ろす (= `rules/always-<section>.md` への分割は、 降ろし先が無い時だけ)。
+エラーの扱い / 原因特定の順序 / 検出機構の整備 / 「緑」 と言う前の条件をここに書く。 出荷時は空。
+
+## § style
+
+path 表記 / 出力の簡潔さ / 表現 / 長い作業の見せ方 / ユーザ指示の解釈をここに書く。 出荷時は空。
+
+## § forbidden
+
+第三者への副作用操作 / 破壊操作 / session 進行の中断 / 規模を理由にした妥協 / 明示 GO まで読み取り専用をここに書く (= `go-gate-reminder.sh` hook と対で運用する)。 出荷時は空。
+
+---
+
+出荷時に本 file が持つのは `§ meta` と、 上の 4 つの空節だけ。 **空でも節は置いたまま**にする (= 出荷 doc が `rules/always.md § git` のように名指しており、 節ごと無いと読む先が消える。 docs-check step 12 がその死を検出する)。
+
+Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、 § 見出しで section 検索性も保てる。 200 行に収まらなくなったら、 発火実績の下位から `rules/lazy/` へ降ろす (= `rules/always-<section>.md` への分割は、 降ろし先が無い時だけ)。

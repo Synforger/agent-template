@@ -85,6 +85,11 @@ PLACEHOLDER = re.compile(r"[<>{}]|\bNN\b|\bYYYY\b|\bP\b|\bS\b")
 
 BACKTICK = re.compile(r"`([^`\n]+)`")
 
+# `<file>.md § <見出し>` = 「その節に書いてある」 という主張。 節ごと消える / 改名される
+# ことがあるので、 file の実在だけでなく見出しの実在も測る。
+SECTION_REF = re.compile(r"^(\S+\.md)\s*§\s*(.+)$")
+HEADING = "^#{2,4}\\s*§?\\s*"
+
 
 def tier_repo(tier: str):
     """その階層の `_README.md` が `## repo` で宣言している repo root (= 手元に在る時だけ)。"""
@@ -211,6 +216,37 @@ def resolve(token: str, tier: str, external: bool = False) -> bool:
     return False
 
 
+def section_missing(token: str, tier: str):
+    """`<file>.md § <見出し>` の見出しが対象 file に無ければ、 その綴りを返す。"""
+    m = SECTION_REF.match(token)
+    if not m:
+        return None
+    rel, section = m.group(1), m.group(2).strip()
+    if PLACEHOLDER.search(section) or PLACEHOLDER.search(rel):
+        return None
+    # 自階層 → 親 → … → repo root の順に辿り、 **その見出しを持つ file** を探す
+    # (= 下の階層が親の節を名指すのは普通の書き方。 同名 file が在るだけで打ち切らない)
+    bases = []
+    walk = tier
+    while walk:
+        bases.append(os.path.join(ROOT, walk))
+        walk = os.path.dirname(walk)
+    bases.append(ROOT)
+    seen_file = False
+    for base in bases:
+        cand = os.path.join(base, rel)
+        if not os.path.isfile(cand):
+            continue
+        seen_file = True
+        try:
+            body = open(cand, encoding="utf-8").read()
+        except OSError:
+            continue
+        if re.search(HEADING + re.escape(section), body, re.M):
+            return None
+    return f"{rel} § {section}" if seen_file else None
+
+
 def main() -> int:
     verbose = "--verbose" in sys.argv
     checked = 0
@@ -228,7 +264,15 @@ def main() -> int:
             seen = set()
             for token in BACKTICK.findall(text):
                 token = token.strip()
-                if token in seen or not is_internal_reference(token, tier, external):
+                if token in seen:
+                    continue
+                gone = section_missing(token, tier)
+                if gone:
+                    seen.add(token)
+                    checked += 1
+                    missing.append((rel, gone))
+                    continue
+                if not is_internal_reference(token, tier, external):
                     continue
                 seen.add(token)
                 checked += 1
