@@ -12,3 +12,4 @@ stable: true
 
 - `automation-machinery.md` — 自動化機構 (`.tooling/*` script / hook) 改修 + 新 lazy 追加時の設計原則
 - `rule-promotion-format.md` — 複数プロジェクト共通の反復違反 / 重複を横断 rule へ昇格提案する書式
+- `rule-registry.md` — ルール ID 台帳 + 発火記録の書式 + 実績で配置と退役を決める機構 (= ルールを足す時の判定もここ)
