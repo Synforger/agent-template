@@ -9,6 +9,8 @@
 - **エージェントは「人格 + 固有プロジェクト + 機構」 で出来てる**。 機構部分を base に切り出し、 人格 + プロジェクトは派生に残す = 機構改善を全エージェントで共有
 - **継続的自己強化ループ**: 機構の品質は機械検出 (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`) で自動 sweep、 エージェントは出力に反応するだけ = context 浪費しない
 - **OSS 公開前提**: 個人情報・社内情報の混入はマシン常駐の guard-dispatcher (= git hooks dispatcher) が commit / push 境界で機械防止
+- **フォルダの運用は 1 本、 起動の手順はどの階層でも同じ**: フォルダの使い方は木の上で 1 回だけ書き、 親 / プロジェクト / サブプロジェクトは**同じ 6 点を同じ順で**読んで立ち上がる。 その 6 点の真値は `CLAUDE.md` 1 箇所にあり、 各階層の `_README.md` はそこでだけ要る追加の読み物を挙げるだけ
+- **ルールは指示形で書き、 読み切れる量に保つ**: 常時 load の 1 file は 200 行未満。 溢れた分は trigger を持つ `rules/lazy/` へ降ろし、 降ろす対象は**発火実績の下位**から選ぶ (= 行数が稼げる節から選ばない)
 - **派生に縛りを最小化**: base が真値を持つのは「機構 + 必須 4 rule file + 構造テンプレ」 のみ、 残りは派生の自由領域
 
 ## リポジトリ構成
@@ -40,24 +42,25 @@ agent-template/
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # Phase B-共通 で実行
+    │   ├── lib/                       # docs-check が呼ぶ検査本体
     │   └── _README.md
     ├── rules/
-    │   ├── always.md                  # ★ 必須: 容量管理 + 改訂文化 + 自己強化ループ (形態 D)
+    │   ├── always.md                  # ★ 必須: 容量 + 書き方 + 増やし方 / 減らし方 + 自己強化ループ (形態 D)
     │   └── lazy/
     │       ├── _README.md             # lazy 索引 (起動時 Read)
     │       ├── _template.md           # 新 lazy 雛形
     │       ├── automation-machinery.md
     │       └── rule-promotion-format.md
     ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
-    ├── journal/                       # session log 構造
-    ├── todos/                         # 横断タスク
-    ├── plans/                         # 横断計画
-    ├── research/                      # 横断調査
-    └── profile/                       # ユーザプロファイル構造
-        └── profile-core.template.md
+    ├── journal/                       # session の記録 (= 追記のみ)
+    ├── plans/                         # やること + どう進めるか (= やることは file 内の見出し)
+    ├── research/                      # 調べたこと
+    ├── profile/                       # ユーザプロファイル構造
+    │   └── profile.template.md
+    └── vision.template.md             # 現在地 (= 状態のみ)
 ```
 
-`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開する。
+`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開し、 展開した file の日付 placeholder を埋める。 `core.hooksPath` は**設定しない** (= git は hooksPath を 1 つしか見ないので、 repo ごとの設定はマシン常駐の guard を丸ごと無効化する。 guard は repo の `.githooks/` へ委譲するので branch guard は効いたまま)。
 
 ## 派生の立ち上げ
 
@@ -70,7 +73,7 @@ cd agent-template
 派生 dir で:
 
 1. `CLAUDE.md` を編集 (= 人格 / ユーザ関係 / エージェント構成)
-2. `profile/profile-core.md` を編集 (= ユーザの核 + 判断軸)
+2. `profile/profile.md` を編集 (= ユーザの核 + 判断軸、 1 file に集約する)
 3. マシン側の guard-dispatcher word list (= `~/.config/anon-words/`) に固有語彙を追記
 4. 派生固有 rule を `rules/always.md` に追記 (= git 運用ルール / 禁止事項 等)
 5. `git remote add origin <your-repo>` + initial push
@@ -108,7 +111,7 @@ base 側に feature branch を切って push、 PR 経由で merge。 synced-pat
 
 agent-template が出荷する rule は以下のみ。 これ未満では機構が動かない。
 
-- `rules/always.md § meta` — 容量管理 + 改訂文化 + 継続的自己強化ループ (= 形態 D、 1 file 統合)
+- `rules/always.md § meta` — 容量 + 書き方 + ルールの増やし方 / 減らし方 + 継続的自己強化ループ (= 形態 D、 1 file 統合)
 - `rules/lazy/_template.md` — 新 lazy 作成雛形
 - `rules/lazy/automation-machinery.md` — `.tooling/*` 運用真値
 
@@ -128,6 +131,12 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 6. 動的検索パターン残骸
 7. プロジェクト folder 整合
 8. synced-paths 整合 (= 派生のみ、 base と diff 検出)
+9. journal 整合 (= file 名 ↔ frontmatter ↔ 日付フォルダ ↔ 階層)
+10. 階層インターフェース (= project / subproject が必須 file と必須 dir を持つか)
+11. ルール台帳 (= 発火を記録する先として、 全 rule section に entry があるか)
+12. ルールの参照先 (= rule が指す path が実在するか)
+13. 発火記録の網羅 (= 効いた / 違反した rule を 1 件も書かなかった session)
+14. vision の形 (= 状態の節が在るか、 足し算で増えていないか)
 
 ### `detect-duplicates.py`
 

@@ -194,7 +194,7 @@ for p in projects/*/ projects/*/subprojects/*/; do
   for req in _README.md rules/always.md rules/lazy/_README.md; do
     [ -f "${p}${req}" ] || { fail "$p: hierarchy interface missing file → $req"; h_fail=1; }
   done
-  for req in journal todos; do
+  for req in journal plans; do
     [ -d "${p}${req}" ] || { fail "$p: hierarchy interface missing dir → $req"; h_fail=1; }
   done
   # vision.md は移行中のため WARN (= 既存階層は次にその階層で起動した session で作る)

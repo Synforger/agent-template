@@ -165,6 +165,11 @@ def main() -> int:
             label_b, file_b, norm_b, win_b = prepared[j]
             if file_a == file_b:  # 同一 file 内は skip
                 continue
+            # 雛形とその複製は構造上かならず一致する (= `cp -R` した直後の階層は雛形そのままで、
+            # その階層に最初の固有 file を足した時点で自然に解消する)。 exact な allowlist 行で
+            # 抑えると新設階層のたびに破れるので、 片側が雛形なら構造で外す。
+            if "_template" in file_a or "_template" in file_b:
+                continue
             if frozenset((label_a, label_b)) in allow:
                 continue
             if win_a.isdisjoint(win_b):  # 閾値長の共通窓なし = DP を回すまでもない
