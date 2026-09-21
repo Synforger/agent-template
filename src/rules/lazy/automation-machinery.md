@@ -29,12 +29,13 @@ capacity: 10KB
 | `.tooling/lib/check-rule-references.py` | docs-check step 12 | 実在しない参照 1 行ずつ (= work repo の path / 裸の file 名 / placeholder は測れないので対象外) |
 | `.tooling/lib/check-rule-hits.py` | docs-check step 13 | 記録を書き漏らした session 1 行ずつ (= その階層が記録を始めた日以降のみ対象) |
 | `.tooling/lib/check-vision-shape.py` | docs-check step 14 | 必須節の欠落と段落数超過 1 行ずつ (= 上限は実測由来で script の docstring が根拠) |
+| `.tooling/build-rule-registry.py` | 手動 + docs-check step 11 (`--check`) | **階層ごと**の `<tier>/rules/registry.jsonl` (= ID 台帳、 ID は階層内で一意かつ不変。 書式と使い方 = `rules/lazy/rule-registry.md`) |
 | `.tooling/lib/capacity-candidates.py` | 派生の容量 script が超過を出した時 | バイト数降順の削減候補 + 発火 / 違反の実績 (= 「少し削って測り直す」 の往復を作らない) |
 | `.tooling/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入 (= 判定本体は `rules/always.md § forbidden`、 hook は再武装のみ) |
 | `staledocs` (= 外部 CLI + `.staledocs.yaml`) | startup-status から | rules 層の code<->docs 整合 (= pair 台帳 + アンカー生存、 同スコープの dead link は docs-check step 4 が skip) |
 | git hook guard (= startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧 (= git は hooksPath を 1 つしか見ず、 local 上書き 1 個で scan が丸ごと死ぬ) |
 
-派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 階層別容量 (`check-static-capacity.sh`) / 起動 launcher / 終了時の事前検証 / rule ID 台帳と発火集計。
+派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 階層別容量 (`check-static-capacity.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計 (= 台帳と記録は base 出荷、 どう集計するかは派生の持ち物)。
 
 ## 反応規律
 

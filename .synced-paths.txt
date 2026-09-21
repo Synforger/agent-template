@@ -29,10 +29,14 @@
 .tooling/lib/check-vision-shape.py
 .tooling/lib/capacity-candidates.py
 
+# docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
+.tooling/build-rule-registry.py
+
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
 rules/lazy/_template.md
 rules/lazy/rule-promotion-format.md
+rules/lazy/rule-registry.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
 # folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。
