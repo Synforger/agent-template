@@ -1,10 +1,10 @@
 ---
-title: projects/<P>/subprojects/<S>/rules/lazy 索引 (= subproject 起動時 Read)
-description: 各 lazy file の 1 文 summary。 新プロジェクト作成時にこの雛形をコピーして中身を実 lazy に合わせて書く
-updated: 2026-07-04
+title: <サブプロ名> rules/lazy 索引 (= 起動時 Read)
+description: 各 lazy file の 1 文 summary。 起動時に本 file を Read → 該当 trigger 時に本体を Read
+updated: YYYY-MM-DD
 capacity: 1KB
 ---
 
-# <サブプロジェクト名> / rules/lazy 索引
+# <サブプロ名> / rules/lazy 索引
 
-- `<lazy-file>.md` — 1 文 summary (= trigger 該当時に本体を Read)
+lazy file はまだ無い。 この階層でだけ効く手順が生まれたらここに 1 行で足す。

@@ -37,8 +37,8 @@ global:
 anchors:
   min_length: 3
   ignore:
-    # exists as profile-core.template.md until init-new-agent.sh renames it
-    - "profile/profile-core.md"
+    # exists as profile.template.md until init-new-agent.sh renames it
+    - "profile/profile.md"
     # name pattern for src/.tooling/detect-*.{sh,py}, not a repo path
     - "detect-*"
   include_fenced: false

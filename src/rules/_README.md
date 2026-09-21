@@ -1,36 +1,28 @@
 ---
-title: rules フォルダ
-description: 派生エージェントが従う作業ルール (= 形態 D = always.md 1 file + lazy/*)
-updated: 2026-07-03
+title: rules/ の運用 (= 全階層共通の真値)
+description: 常時 load と lazy の 2 層 / 置き場と書式の真値 / 台帳とワード master
+updated: 2026-09-21
 capacity: 3KB
 ---
 
-# rules フォルダ
+# rules/ の運用
 
-**形態 D**: 全階層で `rules/always.md` 1 file 統合 + `rules/lazy/*.md` (= シチュエーション別 trigger)。
+> **全階層共通の真値**。 `projects/<P>/rules/` も `subprojects/<S>/rules/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 例外は `lazy/_README.md` (= 索引は中身が階層ごとに違うので各階層が持つ)。
 
-## 常時 load (= 起動時 Phase B で全文 Read)
+## 2 層
 
-- `always.md` — メタ運用 (= 容量 / 改訂文化 / 検出機構) + 派生追記 section (= git / style / forbidden 等)
+- **常時 load** = `always.md` 1 file (= 形態 D、 全階層同じ形)。 起動時に全文 Read
+- **lazy** = `lazy/*.md`。 frontmatter `triggers:` のシチュエーションに入る直前に自発 Read。 一覧 = `lazy/_README.md` (= 各 file 1 文 summary、 起動時に索引だけ Read)
 
-## lazy = 文書庫 (= シチュエーション該当時に自発 Read)
+## 置き場 / 書式 / 容量 / 退役
 
-出荷時 必須 file:
+**どの階層に置くか / どの層か / 表現形式 / 容量上限 / 押し出しと退役の判断は `rules/lazy/rule-registry.md` が真値**。 ルールを足す / 改訂する直前に読む。
 
-| file | 呼び出すシチュエーション |
-|---|---|
-| `lazy/_template.md` | 新 lazy file 作成時の雛形 |
-| `lazy/automation-machinery.md` | `.tooling/*` script 改修 / settings.json hook 編集 / 新 lazy file 追加の直前 |
+## その他の file
 
-各 file の frontmatter `triggers:` にシチュエーションを自然言語記述、 該当作業を始める直前に必ず Read。
+- `registry.jsonl` — ルール ID 台帳 (= 階層ごとに 1 本、 `build-rule-registry.py` が生成。 ID は階層内で一意かつ不変)
+- `anon-words.txt` (= 親のみ) — 匿名性スキャンのワード master (= 単一真値、 1 行 1 PCRE)。 各 repo へは `~/.config/anon-words/` 経由で配る
 
-## 派生で追加する時
+## lazy を足す時
 
-- **always 追記は本 file 内**: 派生 personal rule (= git / style / forbidden 等) は `always.md` に section 追加、 別 file 分割は 容量圧迫時のみ
-- **lazy 追加は自発 OK**: `triggers:` 必須 + 常時 load からのリンクも必須 (= 「読まれない可能性のある rule」 は作らない)
-
-## 改訂運用
-
-- `always.md § meta` の容量上限 + 改訂文化を遵守
-- agent-template 側で改訂が入った時は `sync-from-base.sh` で取り込む
-- 派生で発見した機構改善は `promote-to-base.sh` で base へ昇格
+`lazy/_template.md` をコピーする。 `triggers:` 必須 (= 自然な作業文脈で認識できるシチュエーション)、 常時 load 側からのリンク必須 (= 読まれない rule を作らない)、 `capacity` 宣言。

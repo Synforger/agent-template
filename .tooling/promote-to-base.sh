@@ -118,7 +118,9 @@ fi
 TS="$(git -C "$AGENT_DIR" rev-parse --short HEAD 2>/dev/null || echo init)"
 FEATURE_BRANCH="${FEATURE_BRANCH:-feature/promote-$TS}"
 cd "$BASE_DIR"
-git checkout -b "$FEATURE_BRANCH"
+# 同じ feature branch へ 2 回目以降を積めるようにする (= 1 回の昇格は複数の promote で
+# 構成されることがあり、 `-b` 固定だと 2 本目で落ちて手 cp への逃げ道を作ってしまう)
+git checkout -b "$FEATURE_BRANCH" 2>/dev/null || git checkout "$FEATURE_BRANCH"
 
 # 派生 → base 書き戻し
 echo "==> write back ${#sync_paths[@]} paths from $AGENT_DIR → base/src/"
