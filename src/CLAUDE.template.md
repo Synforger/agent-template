@@ -137,6 +137,8 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 
 `git add -A && git commit` → (複数 PC 同期運用時) `git pull --rebase --autostash` → `git push` **必ず連続実行**で締める (= push 直前再 pull 理由 = session 中 他 PC push の fast-forward 不可吸収)。 push 失敗 = pull → rebase → push リトライ 1 サイクル自前。 2 度目失敗 (= conflict 残) = ユーザ報告 + 手動解決。
 
+複数 PC で同じエージェントを clone している場合、 **同期点はこの Step 3 だけ** (= 同時起動を避ける)。 共通基盤 (= `profile/` / `rules/` / `CLAUDE.md` / `.tooling/`) を別 PC が同時に編集していると rebase が止まるので、 その時はユーザへ報告する。
+
 ---
 
 ## lazy file

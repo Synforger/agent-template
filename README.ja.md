@@ -37,6 +37,7 @@ agent-template/
     │   ├── docs-check.sh              # 多軸 docs 検査
     │   ├── detect-duplicates.py       # section 単位重複検出
     │   ├── detect-stale-rules.sh      # 7 日無更新検出
+    │   ├── build-rule-registry.py     # 階層ごとのルール ID 台帳 (= 発火記録の宛先)
     │   ├── extract-artifact-index.sh  # SessionEnd hook 用
     │   ├── go-gate-reminder.sh        # 毎発話 GO-gate リマインダ hook
     │   ├── precommit-conflict-check.sh
@@ -50,7 +51,8 @@ agent-template/
     │       ├── _README.md             # lazy 索引 (起動時 Read)
     │       ├── _template.md           # 新 lazy 雛形
     │       ├── automation-machinery.md
-    │       └── rule-promotion-format.md
+    │       ├── rule-promotion-format.md
+    │       └── rule-registry.md
     ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
     ├── journal/                       # session の記録 (= 追記のみ)
     ├── plans/                         # やること + どう進めるか (= やることは file 内の見出し)
@@ -60,7 +62,7 @@ agent-template/
     └── vision.template.md             # 現在地 (= 状態のみ)
 ```
 
-`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開し、 展開した file の日付 placeholder を埋める。 `core.hooksPath` は**設定しない** (= git は hooksPath を 1 つしか見ないので、 repo ごとの設定はマシン常駐の guard を丸ごと無効化する。 guard は repo の `.githooks/` へ委譲するので branch guard は効いたまま)。
+`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開し、 展開した file の日付 placeholder を埋め、 ルール台帳を建てる (= 出荷した検査が突き合わせる先を最初から作る)。 `core.hooksPath` は**設定しない** (= git は hooksPath を 1 つしか見ないので、 repo ごとの設定はマシン常駐の guard を丸ごと無効化する。 guard は repo の `.githooks/` へ委譲するので branch guard は効いたまま)。
 
 ## 派生の立ち上げ
 
@@ -114,6 +116,7 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 - `rules/always.md § meta` — 容量 + 書き方 + ルールの増やし方 / 減らし方 + 継続的自己強化ループ (= 形態 D、 1 file 統合)
 - `rules/lazy/_template.md` — 新 lazy 作成雛形
 - `rules/lazy/automation-machinery.md` — `.tooling/*` 運用真値
+- `rules/lazy/rule-registry.md` — 検査が突き合わせる台帳と発火記録の書式
 
 派生固有の rule (= git 運用 / 禁止事項 / sub-agent 起動規律 / その他) は派生の `rules/always.md` / `rules/lazy/*.md` に自由に追加。 rule 実コンテンツは sync 対象外。
 

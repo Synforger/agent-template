@@ -102,6 +102,15 @@ if [ -f "$AGENT_DIR/.tooling/pc-labels.example.txt" ]; then
     : # 残置: 派生先で cp pc-labels.example.txt pc-labels.txt して書く
 fi
 
+# 台帳を建ててから commit する (= 建てないと docs-check step 11 が全 section を
+# 未登録として並べ、 台帳を指す参照も dead になる。 機械が建てられるものを宿題にしない)
+echo "==> build the rule ledger"
+if command -v python3 > /dev/null 2>&1; then
+    ( cd "$AGENT_DIR" && python3 .tooling/build-rule-registry.py )
+else
+    echo "  warn: python3 not found — run .tooling/build-rule-registry.py by hand" >&2
+fi
+
 echo "==> git init + initial commit"
 cd "$AGENT_DIR"
 if [ ! -d .git ]; then
