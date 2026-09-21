@@ -97,9 +97,11 @@ rule 本体に書かないもの:
 
 session 終了時、 効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` に 1 行ずつ書く。 書き漏らした session は docs-check step 13 が出す。
 
-- ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変)
+- ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変、 生成 = `.tooling/build-rule-registry.py`)
 - 実績は 2 つに効く: 容量超過時に**どの節から押し出すか**、 そして**沈黙した rule の退役**
 - 沈黙で退役を測れるのは trigger 待ちの層だけ (= 常時 load は「読まれた」 と「効いた」 が別物なので、 記録が無いことを死んだ証拠に使わない)
+
+**記録の書式 / ID の引き方 / 押し出しと退役の判定 / どの階層に置くかは `rules/lazy/rule-registry.md` が真値**。 ルールを足す / 改訂する / 記録を書く直前に読む。
 
 ### 弱点パターン発見時の機構自己拡張
 
@@ -130,6 +132,7 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 - 自動化機構 (= `.tooling/*` script / settings.json hook) 改修 → `rules/lazy/automation-machinery.md`
 - 新 lazy file 追加時の設計原則 → 同上 § 文書庫運用
 - 複数プロジェクト共通の反復を横断 rule へ上げる書式 → `rules/lazy/rule-promotion-format.md`
+- ルール台帳 / 発火記録 / 配置と退役の判定 → `rules/lazy/rule-registry.md`
 
 ---
 

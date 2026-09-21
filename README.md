@@ -38,6 +38,7 @@ agent-template/
     │   ├── docs-check.sh              # multi-axis docs verification
     │   ├── detect-duplicates.py       # section-level duplicate detection
     │   ├── detect-stale-rules.sh      # 7-day-stale rule detection
+    │   ├── build-rule-registry.py     # per-tier rule ID ledger (hits are recorded against it)
     │   ├── extract-artifact-index.sh  # for a SessionEnd hook
     │   ├── go-gate-reminder.sh        # per-utterance GO-gate reminder hook
     │   ├── precommit-conflict-check.sh
@@ -51,7 +52,8 @@ agent-template/
     │       ├── _README.md             # lazy index, read at boot
     │       ├── _template.md           # scaffold for new lazy rules
     │       ├── automation-machinery.md
-    │       └── rule-promotion-format.md
+    │       ├── rule-promotion-format.md
+    │       └── rule-registry.md
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
     ├── journal/                       # session log structure (append only)
     ├── plans/                         # what to do and how (tasks live as headings inside a plan)
@@ -61,7 +63,7 @@ agent-template/
     └── vision.template.md             # where the agent currently stands (state only)
 ```
 
-Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root, expands every `*.template` into a real file, and fills the date placeholders in the expanded ones. It deliberately leaves `core.hooksPath` unset: git honours exactly one hooks path, so setting it per-repo would switch off the machine-wide guard (which already delegates to the repo's `.githooks/`).
+Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root, expands every `*.template` into a real file, fills the date placeholders in the expanded ones, and builds the rule ledger so the shipped checks have something to verify against. It deliberately leaves `core.hooksPath` unset: git honours exactly one hooks path, so setting it per-repo would switch off the machine-wide guard (which already delegates to the repo's `.githooks/`).
 
 ## Spinning up a derivation
 
@@ -117,6 +119,7 @@ The template ships only these; below this floor the machinery stops working.
 - `rules/always.md § meta` — capacity, how rules are written, how they grow and retire, and the self-reinforcement loop (single-file form)
 - `rules/lazy/_template.md` — scaffold for new lazy rules
 - `rules/lazy/automation-machinery.md` — operational truth for `.tooling/*`
+- `rules/lazy/rule-registry.md` — the ledger and hit-record format the checks verify against
 
 Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `rules/lazy/*.md`; rule content is not synced.
 
