@@ -66,4 +66,3 @@ profile/_template.md
 !rules/lazy/automation-machinery.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
 !.tooling/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
 !.tooling/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
-!.staledocs.yaml                    # pair / ignore が派生固有、 base 版は雛形として参照するもの
