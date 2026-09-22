@@ -190,7 +190,6 @@ def main():
 
     # ===== 4. dead link =====
     # 引き先の basename 索引は collect() が走査 1 回で作ったものを使う
-    staledocs_scoped = os.path.exists(os.path.join(ROOT, ".staledocs.yaml"))
     for f in md_list:
         entry = cache.get(f)
         if entry is None:
@@ -198,9 +197,6 @@ def main():
         if "archive/" in f or "history/" in f:
             continue
         if any(re.match(r"^status: *snapshot", line) for line in entry["fm"]):
-            continue
-        # .staledocs.yaml の docs スコープは staledocs 側がアンカー生存を担当
-        if staledocs_scoped and (f.startswith("./rules/") or f == "./profile/profile.md"):
             continue
         refs = sorted(set(REF_PATTERN.findall("\n".join(entry["lines"]))))
         for ref in refs:

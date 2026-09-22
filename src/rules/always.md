@@ -82,7 +82,6 @@ rule 本体に書かないもの:
 | 検出対象 | 機構 | 発火 |
 |---|---|---|
 | frontmatter 欠落 / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths / journal 整合 / 階層インターフェース / 参照先の実在 / 発火記録の有無 / vision の形 | docs-check.sh (= 14 step) | 起動 + 終了 |
-| code<->docs 乖離 (= pair 台帳 / アンカー生存、 rules 層スコープ) | staledocs (= 外部 CLI、 startup-status 経由) | 起動 + 終了 |
 | section 単位重複 (= LCS、 雛形とその複製は構造で除外) | detect-duplicates.py | 同上 |
 | 7 日無更新 (= 形骸化) | detect-stale-rules.sh | 同上 |
 | 静的容量階層別 | startup-status.sh | 起動 |
