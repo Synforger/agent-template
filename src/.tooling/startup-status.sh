@@ -71,24 +71,6 @@ step_docs_check() {
     fi
 }
 
-# 5b. staledocs (= code<->docs 整合、 warn 運用の実測フェーズ。 CLI 不在 = skip、 起動を止めない)
-step_staledocs() {
-    if [ -f .staledocs.yaml ]; then
-        SD_BIN=""
-        if command -v staledocs >/dev/null 2>&1; then
-            SD_BIN="staledocs"
-        elif [ -x "$HOME/.cache/staledocs/venv/bin/staledocs" ]; then
-            SD_BIN="$HOME/.cache/staledocs/venv/bin/staledocs"
-        fi
-        if [ -n "$SD_BIN" ]; then
-            sd_summary=$("$SD_BIN" check 2>/dev/null | grep -E "^staledocs: " | head -1)
-            echo "${sd_summary:-staledocs: (no summary line)}"
-        else
-            echo "staledocs: (CLI not found, skipped)"
-        fi
-    fi
-}
-
 # 6. local leak detector (= 派生 opt-in: 混入してはいけない語彙の検出 script を
 #    .tooling/detect-company-terms.sh として置くと自動で走る、 無ければ skip)
 step_company_terms() {
@@ -166,20 +148,48 @@ step_rule_hits() {
     fi
 }
 
+# 11. remote との差 (= 別 PC が push した分を読まずに起動していないか)。
+#     起動手順の pull が落ちた / 抜けた時の網で、 ここは数えるだけで取り込まない
+#     (= fetch は remote 追跡 ref しか動かさず、 作業木には触らない)。
+step_remote_sync() {
+    _up="$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || true)"
+    if [ -z "$_up" ]; then
+        echo "remote_sync: (skipped, no upstream branch)"
+        return
+    fi
+    # 回線が無い時に起動を待たせない (= timeout が在る環境だけ上限を掛ける)
+    _to=""
+    command -v timeout >/dev/null 2>&1 && _to="timeout 10"
+    if ! $_to git fetch --quiet 2>/dev/null; then
+        echo "remote_sync: UNKNOWN (fetch failed — the counts below would be stale, so none are shown)"
+        return
+    fi
+    _counts="$(git rev-list --left-right --count "HEAD...$_up" 2>/dev/null || true)"
+    _ahead="${_counts%%[[:space:]]*}"
+    _behind="${_counts##*[[:space:]]}"
+    if [ -z "$_counts" ]; then
+        echo "remote_sync: UNKNOWN (could not compare HEAD with $_up)"
+    elif [ "$_behind" -gt 0 ]; then
+        echo "remote_sync: BEHIND $_behind commit(s) vs $_up (ahead $_ahead) — everything read so far is stale"
+    else
+        echo "remote_sync: up to date with $_up (ahead $_ahead)"
+    fi
+}
+
+step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
 step_duplicates       > "$TMPD/2-dup"        &
 step_capacity         > "$TMPD/3-capacity"   &
 step_docs_check       > "$TMPD/4-docs"       &
-step_staledocs        > "$TMPD/5-staledocs"  &
 step_company_terms    > "$TMPD/6-company"    &
 step_git_guard        > "$TMPD/7-guard"      &
 step_claude_settings  > "$TMPD/8-settings"   &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
-cat "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
-    "$TMPD/5-staledocs" "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings"
+cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
+    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -188,11 +198,12 @@ echo ""
 cat "$TMPD/9-anon"
 
 echo "action policy:"
+echo "  - remote_sync BEHIND -> run 'git pull --rebase --autostash' and re-read every startup file before briefing"
+echo "    (UNKNOWN -> say so in the briefing; do not claim the state is current)"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
 echo "  - docs-check FAIL >= 1 -> must fix within the same session"
 echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task."
 echo "    Moving text to a lazy file or rewording it shorter does not count. Never make the user wait on this."
-echo "  - staledocs red >= 1 -> read the findings; fix real drift, ack verified pairs (warn gate)"
 echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
 echo "  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local"
 echo "    core.hooksPath (the global dispatcher already delegates to .githooks/) before committing there"
