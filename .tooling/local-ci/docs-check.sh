@@ -20,13 +20,10 @@ set -euo pipefail
 #      is intentionally NOT scanned because it overlaps with markdown h1
 #      underlines and would false-positive.
 #
-# Inline path references (`src/foo/bar.py` -> file must exist) are NOT
-# checked here: staledocs owns path/anchor liveness via `task docs:coherence`
-# (single source of truth; keeping a second checker produced split verdicts
-# and two ignore lists for the same claim). This script keeps only the
-# classes staledocs deliberately does not cover because they are template
-# conventions, not language-agnostic doc/code drift: Taskfile verb names,
-# ASCII layout trees, and merge-mishap fingerprints.
+# This script covers the template-specific conventions only: Taskfile verb
+# names, ASCII layout trees, and merge-mishap fingerprints. Inline path
+# references are the shipped `docs-check.sh` step 4's job inside a derived
+# agent, not the template repo's.
 #
 # What it cannot check: prose claims about behaviour. Those are covered by
 # the review pass before integration, not by this script.

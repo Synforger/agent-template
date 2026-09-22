@@ -25,7 +25,7 @@ updated: 2026-06-29
 
 ### 終了時
 
-- **Step 0** = `session-end-precheck.py <journal-dir>...` (= 終了発話の一次ソース / 容量 headroom / journal 採番 / staledocs ack 手順を 1 回で取る、 以降の Step で再探索しない)
+- **Step 0** = `session-end-precheck.py <journal-dir>...` (= 終了発話の一次ソース / 容量 headroom / journal 採番を 1 回で取る、 以降の Step で再探索しない)
 - **Step 2** = `extract-artifact-index.sh <journal-dir>` + `detect-duplicates.py` を手動実行 (= 階層引数が session ごとに変わるので hook 化しない)
 - **Step 2 末** = `startup-status.sh` で全指標走り切り
 

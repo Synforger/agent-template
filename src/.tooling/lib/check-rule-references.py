@@ -56,7 +56,7 @@ TARGET_GLOBS = [
 ]
 
 # この repo に固有の綴り (= work repo が同名の dir を持たない。 全階層で測る)
-INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "templates/", ".staledocs/")
+INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "templates/")
 INTERNAL_FILES = ("CLAUDE.md", "vision.md")
 
 # work repo 側にも同名で存在しうる dir (= 親階層の file から書かれた時だけ repo 内と判る。

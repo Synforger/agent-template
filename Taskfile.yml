@@ -20,7 +20,6 @@ tasks:
     cmds:
       - bash .tooling/local-ci/docs-check.sh
       - bash .tooling/local-ci/synced-paths-check.sh
-      - bash .tooling/local-ci/staledocs-check.sh
 
   publish:check:
     desc: Pre-publication gate for flipping a repo private -> public (full-history audits + OSS surface checks)

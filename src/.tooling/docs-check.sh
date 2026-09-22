@@ -72,7 +72,6 @@ emit_step 3
 echo "[4/14] dead link check..."
 # 過去記録は対象外 (= link は当時の状態、 遡及修正しない)。 path 慣習 (= archive /
 # history 配下) と frontmatter 宣言 (= status: snapshot) の 2 経路。
-# .staledocs.yaml の docs スコープは staledocs がアンカー生存を担当 (= 二重検証禁止)。
 # 判定は「$dir/$ref → $ref → repo 内同名 file」 の 3 段で、 最後の段は file 名引用を
 # dead 扱いしないための false positive 対策。
 emit_step 4
