@@ -7,7 +7,7 @@ capacity: 3KB
 
 # journal/ の運用
 
-> **全階層共通の真値**。 `projects/<P>/journal/` も `subprojects/<S>/journal/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 直下の `CLAUDE.md § ディレクトリ`、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
+> **全階層共通の真値**。 `projects/<P>/journal/` も `subprojects/<S>/journal/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 本 file の `description` と § 何を入れる / 入れない、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
 
 ## 何を入れる / 入れない
 
@@ -18,12 +18,14 @@ capacity: 3KB
 
 - `YYYY-MM-DD/session-NN.md` (= 日付フォルダは**締めた日**、 作業期間が跨るなら本文の見出しに書く)
 - NN は階層ごとに独立、 採番は終了時 Step 0 の出力をそのまま使う
-- 書式 = `_template.md`。 発火記録は隣に `session-NN-rule-hits.jsonl` (= 書式 = `rules/lazy/rule-registry.md`)
+- 書式 = `_template.md`。 発火記録は隣に `session-NN-rule-hits.jsonl` (= 書式 = `.claude/skills/rule-registry/SKILL.md`)
 - 機械が作る触跡は `session-NN-auto-index.jsonl` (= PC ローカル、 `git` に載せる階層と載せない階層がある)
 
 ## 追記のみ
 
 **既に書いた journal は上書きしない**。 訂正が要るなら次の session の journal に書く (= 過去の記録はその時点で何が見えていたかの一次資料)。
+
+例外は 1 つ: **客先の中身が境界の外に書かれていた時は、過去の journal でも書き換える** (= 客先に固有の段落をその案件の階層の journal へ移し、元の場所には 1 行の参照を残す。何をどこへ移したかは、書き換えた session の journal に書く)。
 
 ## _archive
 

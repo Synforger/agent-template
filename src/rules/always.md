@@ -1,13 +1,13 @@
 ---
 title: メタ運用 統合 rule (= 容量 / 書き方 / 増やし方 / 検出機構、 形態 D 基底)
 description: agent-template 出荷時の常時 load 単一 file (= 形態 D)。 派生は本 file に「§ git / § quality / § style / § forbidden 等」 の personal section を追記して統一運用
-updated: 2026-09-21
+updated: 2026-09-28
 capacity: 13KB
 ---
 
 # メタ運用 統合 rule
 
-形態 D: 全階層で `rules/always.md` 1 file 統合。 詳細は本 file の section、 シチュエーション別詳細は `rules/lazy/*.md` 参照。
+形態 D: 全階層で `rules/always.md` 1 file 統合。 詳細は本 file の section、 特定の作業中にだけ効く手順は skill (= `.claude/skills/<name>/SKILL.md`) が持つ。
 
 出荷時は本 file = メタ section のみ。 派生は同 file に personal section (= git flow / style / forbidden 等) を追記して 1 file 統合運用、 各階層 (= project / subproject) も同構造。
 
@@ -17,7 +17,7 @@ capacity: 13KB
 
 ### 常時 load は読み切れる量に保つ
 
-**常時 load される 1 file は 200 行未満に収める**。 超えた分は trigger を持つ `rules/lazy/` へ降ろす。
+**常時 load される 1 file は 200 行未満に収める**。 超えた分は場面でだけ読まれる skill (= `.claude/skills/`) へ降ろす。
 
 - Why: 長い file は context を食うだけでなく**守られる率そのものを下げる** (= 公式ガイドの推奨値。 原文 "Longer files consume more context and reduce adherence")
 - How: 押し出す対象は**発火実績の下位から選ぶ** (= 行数が稼げる節から選ばない)。 降ろした先に同じことが書かれていないか先に確かめる
@@ -36,16 +36,16 @@ Why: 際限ない rule 増殖を物量で止める、 常時 load で全体把�
 
 ### 動的読込 = 上限外
 
-`ls` / journal / plans / messages / startup-status / lazy file の Read 等は上限に含めない。 監視 script (= `.tooling/startup-status.sh`) は frontmatter `capacity:` 宣言 file の静的合計のみ計算。
+`ls` / journal / plans / messages / startup-status / skill 本文の Read 等は上限に含めない。 skill の一覧 (= `description` + `when_to_use`) は毎 session 文脈に入るので別枠で数える。 監視 script (= `.tooling/check-static-capacity.sh`、 startup-status が呼ぶ) が階層ごとの静的合計を計算する。
 
 ### 形態 D
 
 ```
-<階層>/rules/always.md       ← 1 file 統合 (= 全 always section)
-<階層>/rules/lazy/*.md       ← 個別維持 (= シチュエーション別 trigger)
+<階層>/rules/always.md                 ← 1 file 統合 (= 全 always section)
+<階層>/.claude/skills/<name>/SKILL.md  ← 個別維持 (= 場面ごとの when_to_use)
 ```
 
-Why: always = 1 file で構造美 + 容量管理が `wc -c` 1 発、 lazy = 個別 trigger 機能維持。
+Why: always = 1 file で構造美 + 容量管理が `wc -c` 1 発、 skill = 一覧はハーネスが出し、 本文は呼んだ時だけ読まれる。
 
 ### 書き方
 
@@ -81,10 +81,10 @@ rule 本体に書かないもの:
 
 | 検出対象 | 機構 | 発火 |
 |---|---|---|
-| frontmatter 欠落 / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths / journal 整合 / 階層インターフェース / 参照先の実在 / 発火記録の有無 / vision の形 | docs-check.sh (= 14 step) | 起動 + 終了 |
+| frontmatter 欠落 / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths / journal 整合 / 階層インターフェース / 参照先の実在 / 発火記録の有無 / vision の形 / 主文の肯定形 / 一時 file の置き場 | docs-check.sh (= 16 step) | 起動 + 終了 |
 | section 単位重複 (= LCS、 雛形とその複製は構造で除外) | detect-duplicates.py | 同上 |
 | 7 日無更新 (= 形骸化) | detect-stale-rules.sh | 同上 |
-| 静的容量階層別 | startup-status.sh | 起動 |
+| 静的容量階層別 (= skill の一覧は別枠) | check-static-capacity.sh | 起動 |
 | 容量緩和 commit | precommit-conflict-check.sh | git pre-commit |
 
 エージェント反応:
@@ -98,9 +98,9 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 
 - ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変、 生成 = `.tooling/build-rule-registry.py`)
 - 実績は 2 つに効く: 容量超過時に**どの節から押し出すか**、 そして**沈黙した rule の退役**
-- 沈黙で退役を測れるのは trigger 待ちの層だけ (= 常時 load は「読まれた」 と「効いた」 が別物なので、 記録が無いことを死んだ証拠に使わない)
+- 沈黙で退役を測れるのは skill の層だけ (= 常時 load は「読まれた」 と「効いた」 が別物なので、 記録が無いことを死んだ証拠に使わない)
 
-**記録の書式 / ID の引き方 / 押し出しと退役の判定 / どの階層に置くかは `rules/lazy/rule-registry.md` が真値**。 ルールを足す / 改訂する / 記録を書く直前に読む。
+**記録の書式 / ID の引き方 / 押し出しと退役の判定 / どの階層に置くかは `.claude/skills/rule-registry/SKILL.md` が真値**。 ルールを足す / 改訂する / 記録を書く直前に読む。
 
 ### 弱点パターン発見時の機構自己拡張
 
@@ -126,12 +126,12 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 - frontmatter `stable: true` + path pattern (= `_README.md` 全般) 除外で機械分離済
 - 残った stale 候補は真の改訂対象として自走判断
 
-### 関連 lazy 文書庫
+### 関連 skill
 
-- 自動化機構 (= `.tooling/*` script / settings.json hook) 改修 → `rules/lazy/automation-machinery.md`
-- 新 lazy file 追加時の設計原則 → 同上 § 文書庫運用
-- 複数プロジェクト共通の反復を横断 rule へ上げる書式 → `rules/lazy/rule-promotion-format.md`
-- ルール台帳 / 発火記録 / 配置と退役の判定 → `rules/lazy/rule-registry.md`
+- 自動化機構 (= `.tooling/*` script / settings.json hook) 改修 → `.claude/skills/automation-machinery/SKILL.md`
+- skill を足す / 置き場と命名 → `.claude/skills/_README.md`
+- 複数プロジェクト共通の反復を横断 rule へ上げる書式 → `.claude/skills/rule-promotion-format/SKILL.md`
+- ルール台帳 / 発火記録 / 配置と退役の判定 → `.claude/skills/rule-registry/SKILL.md`
 
 ---
 
@@ -155,4 +155,4 @@ path 表記 / 出力の簡潔さ / 表現 / 長い作業の見せ方 / ユーザ
 
 出荷時に本 file が持つのは `§ meta` と、 上の 4 つの空節だけ。 **空でも節は置いたまま**にする (= 出荷 doc が `rules/always.md § git` のように名指しており、 節ごと無いと読む先が消える。 docs-check step 12 がその死を検出する)。
 
-Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、 § 見出しで section 検索性も保てる。 200 行に収まらなくなったら、 発火実績の下位から `rules/lazy/` へ降ろす (= `rules/always-<section>.md` への分割は、 降ろし先が無い時だけ)。
+Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、 § 見出しで section 検索性も保てる。 200 行に収まらなくなったら、 発火実績の下位から skill へ降ろす (= `rules/always-<section>.md` への分割は、 降ろし先が無い時だけ)。
