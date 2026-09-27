@@ -7,7 +7,7 @@ capacity: 3KB
 
 # research/ の運用
 
-> **全階層共通の真値**。 `projects/<P>/research/` も `subprojects/<S>/research/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 直下の `CLAUDE.md § ディレクトリ`、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
+> **全階層共通の真値**。 `projects/<P>/research/` も `subprojects/<S>/research/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 本 file の `description` と § 何を入れる / 入れない、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
 
 ## 何を入れる / 入れない
 
@@ -18,7 +18,7 @@ capacity: 3KB
 ## 命名と書き方
 
 - file 名 = `kebab-case-topic.md`。 1 テーマ = 1 file
-- `_template.md` をコピーする (= 目的 / 調査内容 / 結論 / 参考リンク)。 frontmatter = `title` / `created` / `status` / `tags`
+- `_template.md` をコピーする (= 目的 / 調査内容 / 結論 / 参考リンク)。 frontmatter = `title` / `description` / `created` / `status` / `tags`
 - **情報源の URL は必ず残す**、 **要点は自分の言葉で書く**、 **結論セクションを必ず書く** (= 調査の意味は「で、 どうすればいい?」 が分かること)
 - 技術選定なら 選択肢 + トレードオフ + 推奨案 (= 推奨は影響範囲を測ってから)
 

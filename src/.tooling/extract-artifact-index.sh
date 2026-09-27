@@ -22,10 +22,17 @@ fi
 JOURNAL_DIR_ARG="$1"
 
 # session 開始時刻 = 当 transcript 1 行目以降の最初の timestamp、 fallback = 24h
-# Claude Code の transcript dir 命名規約: $HOME/.claude/projects/-<root-path-with-slashes-as-dashes>
+# 当 session の transcript は session id で名指しで引く (= session-end-precheck.py と同じ引き方)。
+# ⚠ 「一番新しい file」で選ぶと、並行する別 session や別の config dir (= ~/.claude と
+#    ~/.claude-work) の transcript を掴む。id が無い時だけ、~/.claude*/ の中の最新に倒す。
 ROOT_SLUG=$(printf '%s' "$ROOT" | sed 's|/|-|g')
-TRANSCRIPT_DIR="$HOME/.claude/projects/$ROOT_SLUG"
-LATEST_TRANSCRIPT=$(ls -t "$TRANSCRIPT_DIR"/*.jsonl 2>/dev/null | head -1)
+LATEST_TRANSCRIPT=""
+if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+    LATEST_TRANSCRIPT=$(ls "$HOME"/.claude*/projects/*/"${CLAUDE_CODE_SESSION_ID}.jsonl" 2>/dev/null | head -1)
+fi
+if [ -z "$LATEST_TRANSCRIPT" ]; then
+    LATEST_TRANSCRIPT=$(ls -t "$HOME"/.claude*/projects/"$ROOT_SLUG"/*.jsonl 2>/dev/null | head -1)
+fi
 SINCE_ISO=""
 session_uuid=""
 if [ -n "$LATEST_TRANSCRIPT" ]; then

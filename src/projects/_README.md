@@ -11,20 +11,17 @@ capacity: 6KB
 
 ## プロジェクト判定 (= folder 名 = 判定キーワード、 真値 = ls 結果)
 
-エージェント は起動時に `ls projects/` で folder 名一覧取得、 最初の user 発話に **folder 名が部分一致するものを採用**。 マッチなし = `normal`。
+起動 script (= `.tooling/lib/claude-launch.py`) が最初の発話に**含まれる** folder 名を採用し (= 全角半角・大小文字を畳む、 複数なら長い名前)、 `ARK_TIER` で渡してその階層の檻で起動する。 マッチなし = `normal`。
 
 **folder 名 = 判定キーワード** = 真値 1 箇所 (= ls 結果のみ)、 mapping 表 / 判定キーワード section は存在しない。 folder 作るだけで自動編入、 削除で自動退役、 改訂忘れが構造的に不可能。
 
 照合順 (= 順序付き、 親 → サブの順):
 
-1. `ls projects/` で親プロ folder 名取得 (= `_` prefix 除外)、 user 発話と**部分一致**で照合
+1. `projects/` の親プロ folder 名 (= `_` / `.` prefix 除外) を発話と**部分一致**で照合
 2. 親プロ hit したら **発話の残り (= 親プロ folder 名以降の文字列)** で `ls projects/<親プロ>/subprojects/` の folder 名と照合
    - サブプロ hit → 親プロ + サブプロ両方採用 (= 並列 Read)
    - サブプロ miss → 親プロのみ採用
 3. 親プロも miss なら `normal`
-
-例:
-- user 「<親プロ>の <サブプロ> 作業」 → 親 hit → 残り「の <サブプロ> 作業」 で `ls projects/<親プロ>/subprojects/` 照合
 
 folder 名規約 (= 親プロ / サブプロ共通):
 
@@ -40,9 +37,9 @@ folder 名規約 (= 親プロ / サブプロ共通):
 projects/<project>/
 ├── _README.md      ← 射程・repo・起動時の追加読み・エージェントの役割
 ├── vision.md       ← 現在地 (= 長期の状態 1 枚、 起動時必読。 やること・タスクは書かない)
+├── .claude/skills/ ← この階層でだけ効く手順 (= 任意、 運用 = 親の `.claude/skills/_README.md`)
 ├── rules/
-│   ├── always.md   ← プロジェクト起動時必読 (= Phase B-プロジェクト固有、 形態 D = 1 file)
-│   └── lazy/       ← シチュエーション該当時に エージェント が自発 Read (= 文書庫運用)
+│   └── always.md   ← プロジェクト起動時必読 (= Phase B-階層固有、 1 file)
 ├── plans/          ← 計画書 (= 完了は `_archive/` へ)
 ├── research/       ← このプロジェクト固有の調査
 ├── journal/        ← セッションログ (YYYY-MM-DD/session-NN.md)
@@ -53,10 +50,10 @@ projects/<project>/
 
 project / subproject が必ず持つ最小セット (= 雛形 cp で自動充足、 テンプレの形を暗黙仕様にしない):
 
-- **必須 file**: `_README.md` / `rules/always.md` (= 形態 D、 固有 rule が無い間も空雛形を置く) / `rules/lazy/_README.md` (= lazy 索引、 lazy 0 件でも置く)
+- **必須 file**: `_README.md` / `rules/always.md` (= 固有 rule が無い間も空雛形を置く)
 - **起動時必読**: `vision.md` (= 長期の状態 1 枚、 上限 4KB)。 未作成の階層は docs-check step 10 が WARN で出すので、 次にその階層で起動した session の終了時に作る
 - **必須 dir**: `journal/` / `plans/`
-- **任意**: `research/` / `subprojects/` / `tooling/` (= 使う階層のみ)
+- **任意**: `research/` / `subprojects/` / `tooling/` / `.claude/skills/` / `_scratch/` (= 使う階層のみ。 `_scratch/` は残す前提の無い出力で、 検査の対象外)
 - **frontmatter 必須キー** (= `_README.md` + rules 層): `title` / `description` / `updated` / `capacity` (= 検査は docs-check step 1-2)
 
 欠落は docs-check step 10 が FAIL で検出。
@@ -74,11 +71,11 @@ cp -R projects/_template-project/ projects/<新名>/
 順番固定:
 1. このフォルダは何か (= 射程 / 含む・含まない)
 2. `## repo` (= この階層に紐づく repo の path。 無ければ「無し」)
-3. `## 起動時の追加読み` (= 共通 6 点の後に読むもの。 無ければ「無し」)
+3. `## 起動時の追加読み` (= 共通 5 点の後に読むもの。 無ければ「無し」)
 4. エージェント の役割 / 挙動ルール
 5. 関連 link
 
-**共通 6 点の真値は直下の `CLAUDE.md § Phase B-階層固有`**、 判定キーワードは folder 名そのもの。 どちらも `_README.md` には書かない (= 真値分散)。
+**共通 5 点の真値は直下の `CLAUDE.md § Phase B-階層固有`**、 判定キーワードは folder 名そのもの。 どちらも `_README.md` には書かない (= 真値分散)。
 
 ## 汎用フォルダとの使い分け
 

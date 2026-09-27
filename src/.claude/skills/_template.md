@@ -1,19 +1,16 @@
 ---
-title: <rule タイトル>
-description: <1 行説明>
+title: <skill タイトル>
+description: <何の手順か 1 行>
 updated: "{{YYYY-MM-DD}}"
-triggers: <シチュエーション、 自然言語で「〜する直前」「〜を始める時」 等で書く。 特定発話依存禁止 (= 「user が "xxx" と打ったら」 系)>
+when_to_use: <作業の場面、 自然言語で「〜する直前」「〜を始める時」 等で書く。 特定発話依存禁止 (= 「user が "xxx" と打ったら」 系)>
 capacity: 5KB
 ---
 
-> **必要な瞬間**: <このシチュエーションに入ると認識した直前に必ず Read する、 1 行で>
-
-
-# <rule タイトル>
+# <skill タイトル>
 
 ## 背景 / 動機
 
-<なぜこの rule が必要か、 1-3 行>
+<なぜこの手順が必要か、 1-3 行>
 
 ## 運用
 
@@ -26,4 +23,4 @@ capacity: 5KB
 
 ## 関連
 
-- 関連 rule / plan / research の link
+- 関連 skill / plan / research の link

@@ -7,12 +7,12 @@ capacity: 3KB
 
 # plans/ の運用
 
-> **全階層共通の真値**。 `projects/<P>/plans/` も `subprojects/<S>/plans/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 直下の `CLAUDE.md § ディレクトリ`、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
+> **全階層共通の真値**。 `projects/<P>/plans/` も `subprojects/<S>/plans/` も同じ運用で、 **下の階層に本 file の写しは置かない**。 フォルダの意味 = 本 file の `description` と § 何を入れる / 入れない、 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) = `rules/always.md § git`。
 
 ## 何を入れる / 入れない
 
 - **入れる**: やること と どう進めるか (= 計画 / 段取り / 設計 / 採用方針 / 単発の作業)。 やることは file の中の見出しで持つ
-- **入れない**: 技術知識の蓄積 → `research/`、 trigger を持つ手順書 → `rules/lazy/`、 secret / credential / 個人のセットアップ手順 → エージェント配下に置かない
+- **入れない**: 技術知識の蓄積 → `research/`、 作業の場面で読む手順書 → `.claude/skills/`、 secret / credential / 個人のセットアップ手順 → エージェント配下に置かない
 - 直下プール (= repo 直下の `plans/`) は**どのプロジェクトにも属さない**もの。 プロジェクトのものは `projects/<P>/plans/`
 
 ## 命名と書き方
@@ -20,7 +20,7 @@ capacity: 3KB
 - file 名 = `kebab-case-name.md` (= 内容を 3-5 語で)。 複数 file になる計画は `<plan-name>/` サブフォルダ + 配下に `_README.md`
 - `_template.md` をコピーする。 frontmatter = `title` / `description` / `status` / `created` / `updated`
 - status = `not-started` / `in-progress` / `completed` / `superseded` のいずれか。 進行中は `updated` を都度更新
-- 大きな計画の刻み方 (= 段の表と持ち場の表) は、 実装計画の lazy が真値 (= 索引 = `rules/lazy/_README.md`)
+- 大きな計画の刻み方 (= 段の表と持ち場の表) は、 実装計画の skill が真値 (= `.claude/skills/implementation-plan/SKILL.md`)
 
 ## まとめる / 分ける
 
