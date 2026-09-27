@@ -5,7 +5,7 @@
 読んだ側は在ると思って探し、 無いと分かるまで時間を使う。 「時間と共に無効になる」
 の最も多い形がこれなので、 書いた場所で落とす。
 
-対象 = 各階層の常時 load と lazy に加えて、 folder の運用 1 本と各階層の玄関
+対象 = 各階層の常時 load と skill に加えて、 folder の運用 1 本と各階層の玄関
 (= `<kind>/_README.md` / `<tier>/_README.md` / `vision.md`)。
 検出 = バッククォート内の **この repo 内を明示的に指す path** のうち、 実在しないもの。
 
@@ -23,7 +23,7 @@
     赤にすると、 clone 直後の派生が常時赤になって検査そのものが無視される
 
 解決は「その階層の root からの相対」 → 「repo root からの相対」 の順 (= 各階層の
-rules/always.md が `rules/lazy/x.md` と書いたら自階層のそれを指す)。
+rules/always.md が `.claude/skills/x/SKILL.md` と書いたら自階層のそれを指す)。
 
 走らせ方: python3 .tooling/lib/check-rule-references.py [--verbose]
 出力: 1 行 1 件の `<file>\t<参照>`。 終了コードは常に 0 (= 判定は呼び出し側)。
@@ -40,28 +40,29 @@ TARGET_GLOBS = [
     "vision.md",
     "profile/profile.md",
     "rules/always.md",
-    "rules/lazy/*.md",
+    ".claude/skills/*/SKILL.md",
     # folder の運用 1 本と各階層の玄関 (= ここが指す path も「在ると思って探す時間」 を奪う。
     # rule file だけを見ていた頃、 消えた dir への参照が _README に何か月も残っていた)
     "*/_README.md",
+    ".claude/skills/_README.md",
     "projects/*/_README.md",
     "projects/*/vision.md",
     "projects/*/rules/always.md",
-    "projects/*/rules/lazy/*.md",
+    "projects/*/.claude/skills/*/SKILL.md",
     "projects/*/subprojects/_README.md",
     "projects/*/subprojects/*/_README.md",
     "projects/*/subprojects/*/vision.md",
     "projects/*/subprojects/*/rules/always.md",
-    "projects/*/subprojects/*/rules/lazy/*.md",
+    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
 ]
 
 # この repo に固有の綴り (= work repo が同名の dir を持たない。 全階層で測る)
-INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "templates/")
+INTERNAL_PREFIXES = ("rules/", "profile/", "projects/", "templates/", ".claude/skills/")
 INTERNAL_FILES = ("CLAUDE.md", "vision.md")
 
 # work repo 側にも同名で存在しうる dir (= 親階層の file から書かれた時だけ repo 内と判る。
 # 下位階層の rule が `journal/weekly/` と書いた時、 それは work repo の journal でありうる)
-AMBIGUOUS_PREFIXES = (".tooling/", "journal/", "todos/", "plans/", "research/", "docs/")
+AMBIGUOUS_PREFIXES = (".tooling/", "journal/", "plans/", "research/", "docs/")
 
 def _home_prefix(root: str):
     """`~/...` 表記でこの repo を指す綴りを実 path から導出する。
@@ -146,6 +147,9 @@ def measurable_in_repo(token: str, tier: str, external: bool = False):
     if not repo:
         return None
     head = token.split("/")[0]
+    # `.git/` の下は repo の中身ではなく git の状態 (= `.git/worktrees` は worktree が在る間だけ在る)
+    if head == ".git":
+        return None
     if head and os.path.isdir(os.path.join(repo, head)):
         return repo
     return None
@@ -154,6 +158,9 @@ def measurable_in_repo(token: str, tier: str, external: bool = False):
 def tier_root(rel_path: str) -> str:
     """その file が属する階層の root を repo 相対で返す (= `projects/X/` 等、 親なら空)。"""
     parts = rel_path.split("/")
+    # skill は `<階層>/.claude/skills/<name>/SKILL.md` に在る (= rules/ を持たない)
+    if ".claude" in parts:
+        return "/".join(parts[: parts.index(".claude")])
     if "rules" in parts:
         return "/".join(parts[: parts.index("rules")])
     if parts[0] == "profile":

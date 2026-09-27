@@ -19,7 +19,7 @@ capacity: 3KB
 
 - 親プロジェクト起動後、 ユーザ発話に subproject の folder 名が部分一致したらエージェントが動的に切り替える
 - 切替時は 1 行告知する (= 「subproject = X に入りました」)
-- 切替後はその階層で共通 6 点を踏む (= 真値は親 `CLAUDE.md § Phase B-階層固有`)
+- 切替後はその階層で共通 5 点を踏む (= 真値は親 `CLAUDE.md § Phase B-階層固有`)
 - 同 session 内で複数 subproject を出入りしてよい
 
 ## 現在のサブプロジェクト

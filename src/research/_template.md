@@ -1,5 +1,6 @@
 ---
 title: "{{リサーチタイトル}}"
+description: "{{何を調べ、 何が分かったかを 1 行で}}"
 created: "{{YYYY-MM-DD}}"
 status: in-progress
 tags: []

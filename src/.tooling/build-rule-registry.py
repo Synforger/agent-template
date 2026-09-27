@@ -33,11 +33,11 @@ TARGET_GLOBS = [
     "CLAUDE.md",
     "rules/always.md",
     "profile/profile.md",
-    "rules/lazy/*.md",
+    ".claude/skills/*/SKILL.md",
     "projects/*/rules/always.md",
-    "projects/*/rules/lazy/*.md",
+    "projects/*/.claude/skills/*/SKILL.md",
     "projects/*/subprojects/*/rules/always.md",
-    "projects/*/subprojects/*/rules/lazy/*.md",
+    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
 ]
 SKIP_BASENAMES = {"_README.md", "_template.md"}
 # `_` prefix の階層 (= 雛形 / system) は対象外

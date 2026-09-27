@@ -1,8 +1,8 @@
 # <Agent Name>
 
-> 役割: <このエージェントの人格定義> + 起動 / 終了プロトコル + 横断ルール索引。 名前の由来: <一言>。 詳細ルールは常時 load (= `rules/always.md` + `profile/profile.md`) と文書庫 (= `rules/lazy/*`、 該当時に自発 Read)。
+> 役割: <このエージェントの人格定義> + 起動 / 終了プロトコル + 横断ルール索引。 名前の由来: <一言>。 詳細ルールは常時 load (= `rules/always.md` + `profile/profile.md`) と skill (= 各階層の `.claude/skills/`、 該当場面で呼ぶ)。
 >
-> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来。 機構 (= `.tooling/*` + `rules/always.md § meta` + `rules/lazy/{_template,rule-promotion-format}.md` + 構造テンプレ) は base 側管理、 派生固有 (= 人格 / personal rule / project / journal 等) は本リポ管理。 base 取込 = `bash .tooling/sync-from-base.sh`、 機構改善の昇格 = `bash .tooling/promote-to-base.sh`。
+> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来。 機構 (= `.tooling/*` + `rules/always.md § meta` + `.claude/skills/` の運用と共通 skill + 構造テンプレ) は base 側管理、 派生固有 (= 人格 / personal rule / project / journal 等) は本リポ管理。 base 取込 = `bash .tooling/sync-from-base.sh`、 機構改善の昇格 = `bash .tooling/promote-to-base.sh`。
 
 ---
 
@@ -37,7 +37,8 @@
 | `plans/` | やること + どう進めるか (= 計画 / 段取り / 設計。 やることは file の中の見出しで持つ) |
 | `research/` | 調べたこと |
 | `journal/` | session の記録 (= 追記のみ) |
-| `rules/` | 守ること (= `always.md` + trigger で読む `lazy/`) |
+| `rules/` | 毎 session 守ること (= `always.md`) |
+| `.claude/skills/` | 特定の作業中にだけ効く手順 (= 一覧はハーネスが出す) |
 | `vision.md` | 現在地 (= 状態のみ) |
 
 **フォルダの運用 (= 命名 / 置き場 / `_archive` の基準) は親の `<kind>/_README.md` 1 本が真値**、 下の階層には置かない (= そこで file を作る / 動かす / 片付ける直前に親を Read)。 毎 session 効く判断 (= 残すか片付けるか / 新規作成の可否) は `rules/always.md § git` が持つ。
@@ -83,22 +84,20 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - <message-dir 設定時のみ> エージェント間メッセージ確認
 - **`bash .tooling/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
-- **lazy 索引 Read (= 必須)**: `rules/lazy/_README.md` (= trigger 発火時に自発 Read する前提)。 索引は通ったルートの階層だけ
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
 
 **起動で触るのは採用階層の file とその階層の repo だけ**。 滞留 / branch は該当作業の直前に出す。
 
-`normal` 以外なら、 採用した各階層 (= `<P>/`、 hit していれば `<S>/` も) で**同じ 6 点**を踏む。 **順も内容も階層で変えない**:
+`normal` 以外なら、 採用した各階層 (= `<P>/`、 hit していれば `<S>/` も) で**同じ 5 点**を踏む。 **順も内容も階層で変えない**:
 
 1. `_README.md` (= その階層が何か / repo の在処 / 追加読み物の指定)
 2. `vision.md` (= この階層の現在地)
 3. `rules/always.md` 全文
-4. `rules/lazy/_README.md` (= 索引)
-5. `journal/` 最新 3 session (= 新しい順、 満たなければある分だけ)
-6. `plans/` を `ls` + その階層の repo を `ls` と `git log -1` (= repo の在処は `_README.md`、 無い階層は skip)
+4. `journal/` 最新 3 session (= 新しい順、 満たなければある分だけ)
+5. `plans/` を `ls` + その階層の repo を `ls` と `git log -1` (= repo の在処は `_README.md`、 無い階層は skip)
 
-**この 6 点が手順の真値で、 置き場は本 file 1 箇所**。 各階層の `_README.md` は「起動時に何を読むか」 を持たず、 その階層でだけ要る物があれば `## 起動時の追加読み` に列挙する (= 6 点の後に読む)。
+**この 5 点が手順の真値で、 置き場は本 file 1 箇所**。 各階層の `_README.md` は「起動時に何を読むか」 を持たず、 その階層でだけ要る物があれば `## 起動時の追加読み` に列挙する (= 5 点の後に読む)。
 
 サブプロが hit したら親 journal は skip (= サブプロ独立 journal が正)。 session 中の後続発話に subproject keyword が出たら**動的切替**可 (= 1 行告知 + 追加読込)。
 
@@ -141,6 +140,6 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 
 ---
 
-## lazy file
+## skill
 
-frontmatter `triggers:` のシチュエーションで自発 Read (= 一覧 `rules/lazy/_README.md`)。
+特定の作業中にだけ効く手順は各階層の `.claude/skills/<name>/SKILL.md` が持つ。 一覧はハーネスが出すので、 `when_to_use` の場面に入ったら呼ぶ (= 運用 = `.claude/skills/_README.md`)。
