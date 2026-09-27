@@ -9,7 +9,7 @@
 - **エージェントは「人格 + 固有プロジェクト + 機構」 で出来てる**。 機構部分を base に切り出し、 人格 + プロジェクトは派生に残す = 機構改善を全エージェントで共有
 - **継続的自己強化ループ**: 機構の品質は機械検出 (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`) で自動 sweep、 エージェントは出力に反応するだけ = context 浪費しない
 - **OSS 公開前提**: 個人情報・社内情報の混入はマシン常駐の guard-dispatcher (= git hooks dispatcher) が commit / push 境界で機械防止
-- **フォルダの運用は 1 本、 起動の手順はどの階層でも同じ**: フォルダの使い方は木の上で 1 回だけ書き、 親 / プロジェクト / サブプロジェクトは**同じ 6 点を同じ順で**読んで立ち上がる。 その 6 点の真値は `CLAUDE.md` 1 箇所にあり、 各階層の `_README.md` はそこでだけ要る追加の読み物を挙げるだけ
+- **フォルダの運用は 1 本、 起動の手順はどの階層でも同じ**: フォルダの使い方は木の上で 1 回だけ書き、 親 / プロジェクト / サブプロジェクトは**同じ 5 点を同じ順で**読んで立ち上がる。 その 5 点の真値は `CLAUDE.md` 1 箇所にあり、 各階層の `_README.md` はそこでだけ要る追加の読み物を挙げるだけ
 - **ルールは指示形で書き、 読み切れる量に保つ**: 常時 load の 1 file は 200 行未満。 溢れた分は場面でだけ読まれる Claude Code の skill (= `.claude/skills/`) へ降ろし、 降ろす対象は**発火実績の下位**から選ぶ (= 行数が稼げる節から選ばない)
 - **派生に縛りを最小化**: base が真値を持つのは「機構 + 必須 4 rule file + 構造テンプレ」 のみ、 残りは派生の自由領域
 
@@ -43,6 +43,7 @@ agent-template/
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # Phase B-共通 で実行
+    │   ├── check-static-capacity.sh   # 階層別の常時 load 容量 (= skill の一覧は別枠)
     │   ├── lib/                       # docs-check が呼ぶ検査本体
     │   └── _README.md
     ├── rules/
@@ -140,6 +141,8 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 12. ルールの参照先 (= rule が指す path が実在するか)
 13. 発火記録の網羅 (= 効いた / 違反した rule を 1 件も書かなかった session)
 14. vision の形 (= 状態の節が在るか、 足し算で増えていないか)
+15. ルールの主文が肯定形か (= やることで書く)
+16. 一時 file を `TMPDIR` の下に作っているか
 
 ### `detect-duplicates.py`
 
