@@ -20,7 +20,7 @@ capacity: 3KB
 - file 名 = `kebab-case-name.md` (= 内容を 3-5 語で)。 複数 file になる計画は `<plan-name>/` サブフォルダ + 配下に `_README.md`
 - `_template.md` をコピーする。 frontmatter = `title` / `description` / `status` / `created` / `updated`
 - status = `not-started` / `in-progress` / `completed` / `superseded` のいずれか。 進行中は `updated` を都度更新
-- 大きな計画の刻み方 (= 段の表と持ち場の表) は、 実装計画の skill が真値 (= `.claude/skills/implementation-plan/SKILL.md`)
+- 大きな計画の刻み方 (= 段の表と持ち場の表) は、 実装計画の skill (= `implementation-plan`) が真値
 
 ## まとめる / 分ける
 
