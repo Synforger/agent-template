@@ -32,6 +32,11 @@
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/build-rule-registry.py
 
+# 静的容量の階層別合計 (= startup-status が呼ぶ) と、 それが数える skill の一覧、 docs-check step 15 の本体
+.tooling/check-static-capacity.sh
+.tooling/lib/skill-listing.py
+.tooling/lib/check-positive-form.py
+
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
 
