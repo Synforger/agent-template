@@ -38,7 +38,8 @@ ENFORCED_GLOBS=(
     "src/.tooling/*.py"
     "src/.tooling/lib/*.py"
     "src/rules/*.md"
-    "src/rules/lazy/*.md"
+    "src/.claude/skills/*.md"
+    "src/.claude/skills/*/SKILL.md"
 )
 
 listed=()

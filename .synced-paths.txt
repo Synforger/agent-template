@@ -32,11 +32,19 @@
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/build-rule-registry.py
 
+# 静的容量の階層別合計 (= startup-status が呼ぶ) と、 それが数える skill の一覧、 docs-check step 15 の本体
+.tooling/check-static-capacity.sh
+.tooling/lib/skill-listing.py
+.tooling/lib/check-positive-form.py
+
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
-rules/lazy/_template.md
-rules/lazy/rule-promotion-format.md
-rules/lazy/rule-registry.md
+
+# === skill 必須 file (= skills folder の運用・雛形と、機構の真値書類) ===
+.claude/skills/_README.md
+.claude/skills/_template.md
+.claude/skills/rule-promotion-format/SKILL.md
+.claude/skills/rule-registry/SKILL.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
 # folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。
@@ -62,7 +70,6 @@ profile/_template.md
 !.gitignore                         # init で .gitignore.template から展開、 派生で加筆する
 !profile/profile.md                 # init で profile.template.md から展開、 派生が書く
 !rules/always.md                    # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge
-!rules/lazy/_README.md              # 索引の中身は派生固有の lazy 一覧 (= sync すると派生の索引が base の 2 件に潰れる)
-!rules/lazy/automation-machinery.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
+!.claude/skills/automation-machinery/SKILL.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
 !.tooling/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
 !.tooling/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
