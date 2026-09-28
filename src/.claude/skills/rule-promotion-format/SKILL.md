@@ -4,7 +4,6 @@ description: 複数プロジェクト共通の反復違反 / 重複が見つか�
 updated: 2026-07-16
 stable: true
 when_to_use: 横断 rule (= CLAUDE.md / profile/ / rules/always.md §) 昇格 commit を作る直前 / 横断昇格判断を出す時
-capacity: 5KB
 ---
 
 # 横断昇格提案 template
