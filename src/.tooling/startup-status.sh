@@ -153,10 +153,10 @@ step_anon_words() {
     if [ -f "$WORDS_TRUTH" ]; then
         if [ -f "$MASTER" ] && diff -q "$WORDS_TRUTH" "$MASTER" >/dev/null 2>&1; then
             echo "anon_words: master.txt in sync"
-        else
-            mkdir -p "$(dirname "$MASTER")"
-            cp "$WORDS_TRUTH" "$MASTER"
+        elif mkdir -p "$(dirname "$MASTER")" 2>/dev/null && cp "$WORDS_TRUTH" "$MASTER" 2>/dev/null; then
             echo "anon_words: master.txt was stale -> redistributed"
+        else
+            echo "anon_words: master.txt STALE, redistribute FAILED (a cage cannot write it; run the startup check from a plain terminal)"
         fi
         # operator-specific extra distributions (e.g. filtered subsets) live in a
         # local, non-synced hook so the base stays generic
