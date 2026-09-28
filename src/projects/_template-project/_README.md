@@ -23,12 +23,12 @@ capacity: 5KB
 
 ## 起動時の追加読み
 
-起動時に踏む共通 6 点は親 `CLAUDE.md § Phase B-階層固有` が真値 (= ここには書かない)。 **この階層でだけ追加で要る読み物**があれば列挙する、 無ければ「無し」。
+起動時に踏む共通 5 点は親 `CLAUDE.md § Phase B-階層固有` が真値 (= ここには書かない)。 **この階層でだけ追加で要る読み物**があれば列挙する、 無ければ「無し」。
 
 ## エージェントの役割 / 挙動ルール (= 本プロジェクト時)
 
 - <このプロジェクトでのポジション = 共同開発者 / 水先案内 / 代理実行 等>
-- <このプロジェクトでだけ効く行動制約があれば書く。 全プロジェクト共通のものは親 `rules/always.md` が持つ>
+- (= 行動制約はここに書かない。 この階層だけのものは `rules/always.md`、 全プロジェクト共通のものは親 `rules/always.md` が持つ)
 
 ## 関連 link
 
@@ -38,12 +38,11 @@ capacity: 5KB
 
 ## 新規立ち上げ checklist
 
-`cp -R projects/_template-project/ projects/<新名>/` した後に埋める場所。 `bash .tooling/docs-check.sh` の **step 7 (= placeholder 残し)** が雛形由来の `{{...}}` / `<日本語含む 文>` を全部拾うので、 埋め忘れは FAIL で出る。
+`cp -R projects/_template-project/ projects/<新名>/` した後に埋める場所。 `bash .tooling/docs-check.sh` の **step 5 (= placeholder 残し)** が雛形由来の `{{...}}` / `<日本語含む 文>` を全部拾うので、 埋め忘れは FAIL で出る。
 
 - [ ] **`_README.md`** の 5 section を埋める (= 射程 / 含む含まない / repo / 起動時の追加読み / 役割)
 - [ ] **`vision.md`** の 2 節を埋める (= 今どこ / 到達点。 状態だけを書く)
 - [ ] **`rules/always.md`** の `<プロジェクト名>` を実名に置換 (= 固有 rule が無い間も file は置いたまま)
-- [ ] **`rules/lazy/_README.md`** の `<プロジェクト名>` を実名に置換 (= lazy 0 件でも索引は置く)
 - [ ] **`subprojects/_README.md`** の `<project>` を実名に置換 + 「現在のサブプロジェクト」 を埋める (= 無ければ「なし」)
 - [ ] **各 `*/_template.md`** (= 雛形そのもの) は**触らない** (= cp 元として残す、 placeholder 残しは想定内)
 - [ ] `_README.md` が容量上限 (= 5KB、 大規模プロジェクトは 20KB まで) に収まるか確認

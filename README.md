@@ -9,8 +9,8 @@
 - **An agent is persona + its own projects + machinery.** The machinery is factored into this base; persona and projects stay in the derived repo — so machinery improvements are shared by every agent.
 - **A continuous self-reinforcement loop.** Machinery quality is swept mechanically (`docs-check.sh` / `detect-duplicates.py` / `detect-stale-rules.sh`); the agent only reacts to the output, spending no context on re-derivation.
 - **Built to be published.** Personal and workplace identifiers are blocked mechanically at the commit / push boundary by the machine-resident guard-dispatcher (a separate repo).
-- **One truth per folder, one boot procedure per tier.** How a folder is used is written once, at the top of the tree; the root, a project, and a subproject are all entered by reading the *same six files in the same order*, and that list lives in `CLAUDE.md` alone — a tier's own `_README.md` only names what is extra there.
-- **Rules are written as instructions, and kept short enough to be followed.** Always-loaded files stay under 200 lines; what does not fit is pushed down to trigger-gated `rules/lazy/`, chosen by which sections actually fire rather than by which are longest.
+- **One truth per folder, one boot procedure per tier.** How a folder is used is written once, at the top of the tree; the root, a project, and a subproject are all entered by reading the *same five files in the same order*, and that list lives in `CLAUDE.md` alone — a tier's own `_README.md` only names what is extra there.
+- **Rules are written as instructions, and kept short enough to be followed.** Always-loaded files stay under 200 lines; what does not fit is pushed down to Claude Code skills (`.claude/skills/`, loaded only when their scene comes up), chosen by which sections actually fire rather than by which are longest.
 - **Minimal constraints on derivations.** The base owns only the machinery, the required rule file, and the structural templates; everything else is the derivation's free territory.
 
 ## Repository layout
@@ -44,16 +44,17 @@ agent-template/
     │   ├── precommit-conflict-check.sh
     │   ├── setup-hooks.sh             # hook install
     │   ├── startup-status.sh          # run at session boot
+    │   ├── check-static-capacity.sh   # per-tier always-loaded bytes, skill listing counted apart
     │   ├── lib/                       # check bodies docs-check calls
     │   └── _README.md
     ├── rules/
-    │   ├── always.md                  # ★ required: capacity, how rules grow and retire, the loop
-    │   └── lazy/
-    │       ├── _README.md             # lazy index, read at boot
-    │       ├── _template.md           # scaffold for new lazy rules
-    │       ├── automation-machinery.md
-    │       ├── rule-promotion-format.md
-    │       └── rule-registry.md
+    │   └── always.md                  # ★ required: capacity, how rules grow and retire, the loop
+    ├── .claude/skills/                # rules that apply only in one scene (the harness lists them)
+    │   ├── _README.md                 # how the skills folder is run
+    │   ├── _template.md               # scaffold for a new skill
+    │   ├── automation-machinery/SKILL.md
+    │   ├── rule-promotion-format/SKILL.md
+    │   └── rule-registry/SKILL.md
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
     ├── journal/                       # session log structure (append only)
     ├── plans/                         # what to do and how (tasks live as headings inside a plan)
@@ -117,11 +118,11 @@ This cuts a feature branch on the base, pushes it, and the change lands via a pu
 The template ships only these; below this floor the machinery stops working.
 
 - `rules/always.md § meta` — capacity, how rules are written, how they grow and retire, and the self-reinforcement loop (single-file form)
-- `rules/lazy/_template.md` — scaffold for new lazy rules
-- `rules/lazy/automation-machinery.md` — operational truth for `.tooling/*`
-- `rules/lazy/rule-registry.md` — the ledger and hit-record format the checks verify against
+- `.claude/skills/_template.md` — scaffold for a new skill
+- `.claude/skills/automation-machinery/SKILL.md` — operational truth for `.tooling/*`
+- `.claude/skills/rule-registry/SKILL.md` — the ledger and hit-record format the checks verify against
 
-Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `rules/lazy/*.md`; rule content is not synced.
+Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `.claude/skills/<name>/SKILL.md`; rule content is not synced.
 
 ## Machinery core
 
@@ -130,7 +131,7 @@ Derivation-specific rules (git conventions, prohibitions, subagent discipline, a
 Run at session end; any FAIL must be fixed within the same session. Verification axes (the script's own step output is the truth):
 
 1. frontmatter
-2. capacity (self-declared per file)
+2. capacity (self-declared per file; skill bodies are uncapped, only the skill listing counts)
 3. index consistency (`_README.md` ↔ sibling .md files)
 4. dead links
 5. leftover placeholders (unfilled scaffolds)
@@ -143,6 +144,8 @@ Run at session end; any FAIL must be fixed within the same session. Verification
 12. rule references (paths a rule points at still exist)
 13. rule-hits coverage (sessions that recorded no fired / violated rules)
 14. vision shape (the state sections are present and have not grown by accretion)
+15. rule statements are written as what to do, not what to avoid
+16. temp files are created under `TMPDIR`
 
 ### `detect-duplicates.py`
 

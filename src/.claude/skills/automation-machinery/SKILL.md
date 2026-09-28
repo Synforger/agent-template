@@ -1,13 +1,12 @@
 ---
-title: 自動化機構運用 + 文書庫運用 (= lazy)
-description: 自動化 script の発火経路 / 出力 / 反応規律 + lazy 文書庫の設計原則 (= 機構改修 / 新 lazy 追加時の参照)
-updated: 2026-09-21
+title: 自動化機構運用
+description: 自動化 script の発火経路 / 出力 / 反応規律 (= 機構改修時の参照)
+updated: 2026-09-28
 stable: true
-triggers: 自動化機構 (`.tooling/*`) を改修する直前 / 新 lazy file を追加する直前 / settings.json の hook 配列を編集する直前
-capacity: 10KB
+when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.json の hook 配列を編集する直前
 ---
 
-# 自動化機構運用 + 文書庫運用
+# 自動化機構運用
 
 出荷する自動化は全部 LLM 不使用、 `git log` + `regex` + `grep` で機械抽出 (= token 自動消費ゼロ)。
 
@@ -26,15 +25,18 @@ capacity: 10KB
 | `.tooling/docs-check.sh` | 終了時 Step 2 + 手動 | PASS / WARN / FAIL (= FAIL ≥ 1 は同 session fix) |
 | `.tooling/lib/docs-scan.py` | docs-check step 1-5 | `step \| level \| message` の TSV (= 文言は docs-check.sh と 1 対 1) |
 | `.tooling/lib/journal-integrity.py` | docs-check step 9 | 違反 1 行ずつ (= 単一パスで数百 file を捌く) |
-| `.tooling/lib/check-rule-references.py` | docs-check step 12 | 実在しない参照 1 行ずつ (= 常時 load / lazy に加えて `_README.md` と `vision.md` も見る。 階層が `## repo` で宣言した repo は、 実在する入口 dir で始まる綴りだけ測る。 裸の file 名 / placeholder / `external-paths: true` の file は対象外) |
+| `.tooling/lib/check-rule-references.py` | docs-check step 12 | 実在しない参照 1 行ずつ (= 常時 load / skill に加えて `_README.md` と `vision.md` も見る。 階層が `## repo` で宣言した repo は、 実在する入口 dir で始まる綴りだけ測る。 裸の file 名 / placeholder / `external-paths: true` の file は対象外) |
 | `.tooling/lib/check-rule-hits.py` | docs-check step 13 | 記録を書き漏らした session 1 行ずつ (= その階層が記録を始めた日以降のみ対象) |
 | `.tooling/lib/check-vision-shape.py` | docs-check step 14 | 必須節の欠落と段落数超過 1 行ずつ (= 上限の根拠は script の docstring) |
-| `.tooling/build-rule-registry.py` | 手動 + docs-check step 11 (`--check`) | **階層ごと**の `<tier>/rules/registry.jsonl` (= ID 台帳、 ID は階層内で一意かつ不変。 書式と使い方 = `rules/lazy/rule-registry.md`) |
-| `.tooling/lib/capacity-candidates.py` | 派生の容量 script が超過を出した時 | バイト数降順の削減候補 + 発火実績 (= 「少し削って測り直す」 の往復を作らない) |
+| `.tooling/build-rule-registry.py` | 手動 + docs-check step 11 (`--check`) | **階層ごと**の `<tier>/rules/registry.jsonl` (= ID 台帳、 ID は階層内で一意かつ不変。 書式と使い方 = `.claude/skills/rule-registry/SKILL.md`) |
+| `.tooling/check-static-capacity.sh` | startup-status から | `static_capacity: OK` / 超過した階層と削減候補 (= 階層ごとの常時 load と skill の一覧を数える。 上限の真値は script 冒頭、 超過は exit 1) |
+| `.tooling/lib/skill-listing.py` | check-static-capacity (= 階層ごと) + `--list` | 1 行 1 file の一覧バイト数 (= `description` + `when_to_use`) / `--list` はその階層の一覧 (= ハーネスが gitignored な folder を探さない分の代わり) |
+| `.tooling/lib/check-positive-form.py` | docs-check step 15 | 否定形の主文 1 行ずつ (= 書式の真値 = `.claude/skills/rule-registry/SKILL.md § 表現形式`) |
+| `.tooling/lib/capacity-candidates.py` | check-static-capacity の超過時 | バイト数降順の削減候補 + 発火実績 (= 「少し削って測り直す」 の往復を作らない) |
 | `.tooling/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入 (= 判定本体は `rules/always.md § forbidden`、 hook は再武装のみ) |
 | git hook guard (= startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧 (= git は hooksPath を 1 つしか見ず、 local 上書き 1 個で scan が丸ごと死ぬ) |
 
-派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 階層別容量 (`check-static-capacity.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計 (= 台帳と記録は base 出荷、 どう集計するかは派生の持ち物)。
+派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計 (= 台帳と記録は base 出荷、 どう集計するかは派生の持ち物)。
 
 ## 反応規律
 
@@ -52,7 +54,7 @@ capacity: 10KB
 ### detector を書く時の実装規律
 
 - **opt-out / suppress marker は「対象行の上」も見る**: 理由を書く長さのコメントは行末に収まらないので上に書かれる。 同一行だけ見る実装は、 既に打たれている marker を黙って無効化する
-- **環境で赤くなる検出を作らない**: build 生成物 / 実行時生成物への参照は「未 build なら赤」になる。 opt-out を用意するだけでなく**既存の全該当箇所に打ってから** landed させる
+- **検出は環境に依らず同じ色を出す形で作る**: build 生成物 / 実行時生成物への参照は「未 build なら赤」になる。 opt-out を用意するだけでなく**既存の全該当箇所に打ってから** landed させる
 - **allow-list は構造で書く**: exact 一致の行は次の 1 件で破れる (= 雛形とその複製のような「構造上かならず一致する組」 は、 判定側で外す)
 - **baseline 方式の出力に「どこに残っているか」を含める**: 件数だけ出すと、 1 箇所直しても数が減らない時 (= basename 単位 dedup 等) に担当が判断できない
 
@@ -62,17 +64,6 @@ capacity: 10KB
   - Why: 検査 tool を強くする方向より、 主張を強い守り手へ押し込む方向が効く
 - **同じ事実を 2 箇所に書くのは運用上あり**。 条件 = **宣言結線** (= pair / mirror 化)。 敵は複製そのものでなく**未宣言の複製** (= 誰にも結線されず別々に育って割れる)
 - **恒常 WARN は 0 が定常**。 掃除は「除外で黙らせる」 でなく対象別に正しい形 (= 機械修正 / 参照修正 / 構造 skip) を選ぶ
-
-## 文書庫運用 (= lazy 設計原則)
-
-`rules/lazy/*.md` + `projects/<P>/rules/lazy/*.md` は**文書庫**。 hook 自動 inject は不採用、 シチュエーション認識時に作業直前に自発 Read する設計。
-
-### 設計原則
-
-- frontmatter `triggers:` に**シチュエーション**を自然言語記述 (= 「Agent tool 起動の直前」 等)
-- trigger は自然な作業文脈で認識できるシチュエーションで書く (= 特定の発話に依存させない)
-- 該当見落としが形骸化の温床 → 常時 load 側に「該当作業前に必ず Read」 を集約
-- 新規追加時は `triggers:` 必須 + 常時 load file からのリンク必須 (= 「読まれない rule」 を作らない)
 
 ## 新 script 追加手順
 

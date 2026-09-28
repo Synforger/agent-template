@@ -75,7 +75,7 @@ if [ -n "${BASE_REPO_PATH:-}" ]; then
     fi
     echo "==> using local base: $BASE_DIR"
 else
-    TMP_DIR="$(mktemp -d)"
+    TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/promote-to-base.XXXXXX")"
     BASE_DIR="$TMP_DIR/agent-template"
     echo "==> clone $DEFAULT_BASE_URL ($BASE_BRANCH) → $BASE_DIR"
     git clone --branch="$BASE_BRANCH" "$DEFAULT_BASE_URL" "$BASE_DIR"
