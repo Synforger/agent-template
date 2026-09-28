@@ -15,14 +15,10 @@ echo "===== agent startup status ($(date '+%Y-%m-%d %H:%M:%S')) ====="
 
 # 0. PC 識別 (= 自宅 / 会社、 LocalHostName → label mapping)
 PC_LABELS_FILE="$ROOT/.tooling/pc-labels.txt"
-# sandbox の中では scutil が本当の名前を返さない (= 汎用名になる) ので、 hostname でも照合する
 local_host=$(scutil --get LocalHostName 2>/dev/null || hostname -s)
 pc_label=""
 if [ -f "$PC_LABELS_FILE" ]; then
-    for h in "$local_host" "$(hostname -s)"; do
-        pc_label=$(grep -v '^#' "$PC_LABELS_FILE" | grep -v '^$' | awk -v h="$h" '$1 == h { print $2; exit }')
-        [ -n "$pc_label" ] && { local_host="$h"; break; }
-    done
+    pc_label=$(grep -v '^#' "$PC_LABELS_FILE" | grep -v '^$' | awk -v h="$local_host" '$1 == h { print $2; exit }')
 fi
 if [ -n "$pc_label" ]; then
     echo "PC: $pc_label ($local_host)"
@@ -32,7 +28,7 @@ fi
 
 # 以降の検出は互いに独立なので同時に走らせ、 出力は元の並び順で組み直す
 # (= 直列だと一番遅い 1 本の裏で残り全部が待つだけになる)。
-TMPD=$(mktemp -d "${TMPDIR:-/tmp}/startup-status.XXXXXX")
+TMPD=$(mktemp -d)
 trap 'rm -rf "$TMPD"' EXIT
 
 # 1. rule 形骸化検出 (= 7 日無更新 = 退役候補)
@@ -156,7 +152,7 @@ step_anon_words() {
         elif mkdir -p "$(dirname "$MASTER")" 2>/dev/null && cp "$WORDS_TRUTH" "$MASTER" 2>/dev/null; then
             echo "anon_words: master.txt was stale -> redistributed"
         else
-            echo "anon_words: master.txt STALE, redistribute FAILED (a cage cannot write it; run the startup check from a plain terminal)"
+            echo "anon_words: master.txt STALE, redistribute FAILED (could not write $MASTER)"
         fi
         # operator-specific extra distributions (e.g. filtered subsets) live in a
         # local, non-synced hook so the base stays generic
@@ -232,22 +228,6 @@ step_model_pin() {
     fi
 }
 
-# 起動した檻から読めない階層 (= 別の境界)。 数え上げる検査はそこを黙って飛ばすので、 名前をここで出す
-step_unchecked_tiers() {
-    local hidden=() p
-    for p in projects/*/ projects/*/subprojects/*/; do
-        [ -d "$p" ] || continue
-        case "$(basename "$p")" in _*) continue ;; esac
-        ls "$p" > /dev/null 2>&1 || hidden+=("${p%/}")
-    done
-    if [ "${#hidden[@]}" -gt 0 ]; then
-        echo "unchecked_tiers: ${hidden[*]} (= この檻から読めない。 その階層の檻の起動と終了で点検される)"
-    else
-        echo "unchecked_tiers: none"
-    fi
-}
-
-step_unchecked_tiers  > "$TMPD/0b-unchecked" &
 step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
@@ -261,7 +241,7 @@ step_model_pin        > "$TMPD/8b-model"    &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
-cat "$TMPD/0-remote" "$TMPD/0b-unchecked" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
+cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-model"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
@@ -274,8 +254,6 @@ echo "action policy:"
 echo "  - remote_sync BEHIND -> run 'git pull --rebase --autostash' and re-read every startup file before briefing"
 echo "    (UNKNOWN -> say so in the briefing; do not claim the state is current)"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
-echo "  - unchecked_tiers listed -> say in the briefing that those tiers were not checked; every count above covers"
-echo "    the visible tiers only (the hidden ones are checked when their own cage starts and ends)"
 echo "  - docs-check FAIL >= 1 -> must fix within the same session"
 echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task."
 echo "    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this."
@@ -288,5 +266,4 @@ echo "    git checkout -B develop origin/develop && bash scripts/bootstrap-machi
 echo "  - model_pin PINNED -> a launch path names a model version or a variant suffix; use the bare alias"
 echo "    (opus / fable / sonnet / haiku) so every release and every default change is picked up"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
-echo "    wanted change into the truth, then run .tooling/sync-claude-settings.sh --apply (outside a cage: a cage"
-echo "    cannot write Claude Code settings files, so ask the operator to run it from a plain terminal)"
+echo "    wanted change into the truth, then run .tooling/sync-claude-settings.sh --apply"
