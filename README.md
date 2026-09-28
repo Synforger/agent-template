@@ -131,7 +131,7 @@ Derivation-specific rules (git conventions, prohibitions, subagent discipline, a
 Run at session end; any FAIL must be fixed within the same session. Verification axes (the script's own step output is the truth):
 
 1. frontmatter
-2. capacity (self-declared per file)
+2. capacity (self-declared per file; skill bodies are uncapped, only the skill listing counts)
 3. index consistency (`_README.md` ↔ sibling .md files)
 4. dead links
 5. leftover placeholders (unfilled scaffolds)

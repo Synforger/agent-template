@@ -28,9 +28,15 @@ capacity: 3KB
 
 ## frontmatter
 
-- `title` / `description` (= 何の手順か 1 行) / `when_to_use` / `updated` / `capacity`
+- `title` / `description` (= 何の手順か 1 行) / `when_to_use` / `updated`
 - **`when_to_use` は作業の場面で書く** (= 「〜する直前」「〜を始める時」。 特定の発話に依存させない)
 - 一覧は毎 session 文脈に入る。 階層ごとの合計は `.tooling/check-static-capacity.sh` が別枠で数える
+
+## 容量
+
+**skill の本文には上限を置かず、要る手順は全部書く** (= 上限は毎回文脈に入る一覧だけ)。
+
+- Why: 本文は呼んだ時にしか読まれない。 上限があると、効いている手順が長いという理由で削られる
 
 ## 足す時
 
