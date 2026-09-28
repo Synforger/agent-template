@@ -41,7 +41,7 @@ if [ -n "${BASE_REPO_PATH:-}" ]; then
     fi
     echo "==> using local base: $BASE_DIR"
 else
-    TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sync-from-base.XXXXXX")"
+    TMP_DIR="$(mktemp -d)"
     trap "rm -rf '$TMP_DIR'" EXIT
     BASE_DIR="$TMP_DIR/agent-template"
     echo "==> clone $DEFAULT_BASE_URL ($BASE_BRANCH) → $BASE_DIR"
