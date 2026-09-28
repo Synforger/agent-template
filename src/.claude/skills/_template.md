@@ -3,7 +3,6 @@ title: <skill タイトル>
 description: <何の手順か 1 行>
 updated: "{{YYYY-MM-DD}}"
 when_to_use: <作業の場面、 自然言語で「〜する直前」「〜を始める時」 等で書く。 特定発話依存禁止 (= 「user が "xxx" と打ったら」 系)>
-capacity: 5KB
 ---
 
 # <skill タイトル>

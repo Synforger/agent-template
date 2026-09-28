@@ -128,7 +128,7 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 セッション終了時に走らせ、 FAIL は同 session 内 fix 必須。 検査軸 (= 真値は script 自身の step 表示):
 
 1. frontmatter
-2. capacity (= file 自己宣言)
+2. capacity (= file 自己宣言。 skill の本文は数えず、 一覧だけを数える)
 3. 索引整合 (= `_README.md` ↔ 同フォルダ .md)
 4. dead link
 5. placeholder 残し (= 雛形 cp 後の埋め忘れ)

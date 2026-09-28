@@ -186,6 +186,10 @@ def main():
         # _archive は読み込まれない履歴なので、 読み込み量の上限は当てない
         if "/_archive/" in f:
             continue
+        # skill の本文は呼んだ時にだけ読まれる (= 毎回の文脈を食わない) ので上限を当てない。
+        # 毎回文脈に入る一覧 (= description + when_to_use) は check-static-capacity.sh が数える
+        if re.search(r"(^|/)\.claude/skills/([^/]+/SKILL|_template)\.md$", f):
+            continue
         entry = cache.get(f)
         if entry is None:
             continue
@@ -199,10 +203,10 @@ def main():
         size = entry["size"]
         if size <= declared:
             continue
-        # 常時 load 層はハード FAIL、 skill と profile の分冊は目安 (= WARN)
+        # 常時 load 層はハード FAIL、 profile の分冊は目安 (= WARN)
         if f.endswith("/profile/profile.md"):
             emit(2, "fail", f"{f}: {size} bytes > declared capacity {num.group()}KB")
-        elif ".claude/skills/" in f or re.search(r"/profile/profile-[^/]*\.md$", f):
+        elif re.search(r"/profile/profile-[^/]*\.md$", f):
             emit(2, "warn", f"{f}: {size} bytes > soft capacity {num.group()}KB (目安)")
         else:
             emit(2, "fail", f"{f}: {size} bytes > declared capacity {num.group()}KB")
