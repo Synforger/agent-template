@@ -4,8 +4,7 @@
 対象 file (= 起動時必読の常時 load 群):
   - CLAUDE.md
   - profile/profile*.md
-  - rules/always/*.md
-  - rules/lazy/*.md
+  - .claude/skills/*/SKILL.md (= 各階層の skill)
 
 方針:
   - H2/H3 section 単位で chunk 化
@@ -36,12 +35,9 @@ MIN_PHRASE_LEN = 60  # 同一フレーズの最小長 (= 2026-06-24 60→90、 �
 TARGET_GLOBS = [
     "CLAUDE.md",
     "profile/profile*.md",
-    "rules/always/*.md",
-    "rules/lazy/*.md",
-    "projects/*/rules/always/*.md",
-    "projects/*/rules/lazy/*.md",
-    "projects/*/subprojects/*/rules/always/*.md",
-    "projects/*/subprojects/*/rules/lazy/*.md",
+    ".claude/skills/*/SKILL.md",
+    "projects/*/.claude/skills/*/SKILL.md",
+    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
 ]
 
 

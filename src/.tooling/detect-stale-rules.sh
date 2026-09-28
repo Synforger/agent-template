@@ -20,7 +20,7 @@ esac
 # 対象 file = rule + profile + CLAUDE + 各プロジェクト rule (= glob で自動編入、 ハードコード廃止)
 # 除外 = _template.md (= 雛形) / _archive/* (= 履歴)。 個別 file は frontmatter `stable: true` で除外
 # 対象は rule / profile / _README だけなので、 記録と作業用の枝は歩かない
-# (= journal / drafts / plans / research / todos 配下に対象 path は 1 つも無い)
+# (= journal / drafts / plans / research 配下に対象 path は 1 つも無い)
 TARGETS=$(find . \
   -path "./.git" -prune -o \
   -path "./.claude/worktrees" -prune -o \
@@ -29,24 +29,20 @@ TARGETS=$(find . \
   -path "*/drafts" -prune -o \
   -path "*/plans" -prune -o \
   -path "*/research" -prune -o \
-  -path "*/todos" -prune -o \
   -path "*/_scratch" -prune -o \
   \( \
     -path "./CLAUDE.md" -o \
     -path "./profile/*.md" -o \
     -path "./rules/always.md" -o \
-    -path "./rules/always/*.md" -o \
-    -path "./rules/lazy/*.md" -o \
+    -path "./.claude/skills/*/SKILL.md" -o \
     -path "./rules/_README.md" -o \
     -path "./projects/_README.md" -o \
     -path "./projects/*/_README.md" -o \
     -path "./projects/*/rules/always.md" -o \
-    -path "./projects/*/rules/always/*.md" -o \
-    -path "./projects/*/rules/lazy/*.md" -o \
+    -path "./projects/*/.claude/skills/*/SKILL.md" -o \
     -path "./projects/*/subprojects/*/_README.md" -o \
     -path "./projects/*/subprojects/*/rules/always.md" -o \
-    -path "./projects/*/subprojects/*/rules/always/*.md" -o \
-    -path "./projects/*/subprojects/*/rules/lazy/*.md" \
+    -path "./projects/*/subprojects/*/.claude/skills/*/SKILL.md" \
   \) -print 2>/dev/null | grep -v '_template\.md$' | sort)
 
 now_ts=$(date +%s)

@@ -13,7 +13,7 @@ DIFF_FILES=$(git diff --cached --name-only -- \
     CLAUDE.md \
     'profile/*.md' \
     'rules/*.md' \
-    'rules/lazy/*.md' 2>/dev/null | grep -v '^$' || true)
+    '.claude/skills/*/SKILL.md' 2>/dev/null | grep -v '^$' || true)
 
 [ -z "$DIFF_FILES" ] && exit 0
 
@@ -31,7 +31,7 @@ ALL_RULE_FILES=$(find . \
       -path "./CLAUDE.md" -o \
       -path "./profile/*.md" -o \
       -path "./rules/always.md" -o \
-      -path "./rules/lazy/*.md" \
+      -path "./.claude/skills/*/SKILL.md" \
     \) -print 2>/dev/null | sort)
 
 while IFS= read -r new_sec; do
@@ -71,11 +71,9 @@ if [ -n "$META_CAP_LINES" ]; then
     # 形態 D 移行のような cleanup 系 rename が誤警告を出していたため、
     # 追加 (A) + 変更 (M) のみを反 reflex 判定の対象にする。
     OTHER_FILES=$(git diff --cached --name-only --diff-filter=AM -- \
-        CLAUDE.md 'profile/*.md' 'rules/lazy/*.md' \
-        'projects/*/rules/always.md' 'projects/*/rules/lazy/*.md' \
-        'projects/*/subprojects/*/rules/always.md' 'projects/*/subprojects/*/rules/lazy/*.md' \
-        'projects/*/rules/always/*.md' 'projects/*/rules/lazy/*.md' \
-        'projects/*/subprojects/*/rules/always/*.md' 'projects/*/subprojects/*/rules/lazy/*.md' \
+        CLAUDE.md 'profile/*.md' '.claude/skills/*/SKILL.md' \
+        'projects/*/rules/always.md' 'projects/*/.claude/skills/*/SKILL.md' \
+        'projects/*/subprojects/*/rules/always.md' 'projects/*/subprojects/*/.claude/skills/*/SKILL.md' \
         2>/dev/null | grep -v 'rules/always.md$' || true)
     if [ -n "$OTHER_FILES" ]; then
         echo "" >&2

@@ -17,8 +17,10 @@ file の中身を読むのは 1 回だけで足りるので、 ここで全部�
 """
 
 import fnmatch
+import importlib.util
 import os
 import re
+import subprocess
 import sys
 
 # .tooling/lib/ から 3 段上が repo root
@@ -59,6 +61,41 @@ def frontmatter(lines):
             break
         block.append(line)
     return block
+
+
+def work_repo_basenames():
+    """file → その階層 (と親プロ) が宣言した work repo の追跡 file 名の集合、 を返す関数。"""
+    spec = importlib.util.spec_from_file_location(
+        "check_rule_references", os.path.join(os.path.dirname(os.path.abspath(__file__)), "check-rule-references.py"))
+    refs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(refs)
+    by_repo = {}
+
+    def names_in(repo):
+        if repo not in by_repo:
+            try:
+                out = subprocess.run(["git", "-C", repo, "ls-files"], capture_output=True, text=True, timeout=30).stdout
+            except (OSError, subprocess.SubprocessError):
+                out = ""
+            by_repo[repo] = {os.path.basename(p) for p in out.splitlines()}
+        return by_repo[repo]
+
+    def lookup(md_path):
+        parts = (md_path[2:] if md_path.startswith("./") else md_path).split("/")
+        if parts[0] != "projects" or len(parts) < 3:
+            return set()
+        # 自階層と、 サブプロなら親プロの repo 宣言も見る (= 親の repo を引き継ぐ階層がある)
+        tiers = ["/".join(parts[:2])]
+        if len(parts) > 4 and parts[2] == "subprojects":
+            tiers.insert(0, "/".join(parts[:4]))
+        names = set()
+        for t in tiers:
+            repo = refs.repo_for(t)
+            if repo:
+                names |= names_in(repo)
+        return names
+
+    return lookup
 
 
 def collect(local_excludes):
@@ -133,7 +170,8 @@ def main():
         fm = entry["fm"]
         if not any(line.startswith("title:") for line in fm):
             emit(1, "fail", f"{f}: frontmatter title missing")
-        if not any(line.startswith("description:") for line in fm):
+        # _archive は読み込まれない履歴なので、 説明文の推奨は当てない (= title は求める)
+        if "/_archive/" not in f and not any(line.startswith("description:") for line in fm):
             emit(1, "warn", f"{f}: frontmatter description missing (recommended)")
         passes += 1
     emit(1, "pass", passes)
@@ -145,6 +183,13 @@ def main():
         if size > 17408:
             emit(2, "fail", f"CLAUDE.md: {size} bytes > 17KB limit")
     for f in md_list:
+        # _archive は読み込まれない履歴なので、 読み込み量の上限は当てない
+        if "/_archive/" in f:
+            continue
+        # skill の本文は呼んだ時にだけ読まれる (= 毎回の文脈を食わない) ので上限を当てない。
+        # 毎回文脈に入る一覧 (= description + when_to_use) は check-static-capacity.sh が数える
+        if re.search(r"(^|/)\.claude/skills/([^/]+/SKILL|_template)\.md$", f):
+            continue
         entry = cache.get(f)
         if entry is None:
             continue
@@ -158,10 +203,10 @@ def main():
         size = entry["size"]
         if size <= declared:
             continue
-        # 常時 load 層はハード FAIL、 lazy 文書庫と profile lazy は目安 (= WARN)
+        # 常時 load 層はハード FAIL、 profile の分冊は目安 (= WARN)
         if f.endswith("/profile/profile.md"):
             emit(2, "fail", f"{f}: {size} bytes > declared capacity {num.group()}KB")
-        elif "/lazy/" in f or re.search(r"/profile/profile-[^/]*\.md$", f):
+        elif re.search(r"/profile/profile-[^/]*\.md$", f):
             emit(2, "warn", f"{f}: {size} bytes > soft capacity {num.group()}KB (目安)")
         else:
             emit(2, "fail", f"{f}: {size} bytes > declared capacity {num.group()}KB")
@@ -189,7 +234,9 @@ def main():
                 emit(3, "warn", f"{readme}: sibling {name} not mentioned (missing from the index?)")
 
     # ===== 4. dead link =====
-    # 引き先の basename 索引は collect() が走査 1 回で作ったものを使う
+    # 引き先の basename 索引は collect() が走査 1 回で作ったものを使う。
+    # 階層が `## repo` で宣言した work repo の file 名も在り扱い (= 宣言の読み方は参照検査と同じ実装)
+    repo_names = work_repo_basenames()
     for f in md_list:
         entry = cache.get(f)
         if entry is None:
@@ -197,6 +244,9 @@ def main():
         if "archive/" in f or "history/" in f:
             continue
         if any(re.match(r"^status: *snapshot", line) for line in entry["fm"]):
+            continue
+        # 別の場所の話だと宣言した file は測らない (= 参照検査と同じ扱い)
+        if any(re.match(r"^external-paths: *true\b", line) for line in entry["fm"]):
             continue
         refs = sorted(set(REF_PATTERN.findall("\n".join(entry["lines"]))))
         for ref in refs:
@@ -213,6 +263,8 @@ def main():
             if refname in EXTERNAL_ROOT_DOCS:
                 continue
             if refname in all_basenames:
+                continue
+            if refname in repo_names(f):
                 continue
             # 第 1 階層が repo 内に無い path は外部 repo 引用と推定して見逃す
             first_seg = ref.split("/", 1)[0]

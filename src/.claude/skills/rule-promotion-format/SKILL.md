@@ -1,10 +1,9 @@
 ---
-title: 横断昇格提案 出力 template (= lazy)
+title: 横断昇格提案 出力 template
 description: 複数プロジェクト共通の反復違反 / 重複が見つかった時、 横断 rule への昇格提案を書く書式
 updated: 2026-07-16
 stable: true
-triggers: 横断 rule (= CLAUDE.md / profile/ / rules/always.md §) 昇格 commit を作る直前 / 横断昇格判断を出す時
-capacity: 5KB
+when_to_use: 横断 rule (= CLAUDE.md / profile/ / rules/always.md §) 昇格 commit を作る直前 / 横断昇格判断を出す時
 ---
 
 # 横断昇格提案 template
@@ -13,7 +12,7 @@ capacity: 5KB
 
 ## 使い方
 
-1. SessionEnd hook 出力 (`.tooling/_output/*.md`) を読む
+1. `.tooling/_output/*.md` (= startup-status と終了時 Step 2 の出力) を読む
 2. 「2 プロジェクト以上で再発している反復違反」 「3 file 以上に重複している記述」 を候補化
 3. 本 template に沿って整理し user レビュー打診
 4. 承認分のみ既存 file (= CLAUDE.md / rules/always.md / profile core 等) に commit、 不採用は journal に archive
@@ -26,7 +25,7 @@ capacity: 5KB
 - **発生 file** (= 重複の場合): `<path>:<section>`, `<path>:<section>` 形式
 - **頻度** (= 過去 1 month 内): N 回 / N 日
 - **既存 rule との接続**: 該当 rule (= H2 section path)、 無ければ「新規」
-- **昇格先候補**: `CLAUDE.md` / `rules/always.md § <section>` / `rules/lazy/<file>.md` / 派生 profile 構造に応じた `profile/<core file>` のいずれか
+- **昇格先候補**: `CLAUDE.md` / `rules/always.md § <section>` / `.claude/skills/<name>/SKILL.md` / 派生 profile 構造に応じた `profile/<core file>` のいずれか
 - **提案 diff** (= 既存 file への追加 or 修正):
 
 ```diff
@@ -39,18 +38,18 @@ capacity: 5KB
 
 ## 出力例
 
-### 候補 1: lazy file を起動前必読化
+### 候補 1: skill を起動前必読化
 
 - 発生プロジェクト: project-a / project-b
 - 発生 file: `<project-a journal>`, `<project-b journal>`
 - 頻度: 2 回 / 2 日
-- 既存 rule との接続: `rules/lazy/<対象 lazy>.md` (= 既存だが起動時必読外)
+- 既存 rule との接続: `.claude/skills/<対象>/SKILL.md` (= 既存だが起動時必読外)
 - 昇格先候補: `CLAUDE.md` (= 起動時必読の Phase B-共通で 1 行参照を追加)
 - 提案 diff:
 
 ```diff
-+ - 該当作業を始める前は `rules/lazy/<対象>.md` を Read (= 反復違反集約参照)
++ - 該当作業を始める前は `.claude/skills/<対象>/SKILL.md` を Read (= 反復違反集約参照)
 ```
 
-- 判断軸: 反復違反 2 プロジェクトで再発、 lazy 配置のままだと「作業前 Read 忘れ」 が起きる
-- レビュー観点: 「lazy のまま起動時 Read を強制する書き方で OK か、 always 昇格すべきか」
+- 判断軸: 反復違反 2 プロジェクトで再発、 skill 配置のままだと「作業前 Read 忘れ」 が起きる
+- レビュー観点: 「skill のまま起動時 Read を強制する書き方で OK か、 always 昇格すべきか」
