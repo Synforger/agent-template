@@ -58,8 +58,9 @@ emit_step 1
 # ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
 echo "[2/16] capacity check..."
 # CLAUDE.md 自身は frontmatter なし設計なので 17KB をハードコード、 他全 file は
-# frontmatter `capacity:` の自己宣言 (= 真値分散ゼロ)。 skill と profile の分冊は
-# 目安 (= WARN)、 常時 load 層はハード FAIL。 階層合計は startup-status.sh が担当。
+# frontmatter `capacity:` の自己宣言 (= 真値分散ゼロ)。 profile の分冊は目安 (= WARN)、
+# 常時 load 層はハード FAIL。 skill の本文は呼んだ時にだけ読むので数えない
+# (= 一覧は check-static-capacity.sh が階層ごとに数える)。 階層合計は startup-status.sh が担当。
 emit_step 2
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
