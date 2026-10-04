@@ -147,13 +147,23 @@ step_anon_words() {
     WORDS_TRUTH="rules/anon-words.txt"
     MASTER="$HOME/.config/anon-words/master.txt"
     if [ -f "$WORDS_TRUTH" ]; then
-        if [ -f "$MASTER" ] && diff -q "$WORDS_TRUTH" "$MASTER" >/dev/null 2>&1; then
+        # words that must stay out of git (= names only this machine's folders know) come from a
+        # local, non-synced generator and are appended before comparing: the machine copy is the
+        # tracked truth plus what this machine alone can say
+        local wanted
+        wanted="$(mktemp)"
+        cat "$WORDS_TRUTH" > "$wanted"
+        if [ -f .tooling/anon-words-local.sh ]; then
+            bash .tooling/anon-words-local.sh >> "$wanted" 2>/dev/null
+        fi
+        if [ -f "$MASTER" ] && diff -q "$wanted" "$MASTER" >/dev/null 2>&1; then
             echo "anon_words: master.txt in sync"
-        elif mkdir -p "$(dirname "$MASTER")" 2>/dev/null && cp "$WORDS_TRUTH" "$MASTER" 2>/dev/null; then
+        elif mkdir -p "$(dirname "$MASTER")" 2>/dev/null && cp "$wanted" "$MASTER" 2>/dev/null; then
             echo "anon_words: master.txt was stale -> redistributed"
         else
             echo "anon_words: master.txt STALE, redistribute FAILED (could not write $MASTER)"
         fi
+        rm -f "$wanted"
         # operator-specific extra distributions (e.g. filtered subsets) live in a
         # local, non-synced hook so the base stays generic
         if [ -f .tooling/anon-dist-local.sh ]; then
