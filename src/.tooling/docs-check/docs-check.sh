@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Agent docs 鮮度チェッカー (= agent-template 由来、 派生エージェント repo で使用)
-# 走らせ方: <agent-repo-root>/.tooling/docs-check.sh
+# 走らせ方: <agent-repo-root>/.tooling/docs-check/docs-check.sh
 # 用途: 派生エージェント repo 配下の .md を機械検査 (frontmatter / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths)
 # docs sweep を repo 全体に適用する。 セッション終了 Step 2 で必須実行
 set -uo pipefail
 
 # script 位置から repo root を決定 (= 派生 repo で動く前提、 エージェント 固有 path を持たない)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$ROOT" || { echo "repo root not found: $ROOT"; exit 2; }
 
 PASS=0
@@ -32,10 +32,10 @@ pass() { PASS=$((PASS+1)); }
 # 検査対象 = 全 .md から以下を除いたもの:
 #   CLAUDE.md (= 根本 config、 frontmatter なし設計) / journal (= 履歴、 遡及修正しない)
 #   _template (= 雛形) / drafts (= 作業中ドラフト) / _scratch (= 残す前提の無い一時 file)
-# 派生固有除外: .tooling/local-excludes.txt (= 1 行 1 path pattern、 base に混入させない)
+# 派生固有除外: .tooling/docs-check/local-excludes.txt (= 1 行 1 path pattern、 base に混入させない)
 SCAN_OUT=$(mktemp)
 trap 'rm -f "$SCAN_OUT"' EXIT
-python3 .tooling/lib/docs-scan.py --local-excludes "$ROOT/.tooling/local-excludes.txt" > "$SCAN_OUT"
+python3 .tooling/docs-check/docs-scan.py --local-excludes "$ROOT/.tooling/docs-check/local-excludes.txt" > "$SCAN_OUT"
 
 # scan 結果のうち指定 step の行だけを元の loop 順で出す
 emit_step() {
@@ -178,7 +178,7 @@ while IFS= read -r v; do
   [ -z "$v" ] && continue
   fail "$v"
   j_fail=$((j_fail+1))
-done < <(python3 .tooling/lib/journal-integrity.py 2>/dev/null)
+done < <(python3 .tooling/docs-check/journal-integrity.py 2>/dev/null)
 [ "$j_fail" -eq 0 ] && pass
 
 # ===== 10. 階層インターフェース =====
@@ -212,12 +212,12 @@ done
 # rules/registry.jsonl が全 rule section を網羅しているか (= 発火記録の宛先が切れていないか)。
 # 見出しの改名 / section の増減で紐付けが切れるので、 本体を触った session 内で検出する。
 echo "[11/15] rule registry check..."
-if [ ! -f .tooling/build-rule-registry.py ]; then
+if [ ! -f .tooling/rules/build-rule-registry.py ]; then
   # 台帳 script が無い環境で黙って pass すると、 検査していないのに緑が出る
-  warn "rule registry: .tooling/build-rule-registry.py not found (step skipped, not verified)"
+  warn "rule registry: .tooling/rules/build-rule-registry.py not found (step skipped, not verified)"
   reg_out="in sync"
 else
-  reg_out=$(python3 .tooling/build-rule-registry.py --check 2>/dev/null)
+  reg_out=$(python3 .tooling/rules/build-rule-registry.py --check 2>/dev/null)
 fi
 if [ -n "$reg_out" ] && ! printf '%s' "$reg_out" | grep -q "in sync"; then
   while IFS= read -r rl; do
@@ -237,7 +237,7 @@ while IFS=$'\t' read -r rfile rref; do
   [ -z "$rfile" ] && continue
   fail "rule reference: $rfile → $rref (not found — fix the path or drop the line)"
   r_fail=$((r_fail+1))
-done < <(python3 .tooling/lib/check-rule-references.py 2>/dev/null)
+done < <(python3 .tooling/docs-check/check-rule-references.py 2>/dev/null)
 [ "$r_fail" -eq 0 ] && pass
 
 # ===== 13. 発火記録の書き漏らし =====
@@ -250,7 +250,7 @@ while IFS= read -r mj; do
   [ -z "$mj" ] && continue
   warn "rule-hits missing: $mj (no session-NN-rule-hits.jsonl beside it)"
   m_warn=$((m_warn+1))
-done < <(python3 .tooling/lib/check-rule-hits.py 2>/dev/null)
+done < <(python3 .tooling/docs-check/check-rule-hits.py 2>/dev/null)
 [ "$m_warn" -eq 0 ] && pass
 
 # ===== 14. vision の形 =====
@@ -264,7 +264,7 @@ while IFS=$'\t' read -r vfile vmsg; do
   [ -z "$vfile" ] && continue
   fail "$vfile: $vmsg"
   v_fail=$((v_fail+1))
-done < <(python3 .tooling/lib/check-vision-shape.py 2>/dev/null)
+done < <(python3 .tooling/docs-check/check-vision-shape.py 2>/dev/null)
 [ "$v_fail" -eq 0 ] && pass
 
 # ===== 15. ルール主文の肯定形 =====
@@ -277,7 +277,7 @@ while IFS=$'\t' read -r pfile pmsg; do
   [ -z "$pfile" ] && continue
   fail "$pfile: $pmsg"
   p_fail=$((p_fail+1))
-done < <(python3 .tooling/lib/check-positive-form.py 2>/dev/null)
+done < <(python3 .tooling/docs-check/check-positive-form.py 2>/dev/null)
 [ "$p_fail" -eq 0 ] && pass
 
 # ===== サマリ =====

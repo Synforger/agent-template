@@ -2,7 +2,7 @@
 
 > 役割: <このエージェントの人格定義> + 起動 / 終了プロトコル + 横断ルール索引。 名前の由来: <一言>。 詳細ルールは常時 load (= `rules/always.md` + `profile/profile.md`) と skill (= 各階層の `.claude/skills/`、 該当場面で呼ぶ)。
 >
-> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来。 機構 (= `.tooling/*` + `rules/always.md § meta` + `.claude/skills/` の運用と共通 skill + 構造テンプレ) は base 側管理、 派生固有 (= 人格 / personal rule / project / journal 等) は本リポ管理。 base 取込 = `bash .tooling/sync-from-base.sh`、 機構改善の昇格 = `bash .tooling/promote-to-base.sh`。
+> このリポジトリは [agent-template](https://github.com/synforger/agent-template) 由来。 機構 (= `.tooling/*` + `rules/always.md § meta` + `.claude/skills/` の運用と共通 skill + 構造テンプレ) は base 側管理、 派生固有 (= 人格 / personal rule / project / journal 等) は本リポ管理。 base 取込 = `bash .tooling/distribute/sync-from-base.sh`、 機構改善の昇格 = `bash .tooling/distribute/promote-to-base.sh`。
 
 ---
 
@@ -82,7 +82,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - リポジトリ直下 `ls` (= 構成把握)
 - `plans/` を `ls` (= 中身は該当作業の直前に読む)
 - <message-dir 設定時のみ> エージェント間メッセージ確認
-- **`bash .tooling/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
+- **`bash .tooling/startup/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
@@ -124,10 +124,10 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 #### Step 2 (= 並列一括、 自走で完遂)
 
 - **自動抽出 script 実行**: journal .md を書く**前に**実行 (= jsonl は当 session の触跡記録、 PC ローカル artifact)
-  - `bash .tooling/extract-artifact-index.sh <journal-dir>` (= 引数 = 当 session が touch した階層の journal dir、 親+サブ両方なら引数を変えて 2 回)
-  - `python3 .tooling/detect-duplicates.py` (= 重複 section cache 更新)
+  - `bash .tooling/session-end/extract-artifact-index.sh <journal-dir>` (= 引数 = 当 session が touch した階層の journal dir、 親+サブ両方なら引数を変えて 2 回)
+  - `python3 .tooling/startup/detect-duplicates.py` (= 重複 section cache 更新)
 - **plan の棚卸し** (= 必須、 触れた階層全部): `plans/` の生きている file を 1 本ずつ見て、 **次にエージェントが手を動かせないものは `_archive/` へ移す** (= 判断軸と手順 = `rules/always.md § git`)。 残す file は最新化 (= 完了マーク / 新規残タスク追加 / state snapshot (= develop/main tip / open PR / branch) 更新 / 古い時点記述の掃除)。 横断 = `plans/` 直下、 プロジェクト固有 = `projects/<P>/plans/`
-- **vision 更新** (= 現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**、 動いた時だけ書き換える (= 毎 session の更新義務はない)。 中身は状態だけ (= やることは `plans/` と journal が持つ)、 無ければ作る。 **既にある行を書き換える** ― 段落は増やさない (= 節と段落数は `.tooling/docs-check.sh` step 14 が見る)
+- **vision 更新** (= 現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**、 動いた時だけ書き換える (= 毎 session の更新義務はない)。 中身は状態だけ (= やることは `plans/` と journal が持つ)、 無ければ作る。 **既にある行を書き換える** ― 段落は増やさない (= 節と段落数は `.tooling/docs-check/docs-check.sh` step 14 が見る)
 - **発火記録**: 効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` へ (= 書き漏らしは docs-check step 13 が出す)
 - **ジャーナル記入**: **書く前に階層を起動 keyword から再導出** (= compaction で階層文脈が消える。 サブプロ起動ならサブプロ journal が正、 採番アンカーは自階層の .md から取る)。 **触れた階層全部に 1 本ずつ書く** (= 階層自己完結)。 `normal` = `journal/YYYY-MM-DD/session-NN.md`、 project = `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、 subproject = `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md`。 NN は Step 0 で取った採番をそのまま使う (= 階層ごと独立)。 フォーマット = `journal/_template.md`
 - **`startup-status.sh` 実行 → 全指標走り切り** (= docs-check 内包なので 1 回で済む。 判断で commit まで完遂): 報告は Step 3 締めで 1 行のみ

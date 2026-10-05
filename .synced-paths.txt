@@ -11,36 +11,36 @@
 # =============================================================================
 
 # === 機構 script (= 真値は base、 派生で勝手に編集しない) ===
-.tooling/docs-check.sh
-.tooling/detect-duplicates.py
-.tooling/detect-stale-rules.sh
-.tooling/extract-artifact-index.sh
-.tooling/go-gate-reminder.sh
-.tooling/precommit-conflict-check.sh
-.tooling/setup-hooks.sh
-.tooling/startup-status.sh
-.tooling/check-launch-pins.py
-.tooling/guard-update.sh
+.tooling/docs-check/docs-check.sh
+.tooling/startup/detect-duplicates.py
+.tooling/startup/detect-stale-rules.sh
+.tooling/session-end/extract-artifact-index.sh
+.tooling/hooks/go-gate-reminder.sh
+.tooling/commit/precommit-conflict-check.sh
+.tooling/commit/setup-hooks.sh
+.tooling/startup/startup-status.sh
+.tooling/startup/check-launch-pins.py
+.tooling/distribute/guard-update.sh
 .tooling/_README.md
 
-# docs-check が呼ぶ検査本体 (= step が増えた分は lib/ に置き、 script 側は薄く保つ)
-.tooling/lib/docs-scan.py
-.tooling/lib/journal-integrity.py
-.tooling/lib/check-rule-references.py
-.tooling/lib/check-rule-hits.py
-.tooling/lib/check-vision-shape.py
-.tooling/lib/capacity-candidates.py
+# docs-check が呼ぶ検査本体 (= step が増えた分は docs-check/ に置き、 script 側は薄く保つ)
+.tooling/docs-check/docs-scan.py
+.tooling/docs-check/journal-integrity.py
+.tooling/docs-check/check-rule-references.py
+.tooling/docs-check/check-rule-hits.py
+.tooling/docs-check/check-vision-shape.py
+.tooling/startup/capacity-candidates.py
 
 # 引数や走査で決まる階層へ書く script (= extract-artifact-index / build-rule-registry) が、 書く前に入口の番人へ訊く口
 .tooling/lib/guard-may-write.py
 
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
-.tooling/build-rule-registry.py
+.tooling/rules/build-rule-registry.py
 
 # 静的容量の階層別合計 (= startup-status が呼ぶ) と、 それが数える skill の一覧、 docs-check step 15 の本体
-.tooling/check-static-capacity.sh
+.tooling/startup/check-static-capacity.sh
 .tooling/lib/skill-listing.py
-.tooling/lib/check-positive-form.py
+.tooling/docs-check/check-positive-form.py
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
@@ -76,5 +76,5 @@ profile/_template.md
 !profile/profile.md                 # init で profile.template.md から展開、 派生が書く
 !rules/always.md                    # 形態 D: base 出荷は § meta のみ、 派生 personal section と手動 merge
 !.claude/skills/automation-machinery/SKILL.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
-!.tooling/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
-!.tooling/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
+!.tooling/startup/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
+!.tooling/startup/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例

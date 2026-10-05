@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # precommit-conflict-check.sh - rule 改訂 commit 前に section 名重複 / 同 rule 文重複を機械検査 (= LLM 不使用)
 # 用途: .git/hooks/pre-commit から呼ばれる、 stderr 警告のみで blocking なし (= soft fail)
-# 走らせ方: bash <agent-repo-root>/.tooling/precommit-conflict-check.sh (= 単体実行可)
+# 走らせ方: bash <agent-repo-root>/.tooling/commit/precommit-conflict-check.sh (= 単体実行可)
 
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 0
 
 # 改訂対象 file の filter (= rule + profile + CLAUDE)

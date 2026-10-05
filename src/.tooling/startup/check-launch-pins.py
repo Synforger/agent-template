@@ -10,7 +10,7 @@ effort_pin: launcher の --effort が何かに上書きされていないか。
   launcher から起動した session の実効値 CLAUDE_EFFORT。 launcher を通った session かどうかは、
   launcher が session に渡す階層の環境変数 (= launcher の `os.environ["…_TIER"] = …` の行が名指す) で見分ける。
 
-  python3 .tooling/check-launch-pins.py   (= エージェントの repo の root で。 AGENT_ROOT / HOME で差し替え可)
+  python3 .tooling/startup/check-launch-pins.py   (= エージェントの repo の root で。 AGENT_ROOT / HOME で差し替え可)
 """
 import json
 import os
@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
-ROOT = Path(os.environ.get("AGENT_ROOT", Path(__file__).resolve().parents[1]))
+ROOT = Path(os.environ.get("AGENT_ROOT", Path(__file__).resolve().parents[2]))
 LAUNCHER = ROOT / ".tooling/lib/claude-launch.py"
 SHELL_FILES = [".zshenv", ".zprofile", ".zshrc", ".zlogin", ".bash_profile", ".bashrc", ".profile"]
 
