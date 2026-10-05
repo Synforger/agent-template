@@ -71,7 +71,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 
 ## 新 script 追加手順
 
-1. **置き場所** = `.tooling/<name>.{sh,py}`。 LLM 不使用 / token 自動消費ゼロを死守
+1. **置き場所** = `.tooling/<役割の folder>/<name>.{sh,py}` (= folder の意味の真値 = `.tooling/_README.md § folder`。 複数の役割から呼ばれる部品だけ `lib/`)。 LLM 不使用 / token 自動消費ゼロを死守
 2. **発火経路** = 起動時 `startup-status.sh` 集約 (= 軽量 1 行 summary のみ) / SessionEnd hook / git pre-commit の 3 択 (= PreToolUse 系は「発火時 = 判断後で手遅れ」 で非推奨)
 3. **失敗は fail-open**: `exit 0` で main 処理を止めない、 stderr に 1 行ログのみ
 4. **重い script は最後に `elapsed: N.Ns` を出す** (= test / build / gate / CI と、 それを束ねる入口)
