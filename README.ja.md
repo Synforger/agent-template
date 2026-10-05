@@ -60,7 +60,7 @@ agent-template/
     └── vision.template.md             # 現在地 (= 状態のみ)
 ```
 
-`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` を派生 root に rsync + `*.template` を実 file に展開し、 展開した file の日付 placeholder を埋め、 ルール台帳を建てる (= 出荷した検査が突き合わせる先を最初から作る)。 `core.hooksPath` は**設定しない** (= git は hooksPath を 1 つしか見ないので、 repo ごとの設定はマシン常駐の guard を丸ごと無効化する。 guard は repo の `.githooks/` へ委譲するので branch guard は効いたまま)。
+`src/` 配下が「派生 agent の中身」、 root 配下は「template 自体の運用」。 `init-new-agent.sh` は `src/` 配下で git が追跡している file を派生 root へ写し (= base の checkout に残った追跡外の file は写さない)、 `*.template` を実 file に展開し、 展開した file の日付 placeholder を埋め、 ルール台帳を建てる (= 出荷した検査が突き合わせる先を最初から作る)。 `core.hooksPath` は**設定しない** (= git は hooksPath を 1 つしか見ないので、 repo ごとの設定はマシン常駐の guard を丸ごと無効化する。 guard は repo の `.githooks/` へ委譲するので branch guard は効いたまま)。
 
 ## 派生の立ち上げ
 
