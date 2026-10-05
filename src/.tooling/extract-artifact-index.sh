@@ -59,6 +59,12 @@ case "$JOURNAL_DIR_ARG" in
     /*) DATE_DIR="$JOURNAL_DIR_ARG/$today" ;;
     *)  DATE_DIR="$ROOT/$JOURNAL_DIR_ARG/$today" ;;
 esac
+# 書き先は引数で決まる。 入口の番人はこの script の中を読まないので、 この session がそこへ書けるかを
+# 書く前に自分で訊く (= 拒まれたら folder も作らずに止まる。 番人の 1 行はそのまま stderr に出る)
+if ! python3 "$ROOT/.tooling/lib/guard-may-write.py" "$DATE_DIR"; then
+    echo "ERROR: this session may not write under $JOURNAL_DIR_ARG; run it from a session that may" >&2
+    exit 1
+fi
 mkdir -p "$DATE_DIR"
 # 採番真値は .md のみ (= エージェント が書いた journal)。 jsonl は副産物 = 採番に使わない
 # session_nn = .md の最大 NN + 1 (= 当日 エージェント が締めた session 数 + 1 = 今 session)
