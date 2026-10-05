@@ -29,6 +29,9 @@
 .tooling/lib/check-vision-shape.py
 .tooling/lib/capacity-candidates.py
 
+# 引数や走査で決まる階層へ書く script (= extract-artifact-index / build-rule-registry) が、 書く前に入口の番人へ訊く口
+.tooling/lib/guard-may-write.py
+
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/build-rule-registry.py
 
