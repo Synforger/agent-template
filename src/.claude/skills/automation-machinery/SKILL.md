@@ -17,6 +17,9 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | script | 発火 | 出力 |
 |---|---|---|
 | `.tooling/startup-status.sh` | 起動時 Phase B-共通 | stdout 1 ブロック (= 冒頭 `PC: <label>` 行) |
+| `.tooling/check-launch-pins.py` | startup-status から (= `step_launch_pins`) | `model_pin: ok` / `PINNED <場所>` / `UNPINNED`、 `effort_pin: ok` / `OVERRIDDEN <場所>` / `UNPINNED` (= 起動の経路が model の版を名指ししていないか、 launcher の `--effort` が環境変数に上書きされていないか。 起動 launcher を持つ派生でだけ測り、 無ければ `skipped`) |
+| guard deploy (= startup-status 内蔵) | 起動時 startup-status | `guard_deploy: ok` / `STALE` / `UNKNOWN` (= 動いている番人の clone が origin/develop と揃っているか。 番人の直しは merge しただけでは効かない) |
+| `.tooling/guard-update.sh` | 手動 (= `guard_deploy STALE` が出た時) | repo の pull・番人の clone を develop に揃えて導入し直す・設定の配布 (= 配る script を持つ派生だけ) |
 | `.tooling/pc-labels.txt` | startup-status から | PC 識別 (= 雛形 = `pc-labels.example.txt`) |
 | `.tooling/detect-stale-rules.sh` | startup-status から | 7 日無更新 rule 一覧 (= `stable: true` + `_README.md` は除外) |
 | `.tooling/detect-duplicates.py` | startup-status + SessionEnd hook | `.tooling/_output/duplicates.md` |
