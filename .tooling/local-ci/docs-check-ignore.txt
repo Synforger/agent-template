@@ -15,6 +15,6 @@ task release:cut    # same — intentionally hypothetical, not a stale reference
 # base repo には存在しない (= template 文書は派生視点で書く設計)
 profile/profile.md
 YYYY-MM-DD/session-NN.md
-.tooling/pc-labels.txt
+.tooling/startup/pc-labels.txt
 .tooling/_output/duplicates.md
 .git/hooks/pre-commit

@@ -19,7 +19,7 @@ updated: 2026-09-22
 
 1 行 1 section、 ID は `R-0001` 形式で**一度振ったら不変**。 ID は台帳だけが持ち、 `file` + `heading` で本体と紐付ける (= 本体に書くと常時 load 層の容量を食う)。
 
-- 更新: `python3 .tooling/build-rule-registry.py`
+- 更新: `python3 .tooling/rules/build-rule-registry.py`
 - 検査: 同 `--check` (= 未登録 section / 消滅 section を検出、 docs-check step 11)
 - 台帳は**階層ごとに 1 本** (= 1 本にまとめると gitignored な階層の path が tracked file へ漏れる)
 - section が消えても行は `retired: true` で残す (= 過去の発火記録が宛先を失わないため)
@@ -72,7 +72,7 @@ updated: 2026-09-22
 
 ## 容量超過で押し出す時
 
-静的容量の階層別上限は `.tooling/check-static-capacity.sh` が持つ (= script の値が真値)。 ハードなのは階層内の合計だけで、 file ごとの内訳は目安。 **skill の本文には上限を置かない** (= 必要な時にだけ読む。 一覧に出る説明文は別枠で数える、 真値 = `.claude/skills/_README.md § 容量`)。 反応基準は `.tooling/startup-status.sh` の印字が真値で、 容量の緩和は最終手段 (= やるなら単独 commit)。
+静的容量の階層別上限は `.tooling/startup/check-static-capacity.sh` が持つ (= script の値が真値)。 ハードなのは階層内の合計だけで、 file ごとの内訳は目安。 **skill の本文には上限を置かない** (= 必要な時にだけ読む。 一覧に出る説明文は別枠で数える、 真値 = `.claude/skills/_README.md § 容量`)。 反応基準は `.tooling/startup/startup-status.sh` の印字が真値で、 容量の緩和は最終手段 (= やるなら単独 commit)。
 
 **押し出す対象は発火実績の下位から選ぶ**。 選ぶ軸は実績だけ (= 文字数で選ぶと、 効いているルールが長いという理由で消える)。
 
@@ -107,7 +107,7 @@ updated: 2026-09-22
 - 除くもの: 過去失敗のラベル化 (= 自己卑下) / 経緯付記 / 強調 3 連語 / 弱表現 (= 「念のため」「一応」)。 履歴の真値は git log / journal / 台帳が持つ
 - **主文は「何をするか」 で書く** (= 見出しと太字の短文。 打ち消したい内容は `(= ...)` の補足へ落とす)
   - Why: 否定形の指示は「やってはいけないこと」 を先に思い浮かべさせてから打ち消させるので、 肯定形より守られにくい (= 反跳効果として知られる)
-  - 機械 = `.tooling/lib/check-positive-form.py` (= docs-check step 15、 fixture で実証済み)
+  - 機械 = `.tooling/docs-check/check-positive-form.py` (= docs-check step 15、 fixture で実証済み)
 
 ## ルールが増えるのはユーザが言った時だけ
 
