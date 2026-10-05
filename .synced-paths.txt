@@ -19,6 +19,8 @@
 .tooling/precommit-conflict-check.sh
 .tooling/setup-hooks.sh
 .tooling/startup-status.sh
+.tooling/check-launch-pins.py
+.tooling/guard-update.sh
 .tooling/_README.md
 
 # docs-check が呼ぶ検査本体 (= step が増えた分は lib/ に置き、 script 側は薄く保つ)
