@@ -14,7 +14,8 @@ set -euo pipefail
 #
 # 動作:
 #   1. agent-dir が既存なら error (= --force で上書き)
-#   2. base の src/ 配下を agent-dir 直下に rsync (= 派生の中身が一気に展開)
+#   2. base の src/ 配下で git が追跡している file を agent-dir 直下へ写す
+#      (= 追跡外の file = 手元の作業の跡は写さない)
 #   3. base の運用 file (LICENSE / .githooks/pre-commit / .synced-paths.txt) を
 #      agent-dir にも同梱
 #   4. base の sync-from-base.sh / promote-to-base.sh を派生 .tooling/distribute/ に配置
@@ -51,11 +52,22 @@ fi
 
 mkdir -p "$AGENT_DIR"
 
-echo "==> rsync src/ to $AGENT_DIR"
-rsync -a --exclude='.gitkeep' "$BASE_DIR/src/" "$AGENT_DIR/"
-
-# .gitkeep は dir 構造保持のため別途コピー (rsync --exclude 後)
-( cd "$BASE_DIR/src" && find . -name '.gitkeep' -exec rsync -R {} "$AGENT_DIR/" \; )
+# 写すのは git が追跡している file だけ (= base の checkout に残った追跡外の file =
+# bytecode / 生成物 / 書きかけのメモを、 新しい派生に混ぜない)。 dir 構造を保つ
+# .gitkeep も追跡されているので一緒に写る。 git の作業ツリーでない base (= 展開した
+# archive) には追跡外という区別が無いので、 src/ をそのまま写す。
+if git -C "$BASE_DIR" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "==> copy the tracked files under src/ to $AGENT_DIR"
+    ( cd "$BASE_DIR/src" && git ls-files -z ) | while IFS= read -r -d '' _f; do
+        # 追跡されているが手元で消してある file は写せないので飛ばす
+        [ -f "$BASE_DIR/src/$_f" ] || continue
+        mkdir -p "$AGENT_DIR/$(dirname "$_f")"
+        cp -p "$BASE_DIR/src/$_f" "$AGENT_DIR/$_f"
+    done
+else
+    echo "==> copy src/ to $AGENT_DIR (base is not a git work tree: copying everything)"
+    rsync -a "$BASE_DIR/src/" "$AGENT_DIR/"
+fi
 
 echo "==> copy operational files (LICENSE / .githooks / .synced-paths.txt)"
 cp "$BASE_DIR/LICENSE" "$AGENT_DIR/LICENSE"
