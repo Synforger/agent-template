@@ -11,6 +11,10 @@
 .idea/
 *.swp
 
+# python bytecode (= 機構 script が互いを import する時にできる。 追跡しない)
+__pycache__/
+*.pyc
+
 # 自動生成出力 (= 起動時 startup-status + 終了時 Step 2 script の出力先、 PC 同期衝突回避)
 .tooling/_output/*
 !.tooling/_output/.gitkeep
