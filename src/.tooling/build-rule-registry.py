@@ -178,10 +178,24 @@ def main():
                 problems.append(f"registry: section gone (id {r['id']}) → {r['file']} :: {r['heading']}")
             continue
 
+        body = "".join(json.dumps(r, ensure_ascii=False) + "\n"
+                       for r in sorted(by_key.values(), key=lambda x: x["id"]))
+        # 中身が変わらない台帳は書かない (= 全階層を毎回書き直すと、 この session が書けない階層まで触る)
+        try:
+            with open(path, encoding="utf-8") as f:
+                if f.read() == body:
+                    continue
+        except OSError:
+            pass
+        # 変わる台帳は、 この session がその階層へ書けるかを入口の番人に訊いてから書く
+        # (= 番人はこの script の中を読まない。 拒まれた階層は書かずに、 最後に失敗として返す)
+        asked = subprocess.run([sys.executable, os.path.join(ROOT, ".tooling/lib/guard-may-write.py"), path])
+        if asked.returncode == 1:
+            problems.append(f"registry: not written (this session may not write there) → {os.path.relpath(path, ROOT)}")
+            continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
-            for r in sorted(by_key.values(), key=lambda x: x["id"]):
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            f.write(body)
 
     if check_only:
         if problems:
@@ -194,7 +208,9 @@ def main():
 
     print(f"registry: {total_live} live rules across {len(by_tier)} tiers "
           f"({total_added} added, {total_retired} retired)")
-    return 0
+    for line in problems:
+        print(line)
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":
