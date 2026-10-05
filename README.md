@@ -145,7 +145,6 @@ Run at session end; any FAIL must be fixed within the same session. Verification
 13. rule-hits coverage (sessions that recorded no fired / violated rules)
 14. vision shape (the state sections are present and have not grown by accretion)
 15. rule statements are written as what to do, not what to avoid
-16. temp files are created under `TMPDIR`
 
 ### `detect-duplicates.py`
 
