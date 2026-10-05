@@ -91,7 +91,8 @@ step_company_terms() {
 #    (= machine-local, the same boundary the guard reads), nested to any depth;
 #    a sweep of the personal repos folder alone reported "armed" while a client repo ran no
 #    guard at all. A local `guard.scope exempt` is a shadow too (= the
-#    dispatcher skips the repo outright); only the agent repo itself may carry it.
+#    dispatcher skips the repo outright); only the agent repo itself may carry it, and a tier's
+#    record repository inside it while it has no remote (= nothing it holds can leave the machine).
 step_git_guard() {
     guard_shadowed=0
     guard_repos=""
@@ -102,7 +103,8 @@ step_git_guard() {
         if [ -n "${_lp}" ]; then
             guard_shadowed=$((guard_shadowed + 1))
             guard_repos="${guard_repos} ${_d#"$HOME"/}(hooksPath)"
-        elif [ "${_scope}" = "exempt" ] && [ "${_d%/}" != "${ROOT%/}" ]; then
+        elif [ "${_scope}" = "exempt" ] && [ "${_d%/}" != "${ROOT%/}" ] \
+            && ! { [ "${_d#"${ROOT%/}"/}" != "${_d}" ] && [ -z "$(git -C "${_d}" remote 2>/dev/null)" ]; }; then
             guard_shadowed=$((guard_shadowed + 1))
             guard_repos="${guard_repos} ${_d#"$HOME"/}(exempt)"
         fi
@@ -123,7 +125,9 @@ step_git_guard() {
     # The agent entry guard lives in the dispatcher checkout and is reached through
     # ~/.git-hooks; the settings entry passes silently when it is missing (a blocking
     # hook would stop every tool call), so its absence has to be said here.
-    if [ -f "$HOME/.git-hooks/agent-hooks/claude-code/area-guard.py" ]; then
+    if [ -e "${GUARD_CONFIG_DIR:-$HOME/.config/guard}/agent-off" ]; then
+        echo "agent_guard: OFF (the operator switched it off = ~/.config/guard/agent-off)"
+    elif [ -f "$HOME/.git-hooks/agent-hooks/claude-code/area-guard.py" ]; then
         echo "agent_guard: installed"
     else
         echo "agent_guard: MISSING (~/.git-hooks/agent-hooks/claude-code/area-guard.py)"
@@ -208,33 +212,63 @@ step_remote_sync() {
     fi
 }
 
-# 6c. model pinning in the launch path (= alias only, never a version-pinned id).
-#    A version-pinned id or a variant suffix (claude-opus-5, opus[1m]) keeps launching yesterday's shape
-#    after a newer one ships, and nothing on screen says so. Aliases (opus /
-#    fable / sonnet / haiku, + [1m] for 1M) resolve to the latest each launch.
-step_model_pin() {
-    local launcher=".tooling/lib/claude-launch.py" model="" pinned="" exec_line=""
-    if [ ! -f "$launcher" ]; then
-        echo "model_pin: (skipped, $launcher not found)"
-        return
-    fi
-    model=$(sed -nE 's/^MODEL = "([^"]*)".*/\1/p' "$launcher" | head -1)
-    exec_line=$(grep -c -- '"--model"' "$launcher")
-    if [ -z "$model" ] || [ "$exec_line" -eq 0 ]; then
-        echo "model_pin: UNPINNED (launcher passes no --model; the global settings default decides)"
-        return
-    fi
-    case "$model" in
-        claude-*) pinned="launcher($model = 版を名指し)" ;;
-        *\[*)    pinned="launcher($model = 変種の接尾辞)" ;;
-    esac
-    if [ -f "$HOME/.zshrc" ] && grep -qE -- '--model[= ]+.?(claude-[a-z]+-[0-9]|[a-z]+\[)' "$HOME/.zshrc"; then
-        pinned="${pinned}${pinned:+, }zshrc"
-    fi
-    if [ -n "$pinned" ]; then
-        echo "model_pin: PINNED $pinned (= 固定要因。 alias 1 語へ直す)"
+# 6c. model / effort pinning in the launch path (= 判定の真値は check-launch-pins.py)。
+#    A version-pinned id or a variant suffix keeps launching yesterday's shape after a newer one ships, and an
+#    effort env var silently beats the launcher's --effort; nothing on screen says either.
+step_launch_pins() {
+    python3 .tooling/check-launch-pins.py || echo "model_pin: (failed, check-launch-pins.py exited $?)"
+}
+
+# 6e. 動いている番人 (= ~/.git-hooks が指す clone) が origin/develop と揃っているか。 番人の直しは merge しただけでは
+#    効かず、 各 PC で guard-update.sh を流して clone を develop に進めて初めて入る。 clone が別の branch に居る /
+#    手で書き換わっている時も STALE になる。 develop の tree の blob と clone の file の hash を突き合わせる
+#    (= 違う / 無い / 余分 を数える)。 fetch できない時は手元の origin/develop と比べ、 そう名乗る
+step_guard_deploy() {
+    local clone="${GUARD_CLONE:-$(cd -P "$HOME/.git-hooks/scripts" 2>/dev/null && cd .. && pwd)}" note="" tip result
+    [ -d "$HOME/.git-hooks/scripts" ] || { echo "guard_deploy: (skipped, no guard installed)"; return; }
+    git -C "$clone" rev-parse --git-dir >/dev/null 2>&1 || { echo "guard_deploy: (skipped, no clone at $clone)"; return; }
+    timeout 8 git -C "$clone" fetch -q origin develop 2>/dev/null \
+        || note=" (not fetched: compared with the last known origin/develop)"
+    tip=$(git -C "$clone" log -1 --format='%h %s' origin/develop 2>/dev/null | cut -c1-80)
+    [ -n "$tip" ] || { echo "guard_deploy: UNKNOWN (no origin/develop in $clone)"; return; }
+    result=$(git -C "$clone" ls-tree -r -z origin/develop | python3 -c '
+import hashlib, os, sys
+home = os.path.realpath(os.path.expanduser("~/.git-hooks/scripts/.."))
+keep = {"scanners/anon-words.txt", "anon-words.local.txt", "scanners/anon-words.local.txt"}  # = 運用者の禁止語 (= git に載らない)
+skip_dirs = {"node_modules", "__pycache__", ".git"}
+tree = {}
+for entry in sys.stdin.buffer.read().split(b"\0"):
+    if entry:
+        meta, path = entry.split(b"\t", 1)
+        mode, kind, sha = meta.split()
+        if kind == b"blob":
+            tree[path.decode()] = (mode.decode(), sha.decode())
+def blob(path, mode):
+    data = os.readlink(path).encode() if mode == "120000" else open(path, "rb").read()
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+differ = missing = 0
+for rel, (mode, sha) in tree.items():
+    p = os.path.join(home, rel)
+    if not os.path.lexists(p):
+        missing += 1
+    elif blob(p, mode) != sha:
+        differ += 1
+extra = 0
+for root, dirs, files in os.walk(home):
+    dirs[:] = [d for d in dirs if d not in skip_dirs]
+    for f in files:
+        rel = os.path.relpath(os.path.join(root, f), home)
+        if rel not in tree and rel not in keep and not rel.endswith(".pyc"):
+            extra += 1
+print(differ, missing, extra)
+' 2>/dev/null)
+    set -- $result
+    if [ $# -ne 3 ]; then
+        echo "guard_deploy: UNKNOWN (could not compare the clone with origin/develop)${note}"
+    elif [ "$1$2$3" = "000" ]; then
+        echo "guard_deploy: ok (clone = origin/develop ${tip%% *})${note}"
     else
-        echo "model_pin: ok (launcher=$model, alias だけ = 毎回最新へ解決)"
+        echo "guard_deploy: STALE (clone differs from origin/develop ${tip}: ${1} changed, ${2} missing, ${3} extra)${note}"
     fi
 }
 
@@ -247,12 +281,13 @@ step_docs_check       > "$TMPD/4-docs"       &
 step_company_terms    > "$TMPD/6-company"    &
 step_git_guard        > "$TMPD/7-guard"      &
 step_claude_settings  > "$TMPD/8-settings"   &
-step_model_pin        > "$TMPD/8b-model"    &
+step_launch_pins      > "$TMPD/8b-pins"     &
+step_guard_deploy     > "$TMPD/8d-deploy"   &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
-    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-model"
+    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -273,7 +308,16 @@ echo "    core.hooksPath (the global dispatcher already delegates to .githooks/)
 echo "  - agent_guard MISSING -> this machine's guard-dispatcher checkout predates agent-hooks/ (the agent can read"
 echo "    areas and write anywhere until then): in the guard-dispatcher clone run 'git fetch origin &&"
 echo "    git checkout -B develop origin/develop && bash scripts/bootstrap-machine.sh' (= its README)"
+echo "  - agent_guard OFF -> the operator switched the entry guard off on purpose: say so in the briefing and do"
+echo "    not reinstall or remove the file (= the operator removes ~/.config/guard/agent-off to switch it on)"
 echo "  - model_pin PINNED -> a launch path names a model version or a variant suffix; use the bare alias"
-echo "    (opus / fable / sonnet / haiku) so every release and every default change is picked up"
+echo "    (opus / fable / sonnet / haiku) so every release and every default change is picked up; a settings(...)"
+echo "    hit is the per-machine model key the CLI writes back: delete that key"
+echo "  - effort_pin OVERRIDDEN -> an env var beats the launcher's --effort; remove the named line and say in"
+echo "    the briefing that this session runs at the overridden effort until the next launch"
+echo "  - guard_deploy STALE -> this machine runs an older guard than origin/develop (merged fixes are not in"
+echo "    effect here yet): say it in the briefing, and once the operator agrees run it from this session:"
+case "$ROOT" in "$HOME"/*) _root_shown="~${ROOT#"$HOME"}" ;; *) _root_shown="$ROOT" ;; esac
+echo "    bash ${_root_shown}/.tooling/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
 echo "    wanted change into the truth, then run .tooling/sync-claude-settings.sh --apply"
