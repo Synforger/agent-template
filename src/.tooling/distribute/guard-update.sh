@@ -2,7 +2,7 @@
 # =============================================================================
 # guard-update.sh — 番人をこの PC で最新にする (= 冪等、 何度流しても同じ)
 # =============================================================================
-#   bash <エージェントの repo>/.tooling/guard-update.sh
+#   bash <エージェントの repo>/.tooling/distribute/guard-update.sh
 #
 # 番人 (= guard-dispatcher) を直した後、 もう 1 台の PC で追いつく時、 起動時の点検が guard_deploy STALE を
 # 出した時に流す。 session の中からでも流せる。
@@ -13,7 +13,7 @@
 # =============================================================================
 set -uo pipefail
 
-AGENT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+AGENT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 番人の clone は、 導入先 (= ~/.git-hooks の中の link) が指している folder
 GUARD_CLONE="${GUARD_CLONE:-$(cd -P "$HOME/.git-hooks/scripts" 2>/dev/null && cd .. && pwd)}"
 [ -n "${GUARD_CLONE}" ] || { echo "番人が導入されていません (= ~/.git-hooks/scripts が無い)。 番人の README の手順で導入してください"; exit 1; }
@@ -41,8 +41,8 @@ else
 fi
 
 echo "== 3/3 Claude Code の設定を配る"
-if [ -f "${AGENT}/.tooling/sync-claude-settings.sh" ]; then
-    bash "${AGENT}/.tooling/sync-claude-settings.sh" --apply | tail -2
+if [ -f "${AGENT}/.tooling/distribute/sync-claude-settings.sh" ]; then
+    bash "${AGENT}/.tooling/distribute/sync-claude-settings.sh" --apply | tail -2
 else
     echo "   (skipped, この repo は設定を配る script を持たない)"
 fi

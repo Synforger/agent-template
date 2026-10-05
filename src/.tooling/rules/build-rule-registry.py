@@ -14,8 +14,8 @@
        ID は階層内で一意、 発火記録も同じ階層の journal に書くので衝突しない。
 
 走らせ方:
-  python3 .tooling/build-rule-registry.py           # 全階層の台帳を更新
-  python3 .tooling/build-rule-registry.py --check   # 検査のみ (= 未登録 / 消滅を報告、 exit 1)
+  python3 .tooling/rules/build-rule-registry.py           # 全階層の台帳を更新
+  python3 .tooling/rules/build-rule-registry.py --check   # 検査のみ (= 未登録 / 消滅を報告、 exit 1)
 
 section が消えても行は retired: true で残す (= 過去の発火記録が宛先を失わないため)。
 """
@@ -26,7 +26,7 @@ import re
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 走査対象 = 全階層の rule 層 (= 親 / project / subproject)
 TARGET_GLOBS = [
@@ -201,7 +201,7 @@ def main():
         if problems:
             for line in problems:
                 print(line)
-            print("run: python3 .tooling/build-rule-registry.py")
+            print("run: python3 .tooling/rules/build-rule-registry.py")
             return 1
         print(f"registry: in sync ({total_live} live rules across {len(by_tier)} tiers)")
         return 0

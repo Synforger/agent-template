@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 1
 
 HOOKS_DIR=".git/hooks"
@@ -25,11 +25,11 @@ ROOT="$(git rev-parse --show-toplevel)"
 if command -v git-lfs >/dev/null 2>&1; then
     git lfs pre-push "$@" >/dev/null 2>&1 || true
 fi
-exec "$ROOT/.tooling/precommit-conflict-check.sh"
+exec "$ROOT/.tooling/commit/precommit-conflict-check.sh"
 EOF
 chmod +x "$HOOKS_DIR/pre-commit"
 
-echo "Installed: $HOOKS_DIR/pre-commit -> .tooling/precommit-conflict-check.sh"
+echo "Installed: $HOOKS_DIR/pre-commit -> .tooling/commit/precommit-conflict-check.sh"
 echo ""
 echo "=================================================="
 echo "Claude Code UserPromptSubmit hook setup (optional, for multi-PC sync)"
@@ -47,7 +47,7 @@ UserPromptSubmit に追加 (= 毎発話に GO-gate リマインダ極短注入�
     "hooks": [
       {
         "type": "command",
-        "command": "bash <agent-repo-root>/.tooling/go-gate-reminder.sh"
+        "command": "bash <agent-repo-root>/.tooling/hooks/go-gate-reminder.sh"
       }
     ]
   }
@@ -61,6 +61,6 @@ UserPromptSubmit に追加 (= 毎発話に GO-gate リマインダ極短注入�
 JSON
 echo ""
 echo "verify (manual dry-run):"
-echo "  bash <agent-repo-root>/.tooling/extract-artifact-index.sh"
-echo "  bash <agent-repo-root>/.tooling/detect-stale-rules.sh --summary"
-echo "  bash <agent-repo-root>/.tooling/precommit-conflict-check.sh"
+echo "  bash <agent-repo-root>/.tooling/session-end/extract-artifact-index.sh"
+echo "  bash <agent-repo-root>/.tooling/startup/detect-stale-rules.sh --summary"
+echo "  bash <agent-repo-root>/.tooling/commit/precommit-conflict-check.sh"

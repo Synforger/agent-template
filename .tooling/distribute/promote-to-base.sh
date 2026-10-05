@@ -8,7 +8,7 @@ set -euo pipefail
 # 逆昇格する。
 #
 # Usage:
-#   ./.tooling/promote-to-base.sh [--file <path>]... [<commit-message>]
+#   ./.tooling/distribute/promote-to-base.sh [--file <path>]... [<commit-message>]
 #
 # Options:
 #   --file <path> : 指定 file のみ promote (= 複数指定可、 synced-paths 内のもののみ受理)。
@@ -56,7 +56,7 @@ done
 COMMIT_MSG="${POSITIONAL[0]:-chore: promote changes from derived agent}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AGENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+AGENT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 SYNCED_PATHS_FILE="$AGENT_DIR/.synced-paths.txt"
 if [ ! -f "$SYNCED_PATHS_FILE" ]; then

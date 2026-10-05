@@ -27,25 +27,22 @@ agent-template/
 │   └── setup-lib.sh
 ├── .tooling/                          # template 運用 script
 │   ├── init-new-agent.sh              # 派生立ち上げ
-│   ├── sync-from-base.sh              # base → 派生 取り込み
-│   └── promote-to-base.sh             # 派生 → base 昇格
+│   ├── distribute/sync-from-base.sh   # base → 派生 取り込み
+│   └── distribute/promote-to-base.sh  # 派生 → base 昇格
 ├── .synced-paths.txt                  # 派生に降ろす path 列挙
 └── src/                               # ★ 派生に降りる中身
     ├── CLAUDE.template.md             # 派生で CLAUDE.md として人格を書く
     ├── .gitignore.template            # 派生で .gitignore に展開
-    ├── .tooling/                      # 機構 script (= 派生で動く真値)
-    │   ├── docs-check.sh              # 多軸 docs 検査
-    │   ├── detect-duplicates.py       # section 単位重複検出
-    │   ├── detect-stale-rules.sh      # 7 日無更新検出
-    │   ├── build-rule-registry.py     # 階層ごとのルール ID 台帳 (= 発火記録の宛先)
-    │   ├── extract-artifact-index.sh  # SessionEnd hook 用
-    │   ├── go-gate-reminder.sh        # 毎発話 GO-gate リマインダ hook
-    │   ├── precommit-conflict-check.sh
-    │   ├── setup-hooks.sh             # hook install
-    │   ├── startup-status.sh          # Phase B-共通 で実行
-    │   ├── check-static-capacity.sh   # 階層別の常時 load 容量 (= skill の一覧は別枠)
-    │   ├── lib/                       # docs-check が呼ぶ検査本体
-    │   └── _README.md
+    ├── .tooling/                      # 機構 script (= 派生で動く真値、 役割ごとの folder)
+    │   ├── startup/                   # 起動時の検査 (= startup-status.sh と、 それが束ねる無更新 / 重複 / 容量 / 起動の固定)
+    │   ├── session-end/               # 終了時の手順が呼ぶ extract-artifact-index.sh
+    │   ├── docs-check/                # docs-check.sh (= 多軸 docs 検査) と step ごとの検査本体
+    │   ├── rules/                     # build-rule-registry.py (= 階層ごとのルール ID 台帳、 発火記録の宛先)
+    │   ├── hooks/                     # go-gate-reminder.sh (= 毎発話 GO-gate リマインダ hook)
+    │   ├── commit/                    # git hook が呼ぶ script と、 その導入 (= setup-hooks.sh)
+    │   ├── distribute/                # base との同期 (= init が同期 script 2 本をここへ置く) と番人の更新
+    │   ├── lib/                       # 複数の役割から呼ばれる部品
+    │   └── _README.md                 # folder ごとに入る物
     ├── rules/
     │   └── always.md                  # ★ 必須: 容量 + 書き方 + 増やし方 / 減らし方 + 自己強化ループ (形態 D)
     ├── .claude/skills/                # 場面でだけ効く rule (= 一覧はハーネスが出す)
@@ -89,7 +86,7 @@ cd agent-template
 
 ```bash
 cd ~/path/to/<your-agent>
-./.tooling/sync-from-base.sh
+./.tooling/distribute/sync-from-base.sh
 ```
 
 `.synced-paths.txt` に列挙された path のみ base 最新で上書き。 派生固有 file (= synced-paths 外) は触らない。 `git diff` で確認後 commit。
@@ -100,7 +97,7 @@ cd ~/path/to/<your-agent>
 
 ```bash
 cd ~/path/to/<your-agent>
-./.tooling/promote-to-base.sh "feat: 新 docs-check step 追加"
+./.tooling/distribute/promote-to-base.sh "feat: 新 docs-check step 追加"
 ```
 
 base 側に feature branch を切って push、 PR 経由で merge。 synced-paths 外の派生固有 file は弾かれる。
@@ -145,7 +142,7 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 
 ### `detect-duplicates.py`
 
-H2/H3 section 単位で全 rule の LCS 比較、 真値分散の集約候補を出力。 reference 判定済 (= 意図的な共通参照) のペアは `.tooling/duplicates-allowlist.txt` に登録して恒久 suppress (= 毎 session の再判定を消す)。
+H2/H3 section 単位で全 rule の LCS 比較、 真値分散の集約候補を出力。 reference 判定済 (= 意図的な共通参照) のペアは `.tooling/startup/duplicates-allowlist.txt` に登録して恒久 suppress (= 毎 session の再判定を消す)。
 
 ### `detect-stale-rules.sh`
 
