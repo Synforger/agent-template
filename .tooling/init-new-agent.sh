@@ -17,7 +17,7 @@ set -euo pipefail
 #   2. base の src/ 配下を agent-dir 直下に rsync (= 派生の中身が一気に展開)
 #   3. base の運用 file (LICENSE / .githooks/pre-commit / .synced-paths.txt) を
 #      agent-dir にも同梱
-#   4. base の sync-from-base.sh / promote-to-base.sh を派生 .tooling/ に配置
+#   4. base の sync-from-base.sh / promote-to-base.sh を派生 .tooling/distribute/ に配置
 #   5. *.template 拡張子を実 file に rename (= CLAUDE.template.md → CLAUDE.md 等)
 #   6. agent-dir で git init -b main + initial commit
 #
@@ -67,10 +67,11 @@ chmod +x "$AGENT_DIR/.githooks/pre-commit"
 # 全 repo の commit / push 境界で回す、 word list はマシン config 側)
 
 echo "==> install sync-from-base / promote-to-base scripts"
-cp "$BASE_DIR/.tooling/sync-from-base.sh" "$AGENT_DIR/.tooling/sync-from-base.sh"
-cp "$BASE_DIR/.tooling/promote-to-base.sh" "$AGENT_DIR/.tooling/promote-to-base.sh"
-chmod +x "$AGENT_DIR/.tooling/sync-from-base.sh"
-chmod +x "$AGENT_DIR/.tooling/promote-to-base.sh"
+mkdir -p "$AGENT_DIR/.tooling/distribute"
+cp "$BASE_DIR/.tooling/distribute/sync-from-base.sh" "$AGENT_DIR/.tooling/distribute/sync-from-base.sh"
+cp "$BASE_DIR/.tooling/distribute/promote-to-base.sh" "$AGENT_DIR/.tooling/distribute/promote-to-base.sh"
+chmod +x "$AGENT_DIR/.tooling/distribute/sync-from-base.sh"
+chmod +x "$AGENT_DIR/.tooling/distribute/promote-to-base.sh"
 
 echo "==> expand *.template files"
 # .gitignore.template → .gitignore
@@ -98,7 +99,7 @@ for _f in CLAUDE.md vision.md profile/profile.md; do
 done
 
 # pc-labels.example.txt は派生に降ろさない (= 各派生で必要なら手動 cp)
-if [ -f "$AGENT_DIR/.tooling/pc-labels.example.txt" ]; then
+if [ -f "$AGENT_DIR/.tooling/startup/pc-labels.example.txt" ]; then
     : # 残置: 派生先で cp pc-labels.example.txt pc-labels.txt して書く
 fi
 
@@ -106,9 +107,9 @@ fi
 # 未登録として並べ、 台帳を指す参照も dead になる。 機械が建てられるものを宿題にしない)
 echo "==> build the rule ledger"
 if command -v python3 > /dev/null 2>&1; then
-    ( cd "$AGENT_DIR" && python3 .tooling/build-rule-registry.py )
+    ( cd "$AGENT_DIR" && python3 .tooling/rules/build-rule-registry.py )
 else
-    echo "  warn: python3 not found — run .tooling/build-rule-registry.py by hand" >&2
+    echo "  warn: python3 not found — run .tooling/rules/build-rule-registry.py by hand" >&2
 fi
 
 echo "==> git init + initial commit"
@@ -137,5 +138,5 @@ echo "  2. Edit profile/profile.md (the profile of your primary user, one file)"
 echo "  3. Write vision.md (where the agent stands; docs-check flags its placeholders until they are filled)"
 echo "  4. Add your word list to the machine config (~/.config/anon-words/, via guard-dispatcher)"
 echo "  5. Add agent-specific rules to rules/always.md (single-file form)"
-echo "  6. (optional) cp .tooling/pc-labels.example.txt .tooling/pc-labels.txt and edit"
+echo "  6. (optional) cp .tooling/startup/pc-labels.example.txt .tooling/startup/pc-labels.txt and edit"
 echo "  7. Add remote: git remote add origin <your-repo-url>"

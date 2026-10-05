@@ -7,7 +7,7 @@
 検査対象は「その階層が記録を書き始めた日以降」 の session だけ (= 機構より前の journal を
 遡って責めない。 基準日を code に書かないための決め方でもある)。
 
-走らせ方: python3 .tooling/lib/check-rule-hits.py
+走らせ方: python3 .tooling/docs-check/check-rule-hits.py
 出力: 1 行 1 件の `<journal .md path>`。 終了コードは常に 0 (= 判定は呼び出し側)。
 """
 import glob

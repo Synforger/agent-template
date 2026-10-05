@@ -25,7 +25,7 @@
 解決は「その階層の root からの相対」 → 「repo root からの相対」 の順 (= 各階層の
 rules/always.md が `.claude/skills/x/SKILL.md` と書いたら自階層のそれを指す)。
 
-走らせ方: python3 .tooling/lib/check-rule-references.py [--verbose]
+走らせ方: python3 .tooling/docs-check/check-rule-references.py [--verbose]
 出力: 1 行 1 件の `<file>\t<参照>`。 終了コードは常に 0 (= 判定は呼び出し側)。
 """
 import glob

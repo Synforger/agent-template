@@ -11,7 +11,7 @@
   - 全 chunk ペアの最長共通部分文字列 (= LCS 簡易版) が MIN_PHRASE_LEN 以上のペアを抽出
   - 出力 = .tooling/_output/duplicates.md
 
-起動: python3 <agent-repo-root>/.tooling/detect-duplicates.py [--summary]
+起動: python3 <agent-repo-root>/.tooling/startup/detect-duplicates.py [--summary]
 完遂条件: error なく走ること、 出力が空でも OK
 """
 
@@ -24,10 +24,10 @@ import sys
 
 # script 所在から ROOT を推定 (= worktree 対応)
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
-ROOT = SCRIPT_DIR.parent
+ROOT = SCRIPT_DIR.parent.parent
 
 OUT_PATH = ROOT / ".tooling" / "_output" / "duplicates.md"
-ALLOWLIST_PATH = ROOT / ".tooling" / "duplicates-allowlist.txt"
+ALLOWLIST_PATH = SCRIPT_DIR / "duplicates-allowlist.txt"
 # allowlist 形式: 1 行 1 ペア、 "labelA -- labelB" (= 順不同、 # 行と空行は無視)。
 # reference 判定済 (= 意図的な共通 command / path 参照) のペアを恒久 suppress する。
 MIN_PHRASE_LEN = 60  # 同一フレーズの最小長 (= 2026-06-24 60→90、 短コマンド片 3 件常駐の false positive 抑制)
