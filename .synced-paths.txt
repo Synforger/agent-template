@@ -66,7 +66,7 @@ profile/_README.md
 profile/_template.md
 
 # === sync 対象外の宣言 (= `!` prefix、 理由コメント必須) ===
-# src/ に出荷しているが sync では降ろさない file。 init (= src/ 丸ごと rsync) で
+# src/ に出荷しているが sync では降ろさない file。 init (= src/ の追跡 file を全部写す) で
 # 一度だけ届き、 以降は派生の持ち物になるもの。
 # 宣言漏れは `.tooling/local-ci/synced-paths-check.sh` が FAIL で検出する
 # (= 「列挙も除外宣言もされていない出荷 file」 = 降ろし忘れの機械検出)。
