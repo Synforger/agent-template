@@ -9,7 +9,7 @@
 実績が同じならバイト数の大きいほうから消す、 ではなく **実績 0 のものから消す** のが原則
 (= 真値 = rules/always.md § meta)。
 
-走らせ方: python3 .tooling/lib/capacity-candidates.py <rule file>...
+走らせ方: python3 .tooling/startup/capacity-candidates.py <rule file>...
 出力: 上位 15 section を `バイト数 / 発火 / 違反 / file :: path` で降順に。
 """
 import glob
@@ -50,7 +50,7 @@ def sections_of(rel):
 def load_hits():
     """rule-hits-summary の集計を借りる (= 判定ロジックを二重に持たない)。"""
     spec = importlib.util.spec_from_file_location(
-        "rhs", os.path.join(ROOT, ".tooling", "rule-hits-summary.py"))
+        "rhs", os.path.join(ROOT, ".tooling", "rules", "rule-hits-summary.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     reg, _live, _hits, fired, violated, *_ = mod.summarize()

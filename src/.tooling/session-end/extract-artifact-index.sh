@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # extract-artifact-index.sh - 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
 # 用途: エージェント終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
-# 走らせ方: bash <agent-repo-root>/.tooling/extract-artifact-index.sh <journal-dir>
+# 走らせ方: bash <agent-repo-root>/.tooling/session-end/extract-artifact-index.sh <journal-dir>
 #   引数必須。 エージェントが終了時に当 session 実際に touch した階層 (= journal/ / projects/<P>/journal/ / ...) を明示指定
 #   親+サブ両方触った場合は 2 回呼ぶ (= 階層ごとに 1 回ずつ)
 #
@@ -12,7 +12,7 @@
 
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 0
 
 if [ -z "${1:-}" ]; then
