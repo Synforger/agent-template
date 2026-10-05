@@ -14,7 +14,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 
 | folder | 入る物 |
 |---|---|
-| 直下 | `claude-launch.sh` だけ (= 起動の入口。 各機械の shell の alias が握る path なので動かさない) |
+| 直下 | 起動の入口だけ (= 派生が自分で持つ script。 各機械の shell の alias が握る path なので動かさない) |
 | `hooks/` | Claude Code の hook と statusLine が呼ぶ script |
 | `startup/` | 起動時の検査 (= `startup-status.sh` と、 それが束ねる検出・容量・起動の固定・語の配布) とその設定 file |
 | `session-end/` | 終了時の手順が呼ぶ script |
