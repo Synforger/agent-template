@@ -61,7 +61,7 @@ agent-template/
     └── vision.template.md             # where the agent currently stands (state only)
 ```
 
-Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` rsyncs `src/` into the derivation root, expands every `*.template` into a real file, fills the date placeholders in the expanded ones, and builds the rule ledger so the shipped checks have something to verify against. It deliberately leaves `core.hooksPath` unset: git honours exactly one hooks path, so setting it per-repo would switch off the machine-wide guard (which already delegates to the repo's `.githooks/`).
+Everything under `src/` is the derived agent's content; everything at the root operates the template itself. `init-new-agent.sh` copies the files git tracks under `src/` into the derivation root (untracked leftovers in the base checkout stay behind), expands every `*.template` into a real file, fills the date placeholders in the expanded ones, and builds the rule ledger so the shipped checks have something to verify against. It deliberately leaves `core.hooksPath` unset: git honours exactly one hooks path, so setting it per-repo would switch off the machine-wide guard (which already delegates to the repo's `.githooks/`).
 
 ## Spinning up a derivation
 
