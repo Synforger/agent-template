@@ -7,7 +7,7 @@ set -euo pipefail
 # 派生エージェント repo で実行。 agent-template (base) 最新を取り込む。
 #
 # Usage:
-#   ./.tooling/sync-from-base.sh
+#   ./.tooling/distribute/sync-from-base.sh
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記 DEFAULT_BASE_URL)
@@ -24,7 +24,7 @@ DEFAULT_BASE_URL="${BASE_REPO_URL:-git@github.com:synforger/agent-template.git}"
 BASE_BRANCH="${BASE_BRANCH:-main}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AGENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+AGENT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 SYNCED_PATHS_FILE="$AGENT_DIR/.synced-paths.txt"
 if [ ! -f "$SYNCED_PATHS_FILE" ]; then

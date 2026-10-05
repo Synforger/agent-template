@@ -36,7 +36,7 @@ Why: 際限ない rule 増殖を物量で止める、 常時 load で全体把�
 
 ### 動的読込 = 上限外
 
-`ls` / journal / plans / messages / startup-status / skill 本文の Read 等は上限に含めない。 skill の一覧 (= `description` + `when_to_use`) は毎 session 文脈に入るので別枠で数える。 監視 script (= `.tooling/check-static-capacity.sh`、 startup-status が呼ぶ) が階層ごとの静的合計を計算する。
+`ls` / journal / plans / messages / startup-status / skill 本文の Read 等は上限に含めない。 skill の一覧 (= `description` + `when_to_use`) は毎 session 文脈に入るので別枠で数える。 監視 script (= `.tooling/startup/check-static-capacity.sh`、 startup-status が呼ぶ) が階層ごとの静的合計を計算する。
 
 ### 形態 D
 
@@ -65,9 +65,9 @@ rule 本体に書かないもの:
 
 ### 違反時動作
 
-- 起動時 `.tooling/startup-status.sh` が階層別静的合計を計算 (= 派生で階層別上限を script 内 or 別 config で調整)
+- 起動時 `.tooling/startup/startup-status.sh` が階層別静的合計を計算 (= 派生で階層別上限を script 内 or 別 config で調整)
 - 上限超過 = WARN 出力、 同 session 内で削る (= 凝縮 / 統合 / 削除、 上限の緩和は最終手段)
-- 緩和 commit = `.tooling/precommit-conflict-check.sh § 容量緩和 reflex 警告` で soft fail
+- 緩和 commit = `.tooling/commit/precommit-conflict-check.sh § 容量緩和 reflex 警告` で soft fail
 
 ### ルールを増やす / 減らす
 
@@ -96,7 +96,7 @@ rule 本体に書かないもの:
 
 session 終了時、 効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` に 1 行ずつ書く。 書き漏らした session は docs-check step 13 が出す。
 
-- ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変、 生成 = `.tooling/build-rule-registry.py`)
+- ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変、 生成 = `.tooling/rules/build-rule-registry.py`)
 - 実績は 2 つに効く: 容量超過時に**どの節から押し出すか**、 そして**沈黙した rule の退役**
 - 沈黙で退役を測れるのは skill の層だけ (= 常時 load は「読まれた」 と「効いた」 が別物なので、 記録が無いことを死んだ証拠に使わない)
 

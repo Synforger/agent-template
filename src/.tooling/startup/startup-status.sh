@@ -2,19 +2,19 @@
 # startup-status.sh - セッション起動時の状態スナップショット (= LLM 不使用、 token ゼロ)
 # 用途: Phase B-共通 で実行、 各 utility を summary モードで呼んで結果を 1 ブロックで出力
 # エージェント は出力を Read して「打診すべき項目があれば 1 行打診」 を Phase C で判断
-# 走らせ方: bash <agent-repo-root>/.tooling/startup-status.sh
+# 走らせ方: bash <agent-repo-root>/.tooling/startup/startup-status.sh
 
 set -uo pipefail
 # 自分がどれだけ待たせたかを最後に名乗る (= 遅くなったことに気づけるのは数字が出ている時だけ)
 _T0="${EPOCHREALTIME:-$(date +%s)}"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || { echo "ROOT not found: $ROOT"; exit 2; }
 
 echo "===== agent startup status ($(date '+%Y-%m-%d %H:%M:%S')) ====="
 
 # 0. PC 識別 (= 自宅 / 会社、 LocalHostName → label mapping)
-PC_LABELS_FILE="$ROOT/.tooling/pc-labels.txt"
+PC_LABELS_FILE="$ROOT/.tooling/startup/pc-labels.txt"
 local_host=$(scutil --get LocalHostName 2>/dev/null || hostname -s)
 pc_label=""
 if [ -f "$PC_LABELS_FILE" ]; then
@@ -23,7 +23,7 @@ fi
 if [ -n "$pc_label" ]; then
     echo "PC: $pc_label ($local_host)"
 else
-    echo "PC: unknown ($local_host) — add it to .tooling/pc-labels.txt"
+    echo "PC: unknown ($local_host) — add it to .tooling/startup/pc-labels.txt"
 fi
 
 # 以降の検出は互いに独立なので同時に走らせ、 出力は元の並び順で組み直す
@@ -33,8 +33,8 @@ trap 'rm -rf "$TMPD"' EXIT
 
 # 1. rule 形骸化検出 (= 7 日無更新 = 退役候補)
 step_stale_rules() {
-    if [ -x .tooling/detect-stale-rules.sh ]; then
-        bash .tooling/detect-stale-rules.sh --summary 2>/dev/null
+    if [ -x .tooling/startup/detect-stale-rules.sh ]; then
+        bash .tooling/startup/detect-stale-rules.sh --summary 2>/dev/null
     else
         echo "stale_rules: (skipped, script not found)"
     fi
@@ -42,8 +42,8 @@ step_stale_rules() {
 
 # 2. rule file 間重複検出
 step_duplicates() {
-    if [ -x .tooling/detect-duplicates.py ]; then
-        python3 .tooling/detect-duplicates.py --summary 2>/dev/null
+    if [ -x .tooling/startup/detect-duplicates.py ]; then
+        python3 .tooling/startup/detect-duplicates.py --summary 2>/dev/null
     else
         echo "duplicates: (skipped, script not found)"
     fi
@@ -55,15 +55,15 @@ step_duplicates() {
 #    subproject = _README + always (= 10 KB)
 step_capacity() {
     # 派生 repo によっては未配備 (= 他の任意 step と同じく在る時だけ走らせる)
-    if [ -f .tooling/check-static-capacity.sh ]; then
-        bash .tooling/check-static-capacity.sh || true
+    if [ -f .tooling/startup/check-static-capacity.sh ]; then
+        bash .tooling/startup/check-static-capacity.sh || true
     fi
 }
 
 # 5. docs-check (= 最後の 1 行 summary)
 step_docs_check() {
-    if [ -x .tooling/docs-check.sh ]; then
-        docs_summary=$(bash .tooling/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g' | grep -E "^(PASS|WARN|FAIL):" | tr '\n' ' ')
+    if [ -x .tooling/docs-check/docs-check.sh ]; then
+        docs_summary=$(bash .tooling/docs-check/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g' | grep -E "^(PASS|WARN|FAIL):" | tr '\n' ' ')
         echo "docs-check: $docs_summary"
     else
         echo "docs-check: (script not found)"
@@ -71,10 +71,10 @@ step_docs_check() {
 }
 
 # 6. local leak detector (= 派生 opt-in: 混入してはいけない語彙の検出 script を
-#    .tooling/detect-company-terms.sh として置くと自動で走る、 無ければ skip)
+#    .tooling/commit/detect-company-terms.sh として置くと自動で走る、 無ければ skip)
 step_company_terms() {
-    if [ -x .tooling/detect-company-terms.sh ]; then
-        bash .tooling/detect-company-terms.sh --summary 2>/dev/null
+    if [ -x .tooling/commit/detect-company-terms.sh ]; then
+        bash .tooling/commit/detect-company-terms.sh --summary 2>/dev/null
     else
         echo "company_terms: (skipped, script not found)"
     fi
@@ -139,8 +139,8 @@ step_git_guard() {
 #    different models, effort levels and hooks — the work account had no
 #    go-gate hook at all. One truth, distributed; drift is reported here.
 step_claude_settings() {
-    if [ -f .tooling/sync-claude-settings.sh ]; then
-        bash .tooling/sync-claude-settings.sh | tail -1
+    if [ -f .tooling/distribute/sync-claude-settings.sh ]; then
+        bash .tooling/distribute/sync-claude-settings.sh | tail -1
     fi
 }
 
@@ -157,8 +157,8 @@ step_anon_words() {
         local wanted
         wanted="$(mktemp)"
         cat "$WORDS_TRUTH" > "$wanted"
-        if [ -f .tooling/anon-words-local.sh ]; then
-            bash .tooling/anon-words-local.sh >> "$wanted" 2>/dev/null
+        if [ -f .tooling/startup/anon-words-local.sh ]; then
+            bash .tooling/startup/anon-words-local.sh >> "$wanted" 2>/dev/null
         fi
         if [ -f "$MASTER" ] && diff -q "$wanted" "$MASTER" >/dev/null 2>&1; then
             echo "anon_words: master.txt in sync"
@@ -170,15 +170,15 @@ step_anon_words() {
         rm -f "$wanted"
         # operator-specific extra distributions (e.g. filtered subsets) live in a
         # local, non-synced hook so the base stays generic
-        if [ -f .tooling/anon-dist-local.sh ]; then
-            bash .tooling/anon-dist-local.sh
+        if [ -f .tooling/startup/anon-dist-local.sh ]; then
+            bash .tooling/startup/anon-dist-local.sh
         fi
     fi
 }
 
 step_rule_hits() {
-    if [ -f .tooling/rule-hits-summary.py ]; then
-        python3 .tooling/rule-hits-summary.py 2>/dev/null
+    if [ -f .tooling/rules/rule-hits-summary.py ]; then
+        python3 .tooling/rules/rule-hits-summary.py 2>/dev/null
     else
         echo "rule_hits: (skipped, script not found)"
     fi
@@ -216,7 +216,7 @@ step_remote_sync() {
 #    A version-pinned id or a variant suffix keeps launching yesterday's shape after a newer one ships, and an
 #    effort env var silently beats the launcher's --effort; nothing on screen says either.
 step_launch_pins() {
-    python3 .tooling/check-launch-pins.py || echo "model_pin: (failed, check-launch-pins.py exited $?)"
+    python3 .tooling/startup/check-launch-pins.py || echo "model_pin: (failed, check-launch-pins.py exited $?)"
 }
 
 # 6e. 動いている番人 (= ~/.git-hooks が指す clone) が origin/develop と揃っているか。 番人の直しは merge しただけでは
@@ -318,6 +318,6 @@ echo "    the briefing that this session runs at the overridden effort until the
 echo "  - guard_deploy STALE -> this machine runs an older guard than origin/develop (merged fixes are not in"
 echo "    effect here yet): say it in the briefing, and once the operator agrees run it from this session:"
 case "$ROOT" in "$HOME"/*) _root_shown="~${ROOT#"$HOME"}" ;; *) _root_shown="$ROOT" ;; esac
-echo "    bash ${_root_shown}/.tooling/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
+echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
-echo "    wanted change into the truth, then run .tooling/sync-claude-settings.sh --apply"
+echo "    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply"

@@ -30,7 +30,7 @@ capacity: 3KB
 
 - `title` / `description` (= 何の手順か 1 行) / `when_to_use` / `updated`
 - **`when_to_use` は作業の場面で書く** (= 「〜する直前」「〜を始める時」。 特定の発話に依存させない)
-- 一覧は毎 session 文脈に入る。 階層ごとの合計は `.tooling/check-static-capacity.sh` が別枠で数える
+- 一覧は毎 session 文脈に入る。 階層ごとの合計は `.tooling/startup/check-static-capacity.sh` が別枠で数える
 
 ## 容量
 

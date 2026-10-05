@@ -4,12 +4,12 @@
 # 入力: 各 rule file の git log 最終 commit 日
 # 出力: 7 日 0 commit = 退役候補一覧
 # 走らせ方:
-#   bash <agent-repo-root>/.tooling/detect-stale-rules.sh             # 全件表
-#   bash <agent-repo-root>/.tooling/detect-stale-rules.sh --summary   # 1 行集約
+#   bash <agent-repo-root>/.tooling/startup/detect-stale-rules.sh             # 全件表
+#   bash <agent-repo-root>/.tooling/startup/detect-stale-rules.sh --summary   # 1 行集約
 
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || { echo "ROOT not found: $ROOT"; exit 2; }
 
 SUMMARY_MODE=0
