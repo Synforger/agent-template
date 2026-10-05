@@ -27,26 +27,23 @@ agent-template/
 │   └── setup-lib.sh
 ├── .tooling/                          # template operation scripts
 │   ├── init-new-agent.sh              # spin up a derivation
-│   ├── sync-from-base.sh              # base → derivation (pull down)
-│   ├── promote-to-base.sh             # derivation → base (promote up)
+│   ├── distribute/sync-from-base.sh   # base → derivation (pull down)
+│   ├── distribute/promote-to-base.sh  # derivation → base (promote up)
 │   └── local-ci/synced-paths-check.sh # .synced-paths.txt vs the shipped payload
 ├── .synced-paths.txt                  # the paths shipped down to derivations
 └── src/                               # ★ what a derived agent receives
     ├── CLAUDE.template.md             # becomes the derivation's CLAUDE.md (persona)
     ├── .gitignore.template            # expands to the derivation's .gitignore
-    ├── .tooling/                      # machinery scripts (the truth that runs in derivations)
-    │   ├── docs-check.sh              # multi-axis docs verification
-    │   ├── detect-duplicates.py       # section-level duplicate detection
-    │   ├── detect-stale-rules.sh      # 7-day-stale rule detection
-    │   ├── build-rule-registry.py     # per-tier rule ID ledger (hits are recorded against it)
-    │   ├── extract-artifact-index.sh  # for a SessionEnd hook
-    │   ├── go-gate-reminder.sh        # per-utterance GO-gate reminder hook
-    │   ├── precommit-conflict-check.sh
-    │   ├── setup-hooks.sh             # hook install
-    │   ├── startup-status.sh          # run at session boot
-    │   ├── check-static-capacity.sh   # per-tier always-loaded bytes, skill listing counted apart
-    │   ├── lib/                       # check bodies docs-check calls
-    │   └── _README.md
+    ├── .tooling/                      # machinery scripts (the truth that runs in derivations), one folder per role
+    │   ├── startup/                   # session-boot checks: startup-status.sh and what it gathers (stale rules, duplicates, capacity, launch pins)
+    │   ├── session-end/               # extract-artifact-index.sh, called by the session-end steps
+    │   ├── docs-check/                # docs-check.sh (multi-axis docs verification) and the body of each step
+    │   ├── rules/                     # build-rule-registry.py: per-tier rule ID ledger (hits are recorded against it)
+    │   ├── hooks/                     # go-gate-reminder.sh: per-utterance GO-gate reminder hook
+    │   ├── commit/                    # what the git hooks call, and setup-hooks.sh that installs them
+    │   ├── distribute/                # sync with the base (init puts the two sync scripts here) and the guard update
+    │   ├── lib/                       # parts called from more than one role
+    │   └── _README.md                 # what each folder holds
     ├── rules/
     │   └── always.md                  # ★ required: capacity, how rules grow and retire, the loop
     ├── .claude/skills/                # rules that apply only in one scene (the harness lists them)
@@ -90,7 +87,7 @@ When a derivation wants the latest base:
 
 ```bash
 cd ~/path/to/<your-agent>
-./.tooling/sync-from-base.sh
+./.tooling/distribute/sync-from-base.sh
 ```
 
 Only the paths listed in `.synced-paths.txt` are overwritten with the base version; derivation-specific files are never touched. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries. Review with `git diff`, then commit.
@@ -103,7 +100,7 @@ When a derivation discovers a machinery improvement worth sharing:
 
 ```bash
 cd ~/path/to/<your-agent>
-./.tooling/promote-to-base.sh "feat: add a new docs-check step"
+./.tooling/distribute/promote-to-base.sh "feat: add a new docs-check step"
 ```
 
 This cuts a feature branch on the base, pushes it, and the change lands via a pull request. Files outside `.synced-paths.txt` are rejected.
@@ -148,7 +145,7 @@ Run at session end; any FAIL must be fixed within the same session. Verification
 
 ### `detect-duplicates.py`
 
-Compares every rule at H2/H3 section granularity via longest-common-substring and reports consolidation candidates for split truths. Pairs judged as intentional shared references go into `.tooling/duplicates-allowlist.txt` for permanent suppression — no re-judging every session.
+Compares every rule at H2/H3 section granularity via longest-common-substring and reports consolidation candidates for split truths. Pairs judged as intentional shared references go into `.tooling/startup/duplicates-allowlist.txt` for permanent suppression — no re-judging every session.
 
 ### `detect-stale-rules.sh`
 

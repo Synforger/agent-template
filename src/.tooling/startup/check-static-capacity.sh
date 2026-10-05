@@ -10,7 +10,7 @@
 #   親 4 KB / project 4 KB / subproject 2 KB
 #
 # 呼び出し元:
-#   - .tooling/startup-status.sh  (= 起動時の 1 行 summary)
+#   - .tooling/startup/startup-status.sh  (= 起動時の 1 行 summary)
 #   - .githooks/pre-commit        (= 超過したまま commit させない)
 #
 # 超過が 1 つでもあれば exit 1。
@@ -89,7 +89,7 @@ if [ "${#overflows[@]}" -gt 0 ]; then
     echo "static_capacity: ${#overflows[@]} tier(s) over limit"
     for o in "${overflows[@]}"; do echo "  - $o"; done
     # どれを消せば何バイト減るかを先に出す (= 「少し削って測り直す」 の往復を作らない)
-    [ "${#overflow_files[@]}" -gt 0 ] && { python3 .tooling/lib/capacity-candidates.py "${overflow_files[@]}" 2>/dev/null || true; }
+    [ "${#overflow_files[@]}" -gt 0 ] && { python3 .tooling/startup/capacity-candidates.py "${overflow_files[@]}" 2>/dev/null || true; }
     # skill は一覧に出る説明文の長い順に出す
     # bash 3.2 は set -u の下で空配列の展開を unbound と見なすので、 在る時だけ展開する
     for d in ${skill_overflow_dirs[@]+"${skill_overflow_dirs[@]}"}; do

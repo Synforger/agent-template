@@ -38,7 +38,7 @@ capacity: 5KB
 
 ## 新規立ち上げ checklist
 
-`cp -R projects/_template-project/ projects/<新名>/` した後に埋める場所。 `bash .tooling/docs-check.sh` の **step 5 (= placeholder 残し)** が雛形由来の `{{...}}` / `<日本語含む 文>` を全部拾うので、 埋め忘れは FAIL で出る。
+`cp -R projects/_template-project/ projects/<新名>/` した後に埋める場所。 `bash .tooling/docs-check/docs-check.sh` の **step 5 (= placeholder 残し)** が雛形由来の `{{...}}` / `<日本語含む 文>` を全部拾うので、 埋め忘れは FAIL で出る。
 
 - [ ] **`_README.md`** の 5 section を埋める (= 射程 / 含む含まない / repo / 起動時の追加読み / 役割)
 - [ ] **`vision.md`** の 2 節を埋める (= 今どこ / 到達点。 状態だけを書く)
@@ -47,4 +47,4 @@ capacity: 5KB
 - [ ] **各 `*/_template.md`** (= 雛形そのもの) は**触らない** (= cp 元として残す、 placeholder 残しは想定内)
 - [ ] `_README.md` が容量上限 (= 5KB、 大規模プロジェクトは 20KB まで) に収まるか確認
 - [ ] サブプロジェクトを持つなら `subprojects/_template-subproject/` を `cp -R` して同じ手順を踏む
-- [ ] `bash .tooling/docs-check.sh` で FAIL 0 を確認
+- [ ] `bash .tooling/docs-check/docs-check.sh` で FAIL 0 を確認
