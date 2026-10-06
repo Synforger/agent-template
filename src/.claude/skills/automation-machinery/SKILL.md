@@ -20,6 +20,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/startup/check-launch-pins.py` | startup-status から (= `step_launch_pins`) | `model_pin: ok` / `PINNED <場所>` / `UNPINNED`、 `effort_pin: ok` / `OVERRIDDEN <場所>` / `UNPINNED` (= 起動の経路が model の版を名指ししていないか、 launcher の `--effort` が環境変数に上書きされていないか。 起動 launcher を持つ派生でだけ測り、 無ければ `skipped`) |
 | guard deploy (= startup-status 内蔵) | 起動時 startup-status | `guard_deploy: ok` / `STALE` / `UNKNOWN` (= 動いている番人の clone が origin/develop と揃っているか。 番人の直しは merge しただけでは効かない) |
 | `.tooling/distribute/guard-update.sh` | 手動 (= `guard_deploy STALE` が出た時) | repo の pull・番人の clone を develop に揃えて導入し直す・設定の配布 (= 配る script を持つ派生だけ) |
+| `.tooling/startup/check-deployed-clones.sh` | startup-status から (= `step_clone_deploys`) | `clone_deploy(<名前>): ok` / `BEHIND <n>` / `UNKNOWN` (= この機械が手元の clone から配備している repo が、 追う branch の origin より遅れていないか。 見るのは派生が `.tooling/startup/deployed-clones.txt` に宣言した clone だけで、 file が無ければ何も出さない。 雛形 = `deployed-clones.example.txt`、 test = `tests/test-deployed-clones.sh`) |
 | `.tooling/startup/pc-labels.txt` | startup-status から | PC 識別 (= 雛形 = `pc-labels.example.txt`) |
 | `.tooling/startup/detect-stale-rules.sh` | startup-status から | 7 日無更新 rule 一覧 (= `stable: true` + `_README.md` は除外) |
 | `.tooling/startup/detect-duplicates.py` | startup-status + SessionEnd hook | `.tooling/_output/duplicates.md` |
@@ -48,6 +49,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 |---|---|---|
 | 起動時 | `docs-check FAIL ≥ 1` | 同 session fix |
 | 起動時 | `PC: unknown` (= pc-labels.txt 未登録) | `<LocalHostName> <label>` を追記、 即報告 |
+| 起動時 | `clone_deploy BEHIND` | ブリーフィングで伝え、 その repo の配備の手順を踏む (= 手順は派生が持つ) |
 | 終了時 Step 2 | `stale_rules ≥ 1` | 真の dead rule のみ退役 commit (= 自走) |
 | 終了時 Step 2 | `dup_pairs ≥ 1` | 中身確認 (= 真値分散なら集約 / reference なら残置) |
 | 終了時 Step 2 | `docs-check FAIL ≥ 1` | 即 fix |
