@@ -16,5 +16,6 @@ task release:cut    # same — intentionally hypothetical, not a stale reference
 profile/profile.md
 YYYY-MM-DD/session-NN.md
 .tooling/startup/pc-labels.txt
+.tooling/startup/deployed-clones.txt
 .tooling/_output/duplicates.md
 .git/hooks/pre-commit

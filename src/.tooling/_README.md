@@ -36,7 +36,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 
 ## `_output/` (= 自動生成出力)
 
-起動時 startup-status と終了時 Step 2 の出力先。 session 毎に丸ごと再生成される派生物なので **gitignore 済 (= 追跡しない)**。 各 PC ローカルで再生成、 複数 PC 同期の固定名衝突を避ける目的。 フォルダだけ `.gitkeep` で保持。
+起動時 startup-status と終了時 Step 2 の出力先。 session 毎に丸ごと再生成される派生物なので **gitignore 済 (= 追跡しない)**。 各 PC ローカルで再生成、 複数 PC 同期の固定名衝突を避ける目的。 フォルダだけ `.gitkeep` で保持。 機械の出力に加えて、 残す前提の無い手作業の file (= 下書き / 調べ用の script / 一時の写し) も、 日付か用件の folder を切ってここに置く。
 
 ## docs-check.sh の検査ステップ (= 15/15)
 
