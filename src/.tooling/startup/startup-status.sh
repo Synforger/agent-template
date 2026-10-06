@@ -272,6 +272,14 @@ print(differ, missing, extra)
     fi
 }
 
+# 6f. この機械が手元の clone から配備している repo が、 origin より遅れていないか (= 判定の真値は
+#     check-deployed-clones.sh)。 派生が deployed-clones.txt に宣言した clone だけを見る。 宣言が無ければ何も出さない
+step_clone_deploys() {
+    if [ -f .tooling/startup/check-deployed-clones.sh ]; then
+        bash .tooling/startup/check-deployed-clones.sh
+    fi
+}
+
 step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
@@ -283,11 +291,12 @@ step_git_guard        > "$TMPD/7-guard"      &
 step_claude_settings  > "$TMPD/8-settings"   &
 step_launch_pins      > "$TMPD/8b-pins"     &
 step_guard_deploy     > "$TMPD/8d-deploy"   &
+step_clone_deploys    > "$TMPD/8e-clones"   &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
-    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy"
+    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -319,5 +328,8 @@ echo "  - guard_deploy STALE -> this machine runs an older guard than origin/dev
 echo "    effect here yet): say it in the briefing, and once the operator agrees run it from this session:"
 case "$ROOT" in "$HOME"/*) _root_shown="~${ROOT#"$HOME"}" ;; *) _root_shown="$ROOT" ;; esac
 echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
+echo "  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in"
+echo "    the briefing and follow that repo's own deploy steps (the derived agent keeps them, e.g. in a skill)"
+echo "    (UNKNOWN -> say the deploy state of that repo was not checked)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
 echo "    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply"
