@@ -151,4 +151,6 @@ echo "  3. Write vision.md (where the agent stands; docs-check flags its placeho
 echo "  4. Add your word list to the machine config (~/.config/anon-words/, via guard-dispatcher)"
 echo "  5. Add agent-specific rules to rules/always.md (single-file form)"
 echo "  6. (optional) cp .tooling/startup/pc-labels.example.txt .tooling/startup/pc-labels.txt and edit"
-echo "  7. Add remote: git remote add origin <your-repo-url>"
+echo "  7. (optional) if this machine deploys from local clones: cp .tooling/startup/deployed-clones.example.txt"
+echo "     .tooling/startup/deployed-clones.txt and list them (startup then says when a clone is behind its origin)"
+echo "  8. Add remote: git remote add origin <your-repo-url>"

@@ -21,6 +21,7 @@
 .tooling/startup/startup-status.sh
 .tooling/startup/check-launch-pins.py
 .tooling/distribute/guard-update.sh
+.tooling/startup/check-deployed-clones.sh
 .tooling/_README.md
 
 # docs-check が呼ぶ検査本体 (= step が増えた分は docs-check/ に置き、 script 側は薄く保つ)
@@ -41,6 +42,9 @@
 .tooling/startup/check-static-capacity.sh
 .tooling/lib/skill-listing.py
 .tooling/docs-check/check-positive-form.py
+
+# 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
+.tooling/tests/test-deployed-clones.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
@@ -78,3 +82,4 @@ profile/_template.md
 !.claude/skills/automation-machinery/SKILL.md # 機構の表は派生ごとに script 構成が違う (= base 版は雛形、 規律の節だけ共通)
 !.tooling/startup/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
 !.tooling/startup/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
+!.tooling/startup/deployed-clones.example.txt # 派生は deployed-clones.txt を自分で持つ、 base 版は書き方の例
