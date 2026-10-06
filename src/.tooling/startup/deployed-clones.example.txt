@@ -1,0 +1,15 @@
+# この機械が、 手元の clone から配備している repo (= 名前 → clone の場所 → 追う branch)
+# 用途: startup-status.sh が check-deployed-clones.sh を呼び、 clone ごとに「origin のその branch より
+#       遅れているか」 を 1 行で出す (= clone_deploy(<名前>): ok / BEHIND <n> / UNKNOWN)
+# 形式: <名前> <clone の場所> <追う branch> (空白区切り、 # 始まりはコメント)
+#   - 名前       出力の行に出る呼び名 (= 空白を含めない)
+#   - clone の場所  `~` で始めてよい (= 空白を含めない)
+#   - 追う branch  配備が追っている branch (= origin/<branch> と比べる)
+#
+# 書くのは「この clone で build / 常駐させた物が、 実際に動いている」 repo だけ (= 読むだけの clone は書かない)。
+# 派生先で deployed-clones.txt に書く。 機械ごとに違うなら、 派生の .gitignore で実体を追跡から外す。
+# file が無ければ検査は何も出さない。
+#
+# 例:
+# my-web-app   ~/src/my-web-app   develop
+# my-daemon    ~/src/my-daemon    main
