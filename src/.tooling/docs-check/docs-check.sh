@@ -51,12 +51,12 @@ emit_step() {
 }
 
 # ===== 1. frontmatter 検査 =====
-echo "[1/15] frontmatter check..."
+echo "[1/16] frontmatter check..."
 # title / description は全 .md 必須 (= journal も含む)
 emit_step 1
 
 # ===== 2. capacity チェック (= frontmatter capacity 宣言に一元化) =====
-echo "[2/15] capacity check..."
+echo "[2/16] capacity check..."
 # CLAUDE.md 自身は frontmatter なし設計なので 17KB をハードコード、 他全 file は
 # frontmatter `capacity:` の自己宣言 (= 真値分散ゼロ)。 profile の分冊は目安 (= WARN)、
 # 常時 load 層はハード FAIL。 skill の本文は呼んだ時にだけ読むので数えない
@@ -64,13 +64,13 @@ echo "[2/15] capacity check..."
 emit_step 2
 
 # ===== 3. _README.md 索引整合 (= フォルダ内 .md を全部言及) =====
-echo "[3/15] index consistency check..."
+echo "[3/16] index consistency check..."
 # 明示的な索引セクションがある _README のみチェック対象
 # (policy 系 _README は同フォルダ内ファイルを列挙しないのが正常)
 emit_step 3
 
 # ===== 4. dead link 検出 (= 相対参照の実在性) =====
-echo "[4/15] dead link check..."
+echo "[4/16] dead link check..."
 # 過去記録は対象外 (= link は当時の状態、 遡及修正しない)。 path 慣習 (= archive /
 # history 配下) と frontmatter 宣言 (= status: snapshot) の 2 経路。
 # 判定は「$dir/$ref → $ref → repo 内同名 file」 の 3 段で、 最後の段は file 名引用を
@@ -83,7 +83,7 @@ emit_step 4
 # (= 2026-06-30 docs-check スリム化、 step 5 削除で 9→8 step)
 
 # ===== 5. placeholder 残し検査 (= 雛形 cp 後の埋め忘れ防止) =====
-echo "[5/15] leftover placeholder check..."
+echo "[5/16] leftover placeholder check..."
 # 真値 = projects/_template-project/ 配下の全 .md から自動抽出 (= 構造ベース、 exact 一致 list を hard-code しない)
 # 検出対象 = 雛形に登場する文字列のうち、 path 例示 false positive を構造的に分離:
 #   - 二重中括弧 {{...}} = 全部 (= path 例示で {{...}} は普通使われない、 強 signal)
@@ -93,7 +93,7 @@ echo "[5/15] leftover placeholder check..."
 emit_step 5
 
 # ===== 6. 動的検索パターン検出 (= ls + head 動線残骸の機械検出) =====
-echo "[6/15] dynamic-search-pattern check..."
+echo "[6/16] dynamic-search-pattern check..."
 # エージェント 親 rule (= CLAUDE / always / skill / 運用 _README) に「動的検索 / ls + head」 残骸がないか
 # 過去事故 = 「ls projects/ + 各 _README head」 で全プロジェクト走査 → mapping 集約で潰した (2026-06-29)
 # 今後同じ動線が エージェント 親 rule に紛れ込まないよう機械検出
@@ -112,7 +112,7 @@ done
 pass
 
 # ===== 7. プロジェクト folder 整合 (= folder 名 = 判定キーワード方式、 _README 不在 folder の検出) =====
-echo "[7/15] project folder consistency check..."
+echo "[7/16] project folder consistency check..."
 # folder 名 = 判定キーワード方式に移行済 (= mapping 表廃止)、 本 step は「_README.md ある folder は判定対象」 「無い folder は死蔵 or 未成立」 を識別
 # tracked file 一覧は 1 度だけ取る。 パイプの後段に grep -q を置くと、 早期終了が
 # 前段を SIGPIPE で殺し pipefail が非ゼロを返すので、 判定が常に false になる
@@ -130,7 +130,7 @@ for d in projects/*/; do
 done
 pass
 
-echo "[8/15] synced-paths consistency check..."
+echo "[8/16] synced-paths consistency check..."
 # agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
 # 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
 # base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。
@@ -169,10 +169,10 @@ else
 fi
 
 
-# ===== [9/15] journal 整合 =====
+# ===== [9/16] journal 整合 =====
 # 検査軸: filename session-NN ↔ frontmatter session / 日付フォルダ ↔ frontmatter date /
 #         normal 階層に mode≠normal (= 階層自己完結違反) / project 階層に mode=normal
-echo "[9/15] journal integrity check..."
+echo "[9/16] journal integrity check..."
 j_fail=0
 while IFS= read -r v; do
   [ -z "$v" ] && continue
@@ -184,7 +184,7 @@ done < <(python3 .tooling/docs-check/journal-integrity.py 2>/dev/null)
 # ===== 10. 階層インターフェース =====
 # project / subproject の必須 file / dir 検査 (= 真値 = projects/_README.md § 階層インターフェース)
 # _ prefix folder (= 雛形 / system) は除外。 gitignore 済み project も同一契約 (= 存在するものは検査)
-echo "[10/15] hierarchy interface check..."
+echo "[10/16] hierarchy interface check..."
 h_fail=0
 for p in projects/*/ projects/*/subprojects/*/; do
   [ -d "$p" ] || continue
@@ -211,7 +211,7 @@ done
 # ===== 11. ルール台帳の整合 =====
 # rules/registry.jsonl が全 rule section を網羅しているか (= 発火記録の宛先が切れていないか)。
 # 見出しの改名 / section の増減で紐付けが切れるので、 本体を触った session 内で検出する。
-echo "[11/15] rule registry check..."
+echo "[11/16] rule registry check..."
 if [ ! -f .tooling/rules/build-rule-registry.py ]; then
   # 台帳 script が無い環境で黙って pass すると、 検査していないのに緑が出る
   warn "rule registry: .tooling/rules/build-rule-registry.py not found (step skipped, not verified)"
@@ -231,7 +231,7 @@ fi
 # ルールが指す repo 内 file が消えた / 改名された時に、 書いた場所で落とす
 # (= 陳腐化した記述は「在る」 と思って探す時間を奪う。 真値 = rules/always.md § meta ③)
 # work repo の path / 裸の file 名 / placeholder はこの repo から実在を測れないので対象外
-echo "[12/15] rule reference check..."
+echo "[12/16] rule reference check..."
 r_fail=0
 while IFS=$'\t' read -r rfile rref; do
   [ -z "$rfile" ] && continue
@@ -244,7 +244,7 @@ done < <(python3 .tooling/docs-check/check-rule-references.py 2>/dev/null)
 # 発火実績は「どのルールを捨てるか」 の唯一の根拠なので、 書かれない session があると
 # 根拠が欠け、 容量が詰まった時に「古いものから捨てる」 へ戻る。
 # その階層が記録を書き始めた日以降だけを見る (= 機構より前の journal は遡って責めない)
-echo "[13/15] rule-hits coverage check..."
+echo "[13/16] rule-hits coverage check..."
 m_warn=0
 while IFS= read -r mj; do
   [ -z "$mj" ] && continue
@@ -258,7 +258,7 @@ done < <(python3 .tooling/docs-check/check-rule-hits.py 2>/dev/null)
 # 「その日わかったこと」 が段落として積まれ、 journal の要約に化ける。
 # 文章側には既に「段落を増やさず既にある行を書き換える」 と書いてあり、
 # 守られなかったので機械で赤くする (= 節名と上限の根拠は script の docstring)。
-echo "[14/15] vision shape check..."
+echo "[14/16] vision shape check..."
 v_fail=0
 while IFS=$'\t' read -r vfile vmsg; do
   [ -z "$vfile" ] && continue
@@ -271,7 +271,7 @@ done < <(python3 .tooling/docs-check/check-vision-shape.py 2>/dev/null)
 # 否定形の指示は「やってはいけないこと」 を先に思い浮かべさせてから打ち消させるので、
 # 肯定形より守られにくい。 書式の規約は `.claude/skills/rule-registry/SKILL.md § 表現形式` が持ち、
 # 守られたかは見出しと太字の短文を読んで機械が数える (= 補足節と Why 行は対象外)。
-echo "[15/15] rule statement positive form..."
+echo "[15/16] rule statement positive form..."
 p_fail=0
 while IFS=$'\t' read -r pfile pmsg; do
   [ -z "$pfile" ] && continue
@@ -279,6 +279,27 @@ while IFS=$'\t' read -r pfile pmsg; do
   p_fail=$((p_fail+1))
 done < <(python3 .tooling/docs-check/check-positive-form.py 2>/dev/null)
 [ "$p_fail" -eq 0 ] && pass
+
+# ===== 16. 置き場の宣言と約束の表 =====
+# 物とテストは、 足す側の判断に任せると増える一方になる (= 足す理由は毎回在り、 足さない理由と置いてよい
+# 場所はどこにも書かれていない)。 どの folder に何を置いてよいかと、 道具の約束 ↔ それを試すテストを
+# 2 枚の宣言に持ち、 実物を両方向で突き合わせる (= 書式と出る行の真値は script の冒頭)。
+# 宣言を持たない repo では回さない (= 緑にも数えない)。 projects/ の中の食い違いは、 その階層の repo で
+# 直す物なので警告にとどめる
+echo "[16/16] declared layout and contracts..."
+if [ ! -f .tooling/layout.txt ] && [ ! -f .tooling/contracts.txt ]; then
+  echo "  (not run: this repo declares neither .tooling/layout.txt nor .tooling/contracts.txt)"
+else
+  d_bad=0
+  while IFS= read -r dl; do
+    case "$dl" in
+      ""|"layout: "*" problems"|"contracts: "*" problems") continue ;;
+      "layout: undeclared projects/"*|"layout: no line for projects/"*) warn "$dl"; d_bad=1 ;;
+      *) fail "$dl"; d_bad=1 ;;
+    esac
+  done < <(python3 .tooling/docs-check/check-declarations.py 2>/dev/null)
+  [ "$d_bad" -eq 0 ] && pass
+fi
 
 # ===== サマリ =====
 echo ""
