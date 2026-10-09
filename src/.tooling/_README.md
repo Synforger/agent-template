@@ -1,7 +1,7 @@
 ---
 title: .tooling/ — 自動化スクリプト群
 description: LLM 不使用、 token ゼロの自動化機構一覧
-updated: 2026-10-05
+updated: 2026-10-09
 ---
 
 # .tooling/ — 自動化スクリプト群
@@ -14,7 +14,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 
 | folder | 入る物 |
 |---|---|
-| 直下 | 起動の入口だけ (= 派生が自分で持つ script。 各機械の shell の alias が握る path なので動かさない) |
+| 直下 | 起動の入口と、 宣言の 2 枚 (= `layout.txt` = 置き場 / `contracts.txt` = 道具の約束とテスト。 どれも派生が自分で持つ。 入口は各機械の shell の alias が握る path なので動かさない) |
 | `hooks/` | Claude Code の hook と statusLine が呼ぶ script |
 | `startup/` | 起動時の検査 (= `startup-status.sh` と、 それが束ねる検出・容量・起動の固定・語の配布) とその設定 file |
 | `session-end/` | 終了時の手順が呼ぶ script |
@@ -38,7 +38,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 
 起動時 startup-status と終了時 Step 2 の出力先。 session 毎に丸ごと再生成される派生物なので **gitignore 済 (= 追跡しない)**。 各 PC ローカルで再生成、 複数 PC 同期の固定名衝突を避ける目的。 フォルダだけ `.gitkeep` で保持。 機械の出力に加えて、 残す前提の無い手作業の file (= 下書き / 調べ用の script / 一時の写し) も、 日付か用件の folder を切ってここに置く。
 
-## docs-check.sh の検査ステップ (= 15/15)
+## docs-check.sh の検査ステップ (= 16/16)
 
 1. **frontmatter チェック** — 全 .md に `---` 区切り + title 必須、 description 推奨 (= `journal/` / `drafts/` / `_scratch/` / `_template*` は対象外、 `_archive/` は description を求めない。 残す前提の無い file に体裁を求めない)
 2. **capacity チェック** — CLAUDE.md 容量表 + 各 file の frontmatter `capacity:` 宣言に対する突き合わせ (= `_archive/` は読み込まれないので対象外。 同じ突き合わせを git pre-commit も回す)
@@ -55,6 +55,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 13. **発火記録の網羅** — `docs-check/check-rule-hits.py` で session の .md と隣の `-rule-hits.jsonl` を突合 (= 記録を書き漏らした session を検出、 その階層が記録を始めた日以降のみ対象)
 14. **vision の形** — `docs-check/check-vision-shape.py` で全階層の `vision.md` の必須節欠落と段落数超過を検査 (= 上限は実測由来で script の docstring が根拠)
 15. **主文の肯定形** — `docs-check/check-positive-form.py` で常時 load と skill の主文が「何をするか」 で書かれているかを検査 (= 書式の真値 = `.claude/skills/rule-registry/SKILL.md § 表現形式`)
+16. **置き場の宣言と約束の表** — `docs-check/check-declarations.py` で、 `.tooling/layout.txt` (= どの folder の直下に何を置いてよいか。 階層の入れ子の形もここ) と `.tooling/contracts.txt` (= 道具の約束 1 行 ↔ それを試すテスト 1 本) を実物と両方向で突き合わせる。 宣言に無い file と folder、 表に載っていない道具とテスト、 当たる実物の無い宣言が FAIL (= `projects/` の中の食い違いは WARN)。 2 枚とも持たない repo では回さない
 
 ## 新 script を追加する時
 
