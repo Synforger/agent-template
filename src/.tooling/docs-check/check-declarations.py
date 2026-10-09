@@ -14,6 +14,10 @@
   - `x/`   = その名前の folder (= その folder 自身の行が要る)
   - `x/**` = その名前の folder と、 その下の全部 (= 中は宣言しない。 日付で増える記録、 残す前提の無い出力、 別の道具の持ち物)
   - folder の側も段ごとの fnmatch で書ける (= `projects/*` は project のどれにも当たる。 入れ子の決まりはこの形で書く)
+  - `?x` = 機械によっては無い物 (= git が運ばない folder や file。 無くても消し忘れとは数えない)
+  - 「当たる実物が無い」 と数えるのは、 そのままの綴りで書かれた folder の行と名前だけ。 `*` などを含む
+    綴りは、 繰り返される物の形の決まりで、 今 0 個でも明日 1 つ出来る (= git が運ばない階層を名指す行は、
+    それを持たない機械では必ず 0 個になる)
   - 見るのは、 git が追う file と、 まだ追っていないが無視もしていない file、 それに実物の folder
     (= git が無視する file は対象外。 無視される folder は、 中に何が溜まるかを言う行が要る)。
     git から見える file が 1 つも無い folder (= 自分の repo を持つ project の中) は、 実物の名前を全部見る
@@ -32,6 +36,7 @@
 """
 import fnmatch
 import os
+import re
 import subprocess
 import sys
 
@@ -42,6 +47,7 @@ LAYOUT = ".tooling/layout.txt"
 CONTRACTS = ".tooling/contracts.txt"
 # 道具が自分で置く物 (= OS と git と実行の副産物。 宣言の対象にしない)
 NOISE = {".DS_Store", "__pycache__", ".git"}
+SHAPE = re.compile(r"[*?\[]")   # fnmatch の記号を含む綴り = 形の決まり
 # 約束の表が対象にする道具の置き場 (= 役割の folder の直下) と、 道具として数える拡張子
 TOOL_SUFFIXES = (".sh", ".py")
 TEST_DIR = "tests"
@@ -100,12 +106,16 @@ def check_layout(files):
     if lines is None:
         return [f"layout: {LAYOUT} not found"], 0
     rules = []  # (folder の pattern, [(名前の pattern, 種類)])  種類 = file / dir / free
+    optional = set()  # (行, 名前) = `?` の付いた、 機械によっては無い物
     for ln in lines:
         if ":" not in ln:
             continue
         folder, names = ln.split(":", 1)
         entries = []
         for n in names.split():
+            if n.startswith("?"):
+                n = n[1:]
+                optional.add((len(rules), len(entries)))
             if n.endswith("/**"):
                 entries.append((n[:-3], "free"))
             elif n.endswith("/"):
@@ -145,12 +155,17 @@ def check_layout(files):
             if hit[2] == "dir":
                 todo.append(path)
     for i, (pat, entries) in enumerate(rules):
-        if i not in used_rules and not any(seg_match(f, pat) for f in done):
-            problems.append(f"layout: nothing matches the line of {pat} (drop the line)")
+        reached = any(seg_match(f, pat) for f in done)
+        if i not in used_rules and not reached:
+            if not SHAPE.search(pat):
+                problems.append(f"layout: nothing matches the line of {pat} (drop the line)")
             continue
         for j, (npat, _kind) in enumerate(entries):
-            if (i, j) not in used_names and any(seg_match(f, pat) for f in done):
-                problems.append(f"layout: nothing matches {npat} in the line of {pat} (drop the name)")
+            if (i, j) in used_names or (i, j) in optional or SHAPE.search(npat):
+                continue
+            if reached:
+                problems.append(f"layout: nothing matches {npat} in the line of {pat} "
+                                f"(drop the name, or write ?{npat} if only some machines have it)")
     return problems, len(done)
 
 
