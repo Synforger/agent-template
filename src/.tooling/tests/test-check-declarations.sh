@@ -37,6 +37,18 @@ TXT
     printf '%s\n' '# comment' 'work/tool.sh | tests/test-tool.sh | 道具の約束' > "${R}/.tooling/contracts.txt"
 }
 
+# 宣言の 1 行を書き換える: <file> <元の文字列> <替える文字列> (= sed の -i は macOS と Linux で書式が違う)
+swap() {
+    python3 - "$1" "$2" "$3" <<'PY'
+import sys
+path, old, new = sys.argv[1:4]
+text = open(path, encoding="utf-8").read()
+if old not in text:
+    sys.exit(f"swap: {old!r} is not in {path}")
+open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
+PY
+}
+
 # <説明> <期待する行の正規表現。 空なら「件が 0 で exit 0」>
 expect() {
     local out rc
@@ -57,13 +69,13 @@ build; printf 'x\n' > "${R}/stray.txt"
 expect "宣言に無い file は、 どの行に足すかつきで出る" '^layout: undeclared stray\.txt \(add it to the line of \./'
 build; mkdir -p "${R}/tiers/b/tmp"
 expect "階層の 1 つにだけ在る、 形に無い folder が出る" '^layout: undeclared tiers/b/tmp/ '
-build; mkdir -p "${R}/.tooling/work/sub"; sed -i '' 's#^.tooling/work : \*.sh$#.tooling/work : *.sh sub/#' "${R}/.tooling/layout.txt"
+build; mkdir -p "${R}/.tooling/work/sub"; swap "${R}/.tooling/layout.txt" '.tooling/work : *.sh' '.tooling/work : *.sh sub/'
 expect "folder と書かれて自分の行が無い物が出る" '^layout: no line for \.tooling/work/sub/ '
-build; sed -i '' 's#^\. : README.md#. : README.md GONE.md#' "${R}/.tooling/layout.txt"
+build; swap "${R}/.tooling/layout.txt" '. : README.md' '. : README.md GONE.md'
 expect "当たる実物の無い名前が出る (= 消し忘れ)" '^layout: nothing matches GONE\.md in the line of \. '
 build; printf 'gone : *.md\n' >> "${R}/.tooling/layout.txt"
 expect "当たる folder の無い行が出る" '^layout: nothing matches the line of gone '
-build; printf 'x\n' > "${R}/.tooling/work/other.py"; sed -i '' 's#^.tooling/work : \*.sh$#.tooling/work : *.sh *.py#' "${R}/.tooling/layout.txt"
+build; printf 'x\n' > "${R}/.tooling/work/other.py"; swap "${R}/.tooling/layout.txt" '.tooling/work : *.sh' '.tooling/work : *.sh *.py'
 expect "約束の表に載っていない道具が出る" '^contracts: no promise names \.tooling/work/other\.py '
 build; printf 'x\n' > "${R}/.tooling/tests/test-extra.sh"
 expect "約束の表に載っていないテストが出る" '^contracts: no promise names the test \.tooling/tests/test-extra\.sh '
@@ -76,7 +88,7 @@ expect "表の行が指すテストが無ければ出る" '^contracts: missing t
 build
 git -C "${R}" init -q
 printf 'secret.local\ncache/\n' > "${R}/.gitignore"
-sed -i '' 's#^\. : README.md#. : README.md .gitignore#' "${R}/.tooling/layout.txt"
+swap "${R}/.tooling/layout.txt" '. : README.md' '. : README.md .gitignore'
 git -C "${R}" add -A >/dev/null 2>&1
 printf 'x\n' > "${R}/secret.local"
 expect "git が無視する file は宣言の対象にしない" ""
