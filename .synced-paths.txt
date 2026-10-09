@@ -48,6 +48,9 @@
 .tooling/tests/test-deployed-clones.sh
 .tooling/tests/test-build-rule-registry.sh
 .tooling/tests/test-check-declarations.sh
+.tooling/tests/test-static-capacity.sh
+.tooling/tests/test-launch-pins.sh
+.tooling/tests/test-guard-may-write.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
