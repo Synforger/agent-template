@@ -1,6 +1,6 @@
 ---
 title: ルール台帳と発火記録 (= 重みを実測で決める機構)
-description: ルール ID の採番 / 発火記録 / 実績に基づく配置替えと退役 / ルールを足す時の判定 / 置き場と書式 / rule 改訂時の docs 同期
+description: ルール ID の採番 / 発火記録 / 配置替えと退役 / 足す時の判定 / 置き場と書式 / 改訂時の docs 同期
 when_to_use: セッション終了時に発火記録を書く直前 / ルールを追加 or 改訂する直前 / 容量超過で押し出す対象を選ぶ時 / 退役候補の判断時 / rule や profile を改訂した直後
 updated: 2026-09-22
 ---
@@ -17,11 +17,13 @@ updated: 2026-09-22
 
 ## 台帳 (= `rules/registry.jsonl`)
 
-1 行 1 section、 ID は `R-0001` 形式で**一度振ったら不変**。 ID は台帳だけが持ち、 `file` + `heading` で本体と紐付ける (= 本体に書くと常時 load 層の容量を食う)。
+1 行 1 section、 ID は頭の文字 + 4 桁 (= 親 `R-0001` / project `P-0001` / subproject `S-0001`) で**一度振ったら不変**。 ID は台帳だけが持ち、 `file` + `heading` で本体と紐付ける (= 本体に書くと常時 load 層の容量を食う)。
 
 - 更新: `python3 .tooling/rules/build-rule-registry.py`
 - 検査: 同 `--check` (= 未登録 section / 消滅 section を検出、 docs-check step 11)
 - 台帳は**階層ごとに 1 本** (= 1 本にまとめると gitignored な階層の path が tracked file へ漏れる)
+- **ID の頭の文字は階層の深さで決まる** (= 1 つの session が読むのは 親 → project → subproject の 1 本の系列で、 発火記録はその全部の ID を起動した階層の journal 1 本に並べる。 文字が違えば、 どの台帳の番号かが記録だけで決まる)
+  - 文字を分ける前に R- で振られた階層の番号は、 `build-rule-registry.py` が番号はそのままで文字だけ直し、 直した時刻を台帳の隣の `hits-since.json` に 1 度だけ書く。 それより前の記録のうち、 同じ番号が系列の台帳 2 つ以上に在る物は、 集計が数から外す
 - section が消えても行は `retired: true` で残す (= 過去の発火記録が宛先を失わないため)
 - `born_date` / `born_subject` = その section が最初に現れた commit (= 出自、 ドリフト確認用)
 
@@ -40,6 +42,7 @@ updated: 2026-09-22
 - 違反したルールは fired にも入れる (= 発火はしている)
 - 迷ったら入れない。 水増しは実績を無意味にする
 - **ID は記憶で書かず台帳から引く** (= 思い出した名前で書くと台帳に寄らず、 その記録は集計から落ちる)
+- **ID は台帳の綴りのまま書く** (= 親のルールは R-、 下の階層のルールはその階層の文字。 project や subproject で起動した session の記録には、 文字の違う ID が並ぶ)
 - **この形で書く**。 書式が割れると、 集計はその大半を読めない
 - 書き漏らした session は `docs-check` step 13 が出す (= その階層が記録を始めた日以降が対象)
 - 後から思い出して書かない。 閉じる時は `{"session":"<date>-<NN>","unrecorded":"<理由>"}` の 1 行だけを置く (= 集計は読み飛ばす)
