@@ -55,7 +55,6 @@ rules/_README.md
 # === skill 必須 file (= skills folder の運用・雛形と、機構の真値書類) ===
 .claude/skills/_README.md
 .claude/skills/_template.md
-.claude/skills/rule-promotion-format/SKILL.md
 .claude/skills/rule-registry/SKILL.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===

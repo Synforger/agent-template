@@ -84,6 +84,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - <message-dir 設定時のみ> エージェント間メッセージ確認
 - **`bash .tooling/startup/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
+- **`normal` の時は直下の `journal/` 最新 3 session を Read** (= 新しい順。 階層で起動した時は、 下の 5 点の 4 が同じ事をその階層の journal でする)
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
 
