@@ -139,7 +139,8 @@ for p in "${sync_paths[@]}"; do
 done
 
 # base 側 diff チェック
-if git diff --quiet; then
+# 新しい file だけを上げる時も変更として数える (= `git diff` は追われていない file を見ない)
+if [ -z "$(git status --porcelain)" ]; then
     echo ""
     echo "✓ no changes to promote (base and derived are identical)"
     [ "$KEEP_BASE" -eq 0 ] && rm -rf "$TMP_DIR"
