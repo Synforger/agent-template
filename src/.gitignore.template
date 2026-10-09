@@ -19,6 +19,9 @@ __pycache__/
 .tooling/_output/*
 !.tooling/_output/.gitkeep
 
+# 残す前提の無い手作業の file (= 下書き / 調べ用の script / 一時の写し / 作業前の控え。 階層の `_scratch/` と同じ名前と役割)
+_scratch/
+
 # SessionEnd 系 jsonl (= PC ローカル artifact、 session-NN 採番が PC 独立なので cross-PC 同期しない、 journal .md が cross-PC 真値)
 journal/**/session-*-auto-index.jsonl
 journal/**/session-*-friction.jsonl

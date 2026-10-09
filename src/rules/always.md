@@ -130,7 +130,6 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 
 - 自動化機構 (= `.tooling/*` script / settings.json hook) 改修 → `.claude/skills/automation-machinery/SKILL.md`
 - skill を足す / 置き場と命名 → `.claude/skills/_README.md`
-- 複数プロジェクト共通の反復を横断 rule へ上げる書式 → `.claude/skills/rule-promotion-format/SKILL.md`
 - ルール台帳 / 発火記録 / 配置と退役の判定 → `.claude/skills/rule-registry/SKILL.md`
 
 ---
