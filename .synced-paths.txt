@@ -42,10 +42,12 @@
 .tooling/startup/check-static-capacity.sh
 .tooling/lib/skill-listing.py
 .tooling/docs-check/check-positive-form.py
+.tooling/docs-check/check-declarations.py
 
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
 .tooling/tests/test-deployed-clones.sh
 .tooling/tests/test-build-rule-registry.sh
+.tooling/tests/test-check-declarations.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
