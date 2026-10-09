@@ -50,7 +50,6 @@ agent-template/
     │   ├── _README.md                 # how the skills folder is run
     │   ├── _template.md               # scaffold for a new skill
     │   ├── automation-machinery/SKILL.md
-    │   ├── rule-promotion-format/SKILL.md
     │   └── rule-registry/SKILL.md
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
     ├── journal/                       # session log structure (append only)

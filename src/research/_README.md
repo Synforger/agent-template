@@ -1,7 +1,7 @@
 ---
 title: research/ の運用 (= 全階層共通の真値)
 description: 調べたことの置き場。 何を入れるか / 命名 / 書き方 / _archive の基準
-updated: 2026-09-21
+updated: 2026-10-09
 capacity: 3KB
 ---
 
@@ -13,7 +13,7 @@ capacity: 3KB
 
 - **入れる**: 一度書いたら参照され続ける調査 (= ライブラリ比較 / API・SDK の仕様まとめ / アーキテクチャパターン / 技術選定の検討)
 - **入れない**: やること と 進め方 → `plans/`
-- 直下プール (= repo 直下の `research/`) は**複数プロジェクトをまたぐ汎用知識**。 プロジェクト固有は `projects/<P>/research/`
+- 直下プール (= repo 直下の `research/`) は**どのプロジェクトにも属さない調査** (= 複数プロジェクトをまたぐ汎用知識と、 親が直に持つ repo の調査。 後者は `research/<repo>/` に folder を切る)。 プロジェクト固有は `projects/<P>/research/`
 
 ## 命名と書き方
 
