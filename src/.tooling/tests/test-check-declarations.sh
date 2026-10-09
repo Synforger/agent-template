@@ -75,6 +75,13 @@ build; swap "${R}/.tooling/layout.txt" '. : README.md' '. : README.md GONE.md'
 expect "当たる実物の無い名前が出る (= 消し忘れ)" '^layout: nothing matches GONE\.md in the line of \. '
 build; printf 'gone : *.md\n' >> "${R}/.tooling/layout.txt"
 expect "当たる folder の無い行が出る" '^layout: nothing matches the line of gone '
+# git が運ばない物を名指す宣言は、 それを持たない機械でも緑 (= 階層が 1 つも無い機械、 その機械にだけ在る folder)
+build; rm -rf "${R}/tiers/a" "${R}/tiers/b"
+expect "形の決まりの行と名前は、 当たる実物が 0 個でも消し忘れに数えない" ""
+build; swap "${R}/.tooling/layout.txt" '. : README.md' '. : README.md ?only-here/**'
+expect "? の付いた名前は、 無い機械でも緑" ""
+build; mkdir -p "${R}/only-here/x"; swap "${R}/.tooling/layout.txt" '. : README.md' '. : README.md ?only-here/**'
+expect "? の付いた名前は、 在る機械では宣言として効く" ""
 build; printf 'x\n' > "${R}/.tooling/work/other.py"; swap "${R}/.tooling/layout.txt" '.tooling/work : *.sh' '.tooling/work : *.sh *.py'
 expect "約束の表に載っていない道具が出る" '^contracts: no promise names \.tooling/work/other\.py '
 build; printf 'x\n' > "${R}/.tooling/tests/test-extra.sh"
