@@ -33,6 +33,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/docs-check/check-rule-hits.py` | docs-check step 13 | 記録を書き漏らした session 1 行ずつ (= その階層が記録を始めた日以降のみ対象) |
 | `.tooling/docs-check/check-vision-shape.py` | docs-check step 14 | 必須節の欠落と段落数超過 1 行ずつ (= 上限の根拠は script の docstring) |
 | `.tooling/rules/build-rule-registry.py` | 手動 + docs-check step 11 (`--check`) | **階層ごと**の `<tier>/rules/registry.jsonl` (= ID 台帳、 ID は階層内で一意かつ不変。 中身が変わる台帳だけ書き、 書けない階層は書かずに exit 1。 書式と使い方 = `.claude/skills/rule-registry/SKILL.md`) |
+| `.tooling/rules/rule-hits-summary.py` | startup-status + 手動 | 発火実績 1 行 summary (= 全階層の台帳と `*-rule-hits.jsonl` を読む。 `--detail` 内訳 / `--drift` 出自 / `--unresolved` 寄らなかった記録 / `--find` ID 検索。 容量超過時の候補出しもこの集計を借りる)。 test = `tests/test-rule-hits-summary.sh` |
 | `.tooling/startup/check-static-capacity.sh` | startup-status から | `static_capacity: OK` / 超過した階層と削減候補 (= 階層ごとの常時 load と skill の一覧を数える。 上限の真値は script 冒頭、 超過は exit 1) |
 | `.tooling/lib/guard-may-write.py` | 引数や走査で決まる階層へ書く script が、 書く前に呼ぶ (= extract-artifact-index / build-rule-registry) | exit 0 = 書いてよい (= 番人が無い機械 / session の外 / 訊く口の無い古い番人もここ) / exit 1 = 入口の番人が拒んだ (= 番人の 1 行を stderr に。 判定は番人が持ち、 ここは訊くだけ) |
 | `.tooling/lib/skill-listing.py` | check-static-capacity (= 階層ごと) + `--list` | 1 行 1 file の一覧バイト数 (= `description` + `when_to_use`) / `--list` はその階層の一覧 (= ハーネスが gitignored な folder を探さない分の代わり) |
