@@ -1,7 +1,7 @@
 ---
 title: rules/ の運用 (= 全階層共通の真値)
 description: 毎 session 効くルールの置き場 / 置き場と書式の真値 / 台帳とワード master
-updated: 2026-09-26
+updated: 2026-10-09
 capacity: 3KB
 ---
 
@@ -20,5 +20,6 @@ capacity: 3KB
 
 ## その他の file
 
-- `registry.jsonl` — ルール ID 台帳 (= 階層ごとに 1 本、 `build-rule-registry.py` が生成。 ID は階層内で一意かつ不変)
-- `anon-words.txt` (= 親のみ) — 匿名性スキャンのワード master (= 単一真値、 1 行 1 PCRE)。 各 repo へは `~/.config/anon-words/` 経由で配る
+- `registry.jsonl` — ルール ID 台帳 (= 階層ごとに 1 本、 `build-rule-registry.py` が生成。 ID は不変で、 頭の文字が階層の深さ = 親 R- / project P- / subproject S-)
+- `hits-since.json` — 発火記録の数え方の宣言 (= 在る階層だけ。 記録を ID で書き始めた日と、 ID の頭の文字を分けた時刻。 集計が読む)
+- `anon-words.txt` (= 親のみ) — 匿名性スキャンのワード master (= 単一真値、 1 行 1 PCRE)。 各 repo へは `~/.config/anon-words/` 経由で配る。 派生が足す別の読者向けの一覧も、 同じ folder に置く

@@ -1,7 +1,7 @@
 ---
 title: .claude/skills/ の運用 (= 全階層共通の真値)
 description: 特定の作業中にだけ効く手順の置き場。 何を入れるか / 置き場と命名 / frontmatter / 足し方 / _archive の基準
-updated: 2026-09-26
+updated: 2026-10-09
 capacity: 3KB
 ---
 
@@ -40,7 +40,7 @@ capacity: 3KB
 
 ## 足す時
 
-`.claude/skills/_template.md` を `<name>/SKILL.md` へコピーして埋める。 常時 load 側から場面の名前で触れておく (= 読まれない手順を作らない)。
+`.claude/skills/_template.md` を `<name>/SKILL.md` へコピーして埋める。 `when_to_use` を作業の場面で書けば、 一覧に載って呼ばれる (= 常時 load 側に索引は持たない)。
 
 ## _archive
 

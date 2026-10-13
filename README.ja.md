@@ -49,7 +49,6 @@ agent-template/
     │   ├── _README.md                 # skills folder の運用
     │   ├── _template.md               # 新 skill の雛形
     │   ├── automation-machinery/SKILL.md
-    │   ├── rule-promotion-format/SKILL.md
     │   └── rule-registry/SKILL.md
     ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
     ├── journal/                       # session の記録 (= 追記のみ)
