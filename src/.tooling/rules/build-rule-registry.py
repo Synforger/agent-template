@@ -11,7 +11,14 @@
   subproject-> projects/<P>/subprojects/<S>/rules/registry.jsonl
 
   Why: 1 本にまとめると gitignored な階層の path が tracked file へ漏れる。
-       ID は階層内で一意、 発火記録も同じ階層の journal に書くので衝突しない。
+
+ID の頭の文字は階層の深さで決まる (= 親 R- / project P- / subproject S-)。
+  Why: 1 つの session が読むのは 親 → project → subproject の 1 本の系列で、 その発火記録は
+       起動した階層の journal 1 本に並ぶ。 どの階層も R- の 1 番から振っていた間は、 同じ番号が
+       系列の中に 2 つ 3 つ在り、 記録からはどの台帳の番号かを決められなかった。
+  頭の文字が階層と違う行 (= 文字を分ける前に振った番号) は、 番号はそのままで文字だけ直し、
+  直した時刻をその階層の rules/hits-since.json の `lettered_since` に 1 度だけ書く
+  (= それより前の記録のうち、 番号が系列の中に 2 つ以上在る物を、 集計が数から外すための印)。
 
 走らせ方:
   python3 .tooling/rules/build-rule-registry.py           # 全階層の台帳を更新
@@ -19,6 +26,7 @@
 
 section が消えても行は retired: true で残す (= 過去の発火記録が宛先を失わないため)。
 """
+import datetime
 import glob
 import json
 import os
@@ -66,6 +74,32 @@ def tier_of(rel):
             return os.sep.join(parts[: i + 2])
         return os.sep.join(parts[:2])
     return ""
+
+
+def letter_of(tier):
+    """その階層の ID の頭の文字 (= 親 R / project P / subproject S)。"""
+    if not tier:
+        return "R"
+    return "S" if "subprojects" in tier.split(os.sep) else "P"
+
+
+LETTERED_NAME = "hits-since.json"
+LETTERED_KEY = "lettered_since"
+
+
+def declare_lettered(registry):
+    """頭の文字を直した時刻を、 台帳の隣に 1 度だけ書く (= 既に在る宣言と他の鍵はそのまま)。"""
+    path = os.path.join(os.path.dirname(registry), LETTERED_NAME)
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        data = {}
+    if not isinstance(data, dict) or LETTERED_KEY in data:
+        return
+    data[LETTERED_KEY] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
 def registry_path(tier):
@@ -134,12 +168,17 @@ def main():
     for tier, files in sorted(by_tier.items()):
         path = registry_path(tier)
         rows = load_registry(path)
-        by_key = {(r["file"], r["heading"]): r for r in rows}
+        letter = letter_of(tier)
+        relettered = 0
         max_id = 0
         for r in rows:
-            m = re.match(r"R-(\d+)$", r["id"])
+            m = re.match(r"([A-Z])-(\d+)$", r["id"])
             if m:
-                max_id = max(max_id, int(m.group(1)))
+                max_id = max(max_id, int(m.group(2)))
+                if m.group(1) != letter:
+                    r["id"] = f"{letter}-{m.group(2)}"
+                    relettered += 1
+        by_key = {(r["file"], r["heading"]): r for r in rows}
 
         seen, added, retired = set(), [], []
         for rel in files:
@@ -151,7 +190,7 @@ def main():
                 row = by_key.get(key)
                 if row is None:
                     max_id += 1
-                    row = {"id": f"R-{max_id:04d}", "file": rel, "heading": text,
+                    row = {"id": f"{letter}-{max_id:04d}", "file": rel, "heading": text,
                            "path": crumb, "level": level, "retired": False}
                     row.update(born_of(rel, text))
                     by_key[key] = row
@@ -172,6 +211,9 @@ def main():
         total_retired += len(retired)
 
         if check_only:
+            if relettered:
+                problems.append(f"registry: {relettered} ids carry another tier's letter (want {letter}-) → "
+                                f"{os.path.relpath(path, ROOT)}")
             for r in added:
                 problems.append(f"registry: unregistered section → {r['file']} :: {r['heading']}")
             for r in retired:
@@ -196,6 +238,8 @@ def main():
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
+        if relettered:
+            declare_lettered(path)
 
     if check_only:
         if problems:

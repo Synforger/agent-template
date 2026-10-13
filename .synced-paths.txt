@@ -38,13 +38,24 @@
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
 
+# 発火記録の集計 (= startup-status の rule_hits 行と、 容量超過時の候補出しが実績を借りる先。
+# 出荷しないと、 派生は docs-check step 13 で記録を書かされるのに読む道具が無く、 候補は全部「発火 0」 で出る)
+.tooling/rules/rule-hits-summary.py
+
 # 静的容量の階層別合計 (= startup-status が呼ぶ) と、 それが数える skill の一覧、 docs-check step 15 の本体
 .tooling/startup/check-static-capacity.sh
 .tooling/lib/skill-listing.py
 .tooling/docs-check/check-positive-form.py
+.tooling/docs-check/check-declarations.py
 
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
 .tooling/tests/test-deployed-clones.sh
+.tooling/tests/test-build-rule-registry.sh
+.tooling/tests/test-rule-hits-summary.sh
+.tooling/tests/test-check-declarations.sh
+.tooling/tests/test-static-capacity.sh
+.tooling/tests/test-launch-pins.sh
+.tooling/tests/test-guard-may-write.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
@@ -52,7 +63,6 @@ rules/_README.md
 # === skill 必須 file (= skills folder の運用・雛形と、機構の真値書類) ===
 .claude/skills/_README.md
 .claude/skills/_template.md
-.claude/skills/rule-promotion-format/SKILL.md
 .claude/skills/rule-registry/SKILL.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
