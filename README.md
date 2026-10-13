@@ -38,7 +38,7 @@ agent-template/
     │   ├── startup/                   # session-boot checks: startup-status.sh and what it gathers (stale rules, duplicates, capacity, launch pins)
     │   ├── session-end/               # extract-artifact-index.sh, called by the session-end steps
     │   ├── docs-check/                # docs-check.sh (multi-axis docs verification) and the body of each step
-    │   ├── rules/                     # build-rule-registry.py: per-tier rule ID ledger (hits are recorded against it)
+    │   ├── rules/                     # build-rule-registry.py: per-tier rule ID ledger; rule-hits-summary.py: what fired, what was broken, read from the session records
     │   ├── hooks/                     # go-gate-reminder.sh: per-utterance GO-gate reminder hook
     │   ├── commit/                    # what the git hooks call, and setup-hooks.sh that installs them
     │   ├── distribute/                # sync with the base (init puts the two sync scripts here) and the guard update
