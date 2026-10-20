@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # extract-artifact-index.sh - 当 session で触った file/commit/PR を自動抽出 (= LLM 不使用)
 # 用途: エージェント終了プロトコル Step 2 で発火、 当 session の正規 journal location に jsonl 出力
-# 走らせ方: bash <agent-repo-root>/.tooling/session-end/extract-artifact-index.sh <journal-dir>
+# 走らせ方: bash <agent-repo-root>/.tooling/session-end/extract-artifact-index.sh <journal-dir> [--nn <NN>]
 #   引数必須。 エージェントが終了時に当 session 実際に touch した階層 (= journal/ / projects/<P>/journal/ / ...) を明示指定
 #   親+サブ両方触った場合は 2 回呼ぶ (= 階層ごとに 1 回ずつ)
+#   --nn = この session の journal の番号 (= 終了手順の最初に決めた番号をそのまま渡す)。 渡せば journal (.md) を
+#   書く前でも後でも、 同じ日の別の機械の journal を後から取り込んでいても、 その番号で書く。 無ければ .md の最大 + 1
 #
 # 永続 state file 方式は 2026-07-02 廃止 (= 複数 session 併走で他 session の値を拾う事故が発生、
 # 引数省略の default 解決を無くして毎回明示指定に一本化)
@@ -20,6 +22,26 @@ if [ -z "${1:-}" ]; then
     exit 2
 fi
 JOURNAL_DIR_ARG="$1"
+shift
+NN_ARG=""
+NN_GIVEN=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --nn)
+            NN_GIVEN=1
+            NN_ARG="${2:-}"
+            shift 2 || shift
+            ;;
+        *)
+            echo "ERROR: unknown argument: $1 (usage: extract-artifact-index.sh <journal-dir> [--nn <NN>])" >&2
+            exit 2
+            ;;
+    esac
+done
+if [ "$NN_GIVEN" -eq 1 ] && ! printf '%s' "$NN_ARG" | grep -qE '^(0?[1-9]|[1-9][0-9])$'; then
+    echo "ERROR: --nn takes the session number of this journal (1 to 99), got: ${NN_ARG:-nothing}" >&2
+    exit 2
+fi
 
 # session 開始時刻 = 当 transcript 1 行目以降の最初の timestamp、 fallback = 24h
 # 当 session の transcript は session id で名指しで引く (= session-end-precheck.py と同じ引き方)。
@@ -77,6 +99,8 @@ for f in "$DATE_DIR"/session-*.md; do
     [ "$n" -gt "$max_nn" ] && max_nn=$n
 done
 session_nn=$(printf "%02d" $((max_nn + 1)))
+# 番号を渡されたら、 それが真値 (= 数え方は呼ぶ順と機械の数に左右される)
+[ -n "$NN_ARG" ] && session_nn=$(printf "%02d" "$((10#$NN_ARG))")
 OUT_FILE="$DATE_DIR/session-${session_nn}-auto-index.jsonl"
 
 # エージェント配下で触った file (= session 開始 ts 以降の commit のみ)
