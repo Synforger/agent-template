@@ -1,8 +1,8 @@
 ---
 title: ルール台帳と発火記録 (= 重みを実測で決める機構)
-description: ルール ID の採番 / 発火記録 / 配置替えと退役 / 足す時の判定 / 置き場と書式 / 改訂時の docs 同期
-when_to_use: セッション終了時に発火記録を書く直前 / ルールを追加 or 改訂する直前 / 容量超過で押し出す対象を選ぶ時 / 退役候補の判断時 / rule や profile を改訂した直後
-updated: 2026-09-22
+description: ルール ID / 発火記録 / 足す時の判定 / 置き場と書式 / 退役
+when_to_use: 発火記録を書く直前 / ルールを足す・改訂する直前 / 押し出しや退役を決める時
+updated: 2026-10-15
 ---
 
 # ルール台帳と発火記録
@@ -20,6 +20,7 @@ updated: 2026-09-22
 1 行 1 section、 ID は頭の文字 + 4 桁 (= 親 `R-0001` / project `P-0001` / subproject `S-0001`) で**一度振ったら不変**。 ID は台帳だけが持ち、 `file` + `heading` で本体と紐付ける (= 本体に書くと常時 load 層の容量を食う)。
 
 - 更新: `python3 .tooling/rules/build-rule-registry.py`
+- **規則の file を書き換えたタブ自身が、 同じ 1 回の commit で台帳も更新する** (= 後から別のタブが台帳だけを拾って commit する形はとらない。 2 つのタブが同じ repo の規則を同時に直すと、 台帳を誰が締めるかが曖昧になる)
 - 検査: 同 `--check` (= 未登録 section / 消滅 section を検出、 docs-check step 11)
 - 台帳は**階層ごとに 1 本** (= 1 本にまとめると gitignored な階層の path が tracked file へ漏れる)
 - **ID の頭の文字は階層の深さで決まる** (= 1 つの session が読むのは 親 → project → subproject の 1 本の系列で、 発火記録はその全部の ID を起動した階層の journal 1 本に並べる。 文字が違えば、 どの台帳の番号かが記録だけで決まる)

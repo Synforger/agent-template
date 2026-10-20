@@ -80,6 +80,23 @@ step_company_terms() {
     fi
 }
 
+# 6b. 番人の週次の深い監査の、 最後の回の結果 (= log に書くだけで誰にも届かず、 10 週見つけ続けていた。
+#     2026-10-20 の事故)。 見つけた repo が 1 本でもあれば FINDINGS、 7 日より古ければ STALE。
+step_weekly_audit() {
+    local dir="$HOME/.local/state/guard-dispatcher" last n age
+    last=$(ls -t "$dir"/weekly-audit-*.log 2>/dev/null | head -1)
+    if [ -z "$last" ]; then echo "weekly_audit: NO RUN (no log in $dir)"; return; fi
+    n=$(grep -oE 'done: [0-9]+ repo' "$last" | grep -oE '[0-9]+' | tail -1)
+    age=$(( ( $(date +%s) - $(stat -f %m "$last") ) / 86400 ))
+    if [ -n "$n" ] && [ "$n" -gt 0 ]; then
+        echo "weekly_audit: FINDINGS in $n repo(s) ($(basename "$last"), ${age}d ago) -> read the FINDINGS blocks of that log"
+    elif [ "$age" -gt 7 ]; then
+        echo "weekly_audit: STALE (last run ${age}d ago: $(basename "$last"))"
+    else
+        echo "weekly_audit: clean ($(basename "$last"), ${age}d ago)"
+    fi
+}
+
 # 7. git guard armament across every checkout on this machine.
 #    A repo-local core.hooksPath REPLACES the global one (git honours exactly
 #    one), so a single `git config --local core.hooksPath .githooks` silently
@@ -287,6 +304,7 @@ step_duplicates       > "$TMPD/2-dup"        &
 step_capacity         > "$TMPD/3-capacity"   &
 step_docs_check       > "$TMPD/4-docs"       &
 step_company_terms    > "$TMPD/6-company"    &
+step_weekly_audit     > "$TMPD/6b-audit"     &
 step_git_guard        > "$TMPD/7-guard"      &
 step_claude_settings  > "$TMPD/8-settings"   &
 step_launch_pins      > "$TMPD/8b-pins"     &
@@ -296,7 +314,7 @@ step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
-    "$TMPD/6-company" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones"
+    "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -312,6 +330,8 @@ echo "  - docs-check FAIL >= 1 -> must fix within the same session"
 echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task."
 echo "    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this."
 echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
+echo "  - weekly_audit FINDINGS / STALE / NO RUN -> say it first in the briefing, with the repos and what was found;"
+echo "    the operator decides what to remove from history, the agent fixes what it can (files, future commits)"
 echo "  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local"
 echo "    core.hooksPath (the global dispatcher already delegates to .githooks/) before committing there"
 echo "  - agent_guard MISSING -> this machine's guard-dispatcher checkout predates agent-hooks/ (the agent can read"
