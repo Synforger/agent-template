@@ -21,6 +21,7 @@ capacity: 3KB
 - `_template.md` をコピーする。 frontmatter = `title` / `description` / `status` / `created` / `updated`
 - status = `not-started` / `in-progress` / `completed` / `superseded` のいずれか。 進行中は `updated` を都度更新
 - 大きな計画の刻み方 (= 段の表と持ち場の表) は、 実装計画の skill (= `implementation-plan`) が真値
+- **上には今の最新の形 (= 木や表) だけを置き、 決めた事の記録は下に新しい順で置く** (= ユーザに見せるメモも同じ。 決めた事が上に積もると、 今の形が読めなくなる)
 
 ## まとめる / 分ける
 
