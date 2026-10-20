@@ -345,7 +345,7 @@ echo "    hit is the per-machine model key the CLI writes back: delete that key"
 echo "  - effort_pin OVERRIDDEN -> an env var beats the launcher's --effort; remove the named line and say in"
 echo "    the briefing that this session runs at the overridden effort until the next launch"
 echo "  - guard_deploy STALE -> this machine runs an older guard than origin/develop (merged fixes are not in"
-echo "    effect here yet): say it in the briefing, and once the operator agrees run it from this session:"
+echo "    effect here yet): run it from this session and say it in the briefing (= a merged guard fix is the agent's to deploy):"
 case "$ROOT" in "$HOME"/*) _root_shown="~${ROOT#"$HOME"}" ;; *) _root_shown="$ROOT" ;; esac
 echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
 echo "  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in"
