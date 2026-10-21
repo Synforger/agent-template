@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # 静的 rule 容量の階層別合計を測る (= 真値はここ 1 箇所)。
 #
-#   親        = CLAUDE + profile + always            (= 40 KB)
+#   親        = CLAUDE + profile + always            (= 48 KB)
 #   project   = _README + always                          (= 20 KB)
 #   subproject= _README + always                          (= 10 KB)
+#
+# 親の上限は、 起動の読み込みを終えた時点の文脈が、 コンテキストの窓の 10% 以下に収まる範囲で決める
+# (= 測り方: その session の jsonl で、 ブリーフィングの返事の usage の input + cache の合計を窓で割る)
 #
 # skill の一覧 (= description + when_to_use、 毎 session 文脈に入る) は別枠で階層ごとに数える
 # (= 常時 load の枠へ統合するかはルールの見直しで決める):
@@ -17,7 +20,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-PARENT_LIMIT=40960
+PARENT_LIMIT=49152
 PROJECT_LIMIT=20480
 SUBPROJECT_LIMIT=10240
 SKILLS_PARENT_LIMIT=4096
