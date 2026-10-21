@@ -16,6 +16,7 @@
 .tooling/startup/detect-stale-rules.sh
 .tooling/session-end/extract-artifact-index.sh
 .tooling/hooks/go-gate-reminder.sh
+.tooling/hooks/code_writing_gate.py
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
@@ -57,6 +58,7 @@
 .tooling/tests/test-launch-pins.sh
 .tooling/tests/test-guard-may-write.sh
 .tooling/tests/test-artifact-index-number.sh
+.tooling/tests/test-code-writing-gate.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
@@ -65,6 +67,7 @@ rules/_README.md
 .claude/skills/_README.md
 .claude/skills/_template.md
 .claude/skills/rule-registry/SKILL.md
+.claude/skills/code-writing/SKILL.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
 # folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。

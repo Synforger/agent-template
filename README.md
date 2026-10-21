@@ -39,7 +39,7 @@ agent-template/
     │   ├── session-end/               # extract-artifact-index.sh, called by the session-end steps
     │   ├── docs-check/                # docs-check.sh (multi-axis docs verification) and the body of each step
     │   ├── rules/                     # build-rule-registry.py: per-tier rule ID ledger; rule-hits-summary.py: what fired, what was broken, read from the session records
-    │   ├── hooks/                     # go-gate-reminder.sh: per-utterance GO-gate reminder hook
+    │   ├── hooks/                     # go-gate-reminder.sh: per-utterance GO-gate reminder; code_writing_gate.py: the code-writing skill is read before the first code write
     │   ├── commit/                    # what the git hooks call, and setup-hooks.sh that installs them
     │   ├── distribute/                # sync with the base (init puts the two sync scripts here) and the guard update
     │   ├── lib/                       # parts called from more than one role
