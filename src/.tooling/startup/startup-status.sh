@@ -297,6 +297,13 @@ step_clone_deploys() {
     fi
 }
 
+step_children() {
+    # このタブが立てた子のタブ (= 入れ替わった親が、 自分の子とその状態を読む口。 PWA のタブの外では UNKNOWN)
+    if [ -f .tooling/work/tabs.py ]; then
+        python3 .tooling/work/tabs.py children --summary 2>/dev/null || echo "children: UNKNOWN"
+    fi
+}
+
 step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
@@ -310,11 +317,13 @@ step_claude_settings  > "$TMPD/8-settings"   &
 step_launch_pins      > "$TMPD/8b-pins"     &
 step_guard_deploy     > "$TMPD/8d-deploy"   &
 step_clone_deploys    > "$TMPD/8e-clones"   &
+step_children         > "$TMPD/8f-children" &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
-    "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones"
+    "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
+    "$TMPD/8f-children"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -353,3 +362,6 @@ echo "    the briefing and follow that repo's own deploy steps (the derived agen
 echo "    (UNKNOWN -> say the deploy state of that repo was not checked)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
 echo "    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply"
+echo "  - children 完了 / 詰まり >= 1 -> a child tab this tab opened has reported: read its report, take the result in"
+echo "    (merge / remove its worktree), then 'tabs.py close <id>', and say it in the briefing. 作業中 children keep"
+echo "    running on their own (= 'tabs.py children' lists them); the steps are skill sub-agent § 子のタブ"
