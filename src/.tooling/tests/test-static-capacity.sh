@@ -13,6 +13,10 @@ set -uo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 start=$(date +%s)
 fails=0
+# 溢れさせる大きさは、 script の上限から決める (= 上限を変えても試験はそのまま効く)
+limit() { sed -n "s/^$1=\([0-9]*\)$/\1/p" "$SRC/startup/check-static-capacity.sh"; }
+SKILLS_OVER=$(( $(limit SKILLS_PARENT_LIMIT) + 1000 ))
+PARENT_OVER=$(( $(limit PARENT_LIMIT) + 1000 ))
 
 make_repo() {
     local d
@@ -46,10 +50,10 @@ expect() { # $1=名前 $2=期待 exit $3=出力に含むべき語 (空なら見�
 }
 
 for SH in /bin/bash bash; do
-    r=$(make_repo); add_skill "$r" big 5000; add_skill "$r" small 10
+    r=$(make_repo); add_skill "$r" big "$SKILLS_OVER"; add_skill "$r" small 10
     expect "skill の一覧だけが溢れる" 1 "agent parent skills listing" "$r"
 
-    r=$(make_repo); head -c 50000 /dev/zero | tr '\0' 'a' > "$r/rules/always.md"
+    r=$(make_repo); head -c "$PARENT_OVER" /dev/zero | tr '\0' 'a' > "$r/rules/always.md"
     expect "常時 load だけが溢れる" 1 "agent parent: " "$r"
 
     r=$(make_repo); add_skill "$r" small 10

@@ -10,7 +10,7 @@
 #
 # skill の一覧 (= description + when_to_use、 毎 session 文脈に入る) は別枠で階層ごとに数える
 # (= 常時 load の枠へ統合するかはルールの見直しで決める):
-#   親 4 KB / project 4 KB / subproject 2 KB
+#   親 6 KB / project 4 KB / subproject 2 KB (= 親は常時 load と同じく、 起動の読み込みの 10% の中で決める)
 #
 # 呼び出し元:
 #   - .tooling/startup/startup-status.sh  (= 起動時の 1 行 summary)
@@ -23,7 +23,7 @@ cd "$(git rev-parse --show-toplevel)"
 PARENT_LIMIT=49152
 PROJECT_LIMIT=20480
 SUBPROJECT_LIMIT=10240
-SKILLS_PARENT_LIMIT=4096
+SKILLS_PARENT_LIMIT=6144
 SKILLS_PROJECT_LIMIT=4096
 SKILLS_SUBPROJECT_LIMIT=2048
 
