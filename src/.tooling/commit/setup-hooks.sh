@@ -54,6 +54,19 @@ UserPromptSubmit に追加 (= 毎発話に GO-gate リマインダ極短注入�
 
 (= 既存の他 hook entry は触らない、 配列末尾に append)
 
+Add to "hooks" > "PreToolUse" (stops the first code write of a session until the
+code-writing skill is read; recommended):
+
+  {
+    "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "python3 <agent-repo-root>/.tooling/hooks/code_writing_gate.py"
+      }
+    ]
+  }
+
 🚨 SessionEnd hook は設置しない (= 2026-06-29 廃止):
     旧運用で SessionEnd hook 経由で extract-artifact-index.sh を自動発火していたが、
     終了プロトコル発動外の軽い対話 (= CC 自然 exit) で空打ち jsonl が量産される構造欠陥のため廃止。

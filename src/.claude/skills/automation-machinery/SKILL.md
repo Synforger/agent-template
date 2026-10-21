@@ -40,6 +40,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/docs-check/check-positive-form.py` | docs-check step 15 | 否定形の主文 1 行ずつ (= 書式の真値 = `.claude/skills/rule-registry/SKILL.md § 表現形式`) |
 | `.tooling/startup/capacity-candidates.py` | check-static-capacity の超過時 | バイト数降順の削減候補 + 発火実績 (= 「少し削って測り直す」 の往復を作らない) |
 | `.tooling/hooks/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入 (= 判定本体は `rules/always.md § forbidden`、 hook は再武装のみ) |
+| `.tooling/hooks/code_writing_gate.py` | PreToolUse hook (= Write / Edit / MultiEdit / NotebookEdit) | code の file を書く時、 会話の記録 (= サブエージェントは自分の記録) に skill `code-writing` を読んだ跡が無ければ止めて読ませる (= 1 session に 1 回。 読めない時は通す)。 test = `tests/test-code-writing-gate.sh` |
 | git hook guard (= startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧 (= git は hooksPath を 1 つしか見ず、 local 上書き 1 個で scan が丸ごと死ぬ) |
 
 派生で足す例 (= 置けば startup-status が拾う / 無ければ skip): 禁止語 detector (`detect-company-terms.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計 (= 台帳と記録は base 出荷、 どう集計するかは派生の持ち物)。
