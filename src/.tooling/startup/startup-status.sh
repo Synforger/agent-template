@@ -244,7 +244,7 @@ step_guard_deploy() {
     result=$(git -C "$clone" ls-tree -r -z origin/develop | python3 -c '
 import hashlib, os, sys
 home = os.path.realpath(os.path.expanduser("~/.git-hooks/scripts/.."))
-keep = {"scanners/anon-words.txt", "anon-words.local.txt", "scanners/anon-words.local.txt"}  # = 運用者の禁止語 (= git に載らない)
+keep = {"anon-words.txt", "anon-words.local.txt"}  # = 運用者の禁止語 (= git に載らない。 番人の中のどの folder に在っても名前で見る)
 skip_dirs = {"node_modules", "__pycache__", ".git"}
 tree = {}
 for entry in sys.stdin.buffer.read().split(b"\0"):
@@ -268,7 +268,7 @@ for root, dirs, files in os.walk(home):
     dirs[:] = [d for d in dirs if d not in skip_dirs]
     for f in files:
         rel = os.path.relpath(os.path.join(root, f), home)
-        if rel not in tree and rel not in keep and not rel.endswith(".pyc"):
+        if rel not in tree and f not in keep and not rel.endswith(".pyc"):
             extra += 1
 print(differ, missing, extra)
 ' 2>/dev/null)
