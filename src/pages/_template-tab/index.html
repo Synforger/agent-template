@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{このタブは何か}}</title>
+<title>{{title}}</title>
 <style>
 :root { --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d0d7de; --link: #0969da; }
 @media (prefers-color-scheme: dark) {
@@ -24,8 +24,8 @@ nav { margin-bottom: 16px; }
 <body>
 <main>
   <nav><a href="../index.html">階層のトップへ</a></nav>
-  <h1>{{このタブは何か}}</h1>
-  <p class="sub">階層: {{起動した階層}}</p>
+  <h1>{{title}}</h1>
+  <p class="sub">階層: {{tier}}</p>
   <ul>
     <!-- 例: <li><a href="./<説明>.html">説明の題 (= 1 行で何が分かるか)</a></li> -->
   </ul>
