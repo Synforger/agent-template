@@ -46,6 +46,12 @@ setup
 expect "alias だけなら緑" '^model_pin: ok \(launcher=opus'
 expect "上書きが無ければ effort も緑" '^effort_pin: ok \(launcher=high, session=unmeasured\)'
 
+setup; printf 'CHILD_MODEL = "sonnet"\n' >> "${T}/agent/.tooling/lib/claude-launch.py"
+expect "子のタブの model も alias なら緑" '^model_pin: ok \(launcher=opus, child=sonnet'
+
+setup; printf 'CHILD_MODEL = "claude-sonnet-5"\n' >> "${T}/agent/.tooling/lib/claude-launch.py"
+expect "子のタブの model の版名指しも赤" '^model_pin: PINNED launcher\(claude-sonnet-5 = 版を名指し\)'
+
 setup; launcher claude-opus-5 high
 expect "launcher の版名指しは赤" '^model_pin: PINNED launcher\(claude-opus-5 = 版を名指し\)'
 

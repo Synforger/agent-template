@@ -60,14 +60,15 @@ def shell_hits(pattern: re.Pattern) -> list[str]:
 
 
 def model_pin(src: str) -> str:
-    model = launcher_value(src, "MODEL")
+    model, child = launcher_value(src, "MODEL"), launcher_value(src, "CHILD_MODEL")
     if not model or '"--model"' not in src:
         return "model_pin: UNPINNED (launcher passes no --model; the global settings default decides)"
     pinned = []
-    if model.startswith("claude-"):
-        pinned.append(f"launcher({model} = 版を名指し)")
-    elif "[" in model:
-        pinned.append(f"launcher({model} = 変種の接尾辞)")
+    for value in filter(None, (model, child)):     # 子のタブの model も同じ決まり (= alias 1 語)
+        if value.startswith("claude-"):
+            pinned.append(f"launcher({value} = 版を名指し)")
+        elif "[" in value:
+            pinned.append(f"launcher({value} = 変種の接尾辞)")
     pinned += shell_hits(SHELL_MODEL)
     for path in settings_files():
         try:
@@ -78,7 +79,7 @@ def model_pin(src: str) -> str:
             pinned.append(f"settings({short(path)} = {value})")
     if pinned:
         return f"model_pin: PINNED {', '.join(pinned)} (= 固定要因。 alias 1 語へ直す)"
-    return f"model_pin: ok (launcher={model}, alias だけ = 毎回最新へ解決)"
+    return f"model_pin: ok (launcher={model}{f', child={child}' if child else ''}, alias だけ = 毎回最新へ解決)"
 
 
 def effort_pin(src: str) -> str:
