@@ -11,6 +11,9 @@ name = "code-writing"
 [[skill.when]]
 tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"]
 code = true
+[[skill.when]]
+tools = ["Bash"]
+command = '\bmkdir\b'
 
 [[skill]]
 name = "sub-agent"
