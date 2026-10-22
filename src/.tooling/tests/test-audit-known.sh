@@ -259,5 +259,19 @@ mklog 2026-03-22 0 body_areas_clean
 age_log 2026-03-22 1
 expect_area 'areas: a clean log is clean' client-x '^weekly_audit: clean \(weekly-audit-2026-03-22.log'
 
+# 13. 終わりの行の無い log (= 走っている最中・途中で止まった) は clean と読まず、 一つ前の終わった log で判定する
+rm -f "${AUDIT_DIR}"/weekly-audit-*.log
+mklog 2026-04-05 2 body_two
+age_log 2026-04-05 3
+bash "${KNOWN}" adopt "${AUDIT_DIR}/weekly-audit-2026-04-05.log" > /dev/null
+{ printf '=== weekly anon audit: 2026-04-08 (00:00:01) ===\n'; clean_block /work/area-a/repo-clean; } > "${AUDIT_DIR}/weekly-audit-2026-04-08.log"
+age_log 2026-04-08 0
+expect 'incomplete: a log without its end line is named' normal '^weekly_audit: INCOMPLETE \(weekly-audit-2026-04-08.log has no end line'
+expect_not 'incomplete: a log without its end line is not read as clean' normal 'clean'
+expect 'incomplete: the last finished log still decides' normal '^weekly_audit: known only \(2 repo\(s\), weekly-audit-2026-04-05.log'
+expect 'incomplete: a project tab is told too' projects/some-project '^weekly_audit: INCOMPLETE'
+rm -f "${AUDIT_DIR}/weekly-audit-2026-04-05.log"
+expect 'incomplete: with no finished log it is NO RUN' normal '^weekly_audit: NO RUN \(no finished log'
+
 printf 'audit-known: %d passed, %d failed\n' "${pass}" "${fail}"
 [ "${fail}" -eq 0 ]
