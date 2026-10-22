@@ -71,13 +71,25 @@ rules/_README.md
 .claude/skills/rule-registry/SKILL.md
 .claude/skills/code-writing/SKILL.md
 .claude/skills/explainer-pages/SKILL.md
-.claude/skills/explainer-pages/tab-note.md
+
+# 全エージェント共通の skill (= 体の使い方 / 公開の repo の作法 / 決め方とレビュー / 型と器の取り込み / 締め / 計画書 / 外の実装)
+.claude/skills/sub-agent/SKILL.md
+.claude/skills/public-repo/SKILL.md
+.claude/skills/review-rules/SKILL.md
+.claude/skills/base-sync/SKILL.md
+.claude/skills/session-end/SKILL.md
+.claude/skills/implementation-plan/SKILL.md
+.claude/skills/external-implementation/SKILL.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
 # folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。
 # 雛形 dir は中身ごと往復させる (= 階層インターフェースの形そのものが契約)。
 projects/_README.md
 projects/_template-project/
+
+# pages/ = 説明のページとタブのメモの置き場の運用と、 タブの folder の雛形 (= 階層のトップ index.html は派生がタブの一覧を書くので除外)
+pages/_README.md
+pages/_template-tab/
 journal/_README.md
 journal/_template.md
 plans/_README.md
@@ -101,3 +113,4 @@ profile/_template.md
 !.tooling/startup/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
 !.tooling/startup/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
 !.tooling/startup/deployed-clones.example.txt # 派生は deployed-clones.txt を自分で持つ、 base 版は書き方の例
+!pages/index.html                   # 階層のトップは派生がタブの一覧を書く (= 雛形としては init で一度だけ届く)

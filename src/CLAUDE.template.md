@@ -114,30 +114,11 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 
 **発動条件**: ユーザがセッション終了の意思を**断定形**で示した時のみ (= 「終わり」「締めよう」「今日はここまで」「寝る」)。 一区切りついた時は次の指示を待つ。
 
-**Step 0 (= 発動前検証、 最初に 1 回)**: 直近のユーザ発話に終了発話があるかを一次ソースで確かめる (= 無ければ幻なので終了せず作業継続)。 併せて階層別の容量 headroom / journal の次採番 / 検査の ack 手順を 1 回で取り、 以降の Step で同じ探索を繰り返さない。
+**自動の引き金** (= `<session-rollover phase="close">`) も発動条件 (= 作業中なら区切りまで進めてから締める)。
 
 **次の指示を待つ発話**: 質問・確認形 (= 「完了かな」「これでいい?」) と部分完了 (= 「とりあえず完了」)。 判断が付かない時もユーザの明示を待つ (= `rules/always.md § forbidden`)。
 
-#### Step 1 (= 直列、 ユーザ承認不要)
-
-**その session で初めて見えた** 一面 / 好み / 癖だけ `profile/profile.md` に **エージェント判断で追記**。 **有った時だけ書く** (= 毎 session の更新義務はない。 既出の言い換えは対象外)。 書く時は Step 0 の headroom に収まる形で**1 回で書く**。
-
-#### Step 2 (= 並列一括、 自走で完遂)
-
-- **自動抽出 script 実行**: journal .md を書く**前に**実行 (= jsonl は当 session の触跡記録、 PC ローカル artifact)
-  - `bash .tooling/session-end/extract-artifact-index.sh <journal-dir>` (= 引数 = 当 session が touch した階層の journal dir、 親+サブ両方なら引数を変えて 2 回)
-  - `python3 .tooling/startup/detect-duplicates.py` (= 重複 section cache 更新)
-- **plan の棚卸し** (= 必須、 触れた階層全部): `plans/` の生きている file を 1 本ずつ見て、 **次にエージェントが手を動かせないものは `_archive/` へ移す** (= 判断軸と手順 = `rules/always.md § git`)。 残す file は最新化 (= 完了マーク / 新規残タスク追加 / state snapshot (= develop/main tip / open PR / branch) 更新 / 古い時点記述の掃除)。 横断 = `plans/` 直下、 プロジェクト固有 = `projects/<P>/plans/`
-- **vision 更新** (= 現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**、 動いた時だけ書き換える (= 毎 session の更新義務はない)。 中身は状態だけ (= やることは `plans/` と journal が持つ)、 無ければ作る。 **既にある行を書き換える** ― 段落は増やさない (= 節と段落数は `.tooling/docs-check/docs-check.sh` step 14 が見る)
-- **発火記録**: 効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` へ (= 書き漏らしは docs-check step 13 が出す)
-- **ジャーナル記入**: **書く前に階層を起動 keyword から再導出** (= compaction で階層文脈が消える。 サブプロ起動ならサブプロ journal が正、 採番アンカーは自階層の .md から取る)。 **触れた階層全部に 1 本ずつ書く** (= 階層自己完結)。 `normal` = `journal/YYYY-MM-DD/session-NN.md`、 project = `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、 subproject = `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md`。 NN は Step 0 で取った採番をそのまま使う (= 階層ごと独立)。 フォーマット = `journal/_template.md`
-- **`startup-status.sh` 実行 → 全指標走り切り** (= docs-check 内包なので 1 回で済む。 判断で commit まで完遂): 報告は Step 3 締めで 1 行のみ
-
-#### Step 3 (= 直列、 必須)
-
-`git add -A && git commit` → (複数 PC 同期運用時) `git pull --rebase --autostash` → `git push` **必ず連続実行**で締める (= push 直前再 pull 理由 = session 中 他 PC push の fast-forward 不可吸収)。 push 失敗 = pull → rebase → push リトライ 1 サイクル自前。 2 度目失敗 (= conflict 残) = ユーザ報告 + 手動解決。
-
-複数 PC で同じエージェントを clone している場合、 **同期点はこの Step 3 だけ** (= 同時起動を避ける)。 共通基盤 (= `profile/` / `rules/` / `CLAUDE.md` / `.tooling/`) を別 PC が同時に編集していると rebase が止まるので、 その時はユーザへ報告する。
+**発動したら skill `session-end` を呼び、 Step 0〜3 を全部踏む** (= 手順の真値 = `.claude/skills/session-end/SKILL.md`。 終わる時にだけ使う手順なので起動時には載せない)。
 
 ---
 
