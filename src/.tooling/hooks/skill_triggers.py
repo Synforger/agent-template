@@ -1,7 +1,14 @@
 """Which skills an event calls for, by the trigger table (pure: no file, state or command is touched).
 
 The table (`skill-triggers.toml`, read by `skill_reads.py`) lists one skill per `[[skill]]` with one or more
-`[[skill.when]]`. A `when` matches when every condition it writes holds:
+`[[skill.when]]`. A `[[skill]]` has:
+
+- `name`  the name the Skill tool calls it by (a plugin's skill is `<plugin>:<skill>`)
+- `file`  where its SKILL.md is (optional). `{platform}` stands for the platform's root (`AGENT_PLATFORM_ROOT`,
+          else `~/agent-platform`) and `{root}` for the agent's own folder. Without it the skill is the agent's
+          own: `<agent>/.claude/skills/<name>/SKILL.md`
+
+A `when` matches when every condition it writes holds:
 
 - `event`   the hook event (default `PreToolUse`; also `UserPromptSubmit`, `SessionStart`)
 - `tools`   tool names; a name ending in `*` matches by prefix
@@ -69,6 +76,13 @@ def when_matches(when: dict, event: dict) -> bool:
         if event["env"].get(name) != value:
             return False
     return not when.get("code") or event["is_code"]
+
+
+def skill_file(row: dict, root: Path, platform: Path) -> Path:
+    """Where the SKILL.md of a table row is (the agent's own skill folder unless the row says `file`)."""
+    if "file" not in row:
+        return root / ".claude/skills" / row["name"] / "SKILL.md"
+    return Path(row["file"].replace("{platform}", str(platform)).replace("{root}", str(root)))
 
 
 def skills_for(table: list[dict], event: dict) -> list[str]:
