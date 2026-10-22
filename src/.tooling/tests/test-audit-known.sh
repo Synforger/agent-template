@@ -91,7 +91,7 @@ expect 'known only: an unset AGENT_TIER is read as normal' - '^weekly_audit: kno
 expect_not 'known only: the line does not say NEW' normal 'NEW'
 expect_silent 'known only: a project tab hears nothing' projects/some-project
 expect_silent 'known only: a subproject tab hears nothing' projects/some-project/subprojects/part
-[ "$(wc -l < <(bash "${KNOWN}" status))" -eq 1 ] && ok || bad 'known only is exactly one line' "$(bash "${KNOWN}" status)"
+[ "$(wc -l < <(status normal))" -eq 1 ] && ok || bad 'known only is exactly one line' "$(status normal)"
 [ -f "${AUDIT_KNOWN_FILE}" ] && ok || bad 'the ledger lives where AUDIT_KNOWN_FILE says' "$(ls -R "${T}")"
 
 # 3. 同じ語の件数が台帳より増えたら新規 (= 履歴に書き足された)。 増えた場所だけを、 前と今の件数つきで読み上げる
