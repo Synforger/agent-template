@@ -17,6 +17,7 @@
 .tooling/session-end/extract-artifact-index.sh
 .tooling/hooks/go-gate-reminder.sh
 .tooling/hooks/code_writing_gate.py
+.tooling/hooks/subagent_model_gate.py
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
@@ -61,6 +62,7 @@
 .tooling/tests/test-guard-place.sh
 .tooling/tests/test-artifact-index-number.sh
 .tooling/tests/test-code-writing-gate.sh
+.tooling/tests/test-subagent-model-gate.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
