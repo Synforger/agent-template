@@ -62,7 +62,9 @@ mklog() {
 }
 # age_log <日付> <何日前> : log の更新時刻を決める (= 呼ぶ順に 1 分ずつ新しくし、 同じ日でも新旧が決まる)
 seq=0
-age_log() { seq=$((seq + 1)); touch -t "$(date -v-"$2"d -v+"${seq}"M +%Y%m%d%H%M)" "${AUDIT_DIR}/weekly-audit-$1.log"; }
+# stamp <何日前> <何分後> : touch -t の時刻 (= BSD の date の -v、 無ければ GNU の date の -d)
+stamp() { date -v-"$1"d -v+"$2"M +%Y%m%d%H%M 2>/dev/null || date -d "$1 days ago $2 minutes" +%Y%m%d%H%M; }
+age_log() { seq=$((seq + 1)); touch -t "$(stamp "$2" "${seq}")" "${AUDIT_DIR}/weekly-audit-$1.log"; }
 
 R1=/work/area-a/repo-one
 R2=/work/area-b/repo-two

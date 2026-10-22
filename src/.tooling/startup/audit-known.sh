@@ -105,7 +105,7 @@ cmd_status() {
     last="$(latest_log)"
     if [ -z "$last" ]; then echo "weekly_audit: NO RUN (no log in $AUDIT_DIR)"; return; fi
     n="$(grep -oE 'done: [0-9]+ repo' "$last" | grep -oE '[0-9]+' | tail -1)"
-    age=$(( ( $(date +%s) - $(stat -f %m "$last") ) / 86400 ))
+    age=$(( ( $(date +%s) - $(stat -c %Y "$last" 2>/dev/null || stat -f %m "$last") ) / 86400 ))
     if [ -z "$n" ] || [ "$n" -eq 0 ]; then
         if [ "$age" -gt "$STALE_DAYS" ]; then
             echo "weekly_audit: STALE (last run ${age}d ago: $(basename "$last"))"
