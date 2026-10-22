@@ -19,7 +19,7 @@ capacity: 3KB
 ```
 <階層>/pages/
 ├── index.html        階層のトップ (= タブの一覧。 読める名前はここに出す)
-├── _template-tab/    タブの folder の雛形 (= 本 file の隣。 下の階層には置かない)
+├── _template-tab/    タブのトップページの雛形 (= 本 file の隣。 下の階層には置かない)
 └── <タブの id>/      タブごと (= id は入れ替えでも変わらない)
     ├── index.html    そのタブのトップページ (= 説明へのリンク)
     ├── memo.md       タブのメモ (= git から外す)
@@ -27,13 +27,13 @@ capacity: 3KB
 ```
 
 - 階層はタブを起動した階層。 階層が無いタブは `normal` (= 親の階層)
-- `memo.md` は client の 📋 が開く file で、 先頭にそのタブのトップページへのリンクを置く。 `.gitignore` が `pages/*/memo.md` を外す (= 雛形の `memo.md` だけ戻してある)
+- `memo.md` は client の 📋 が開く普通のメモ (= そのタブのトップページへのリンクは、 client の画面が 📋 の頭に出す)。 `.gitignore` が `pages/*/memo.md` を外す
 
-## 新しいタブを足す
+## 新しいタブ
 
-1. `_template-tab/` を `<タブの id>/` へ写す
-2. `index.html` と `memo.md` の穴 (= 波括弧と山括弧で書いてある所) を埋める
-3. 階層のトップ `index.html` に、 そのタブへの 1 行を足す
+1. タブの folder と `index.html` は client が作る (= タブの階層を記録した時に、 無ければ `_template-tab/index.html` を写し、 `{{title}}` をタブの題、 `{{tier}}` を階層で埋める。 在るページには触らない)。 `memo.md` は起動の script が置く
+2. 説明のページを置いたら、 タブの `index.html` にそのページへの 1 行を足す
+3. タブが最初の説明のページを置いた時に、 階層のトップ `index.html` にそのタブへの 1 行を足す
 
 ## 残す
 
