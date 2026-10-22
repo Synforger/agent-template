@@ -104,10 +104,10 @@ session_nn=$(printf "%02d" $((max_nn + 1)))
 OUT_FILE="$DATE_DIR/session-${session_nn}-auto-index.jsonl"
 
 # エージェント配下で触った file (= session 開始 ts 以降の commit のみ)
-ark_files=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || true)
+agent_files=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || true)
 
 # 当 session の commit (= エージェント配下)
-ark_commits=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --format='%H %s' 2>/dev/null || true)
+agent_commits=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --format='%H %s' 2>/dev/null || true)
 
 # 当日 関連 PR (= gh があれば)
 gh_prs=""
@@ -125,10 +125,10 @@ except Exception:
 fi
 
 # JSONL 1 record、 上書き mode (= 同 session 再発火で重複根絶)
-python3 - "$ark_files" "$ark_commits" "$gh_prs" "$today" "$session_nn" "$OUT_FILE" "$session_uuid" "$SINCE_ISO" <<'PYEOF'
+python3 - "$agent_files" "$agent_commits" "$gh_prs" "$today" "$session_nn" "$OUT_FILE" "$session_uuid" "$SINCE_ISO" <<'PYEOF'
 import sys, json
 from datetime import datetime
-ark_files = [l for l in sys.argv[1].split("\n") if l.strip()]
+agent_files = [l for l in sys.argv[1].split("\n") if l.strip()]
 
 # commit subject は hash 12 桁 + 先頭 100 字に切る。 エージェントの session-end subject は
 # journal の description と同じ本文を丸ごと持つため、 全文を載せると次の起動が読む
@@ -139,7 +139,7 @@ def _trim(line):
     if len(subj) > SUBJECT_MAX:
         subj = subj[:SUBJECT_MAX] + "…"
     return f"{h[:12]} {subj}"
-ark_commits = [_trim(l) for l in sys.argv[2].split("\n") if l.strip()]
+agent_commits = [_trim(l) for l in sys.argv[2].split("\n") if l.strip()]
 gh_prs = [l for l in sys.argv[3].split("\n") if l.strip()]
 date_str = sys.argv[4]
 session_nn = sys.argv[5]
@@ -152,8 +152,8 @@ record = {
     "session_uuid": session_uuid,
     "session_start": since_iso or "(fallback: 24h)",
     "ts": datetime.now().astimezone().isoformat(timespec="seconds"),
-    "touched_files_ark": ark_files,
-    "commits_ark": ark_commits,
+    "touched_files_agent": agent_files,
+    "commits_agent": agent_commits,
     "prs_today": gh_prs,
 }
 with open(out_file, "w", encoding="utf-8") as f:
