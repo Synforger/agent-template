@@ -70,6 +70,20 @@ time a session does what the skill is for; the table is .tooling/hooks/skill-tri
   (UserPromptSubmit and SessionStart: the same "hooks" entry without "matcher". The command checks the
   file first: python exits 2 on a missing file, and 2 is a hook's stop)
 
+Add to "hooks" > "PermissionRequest" (in a session that skips prompts, refuses the few Bash prompts Claude
+Code still shows, such as an rm whose target it cannot resolve, and says how to rewrite the command, so the
+tab does not wait for the operator; recommended with "defaultMode": "bypassPermissions"):
+
+  {
+    "matcher": "Bash",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "f=\"<agent-repo-root>/.tooling/hooks/bypass_prompt_gate.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\""
+      }
+    ]
+  }
+
 🚨 SessionEnd hook は設置しない (= 2026-06-29 廃止):
     旧運用で SessionEnd hook 経由で extract-artifact-index.sh を自動発火していたが、
     終了プロトコル発動外の軽い対話 (= CC 自然 exit) で空打ち jsonl が量産される構造欠陥のため廃止。
