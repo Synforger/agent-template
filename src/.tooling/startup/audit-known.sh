@@ -32,6 +32,8 @@
 #   weekly_audit: NEW in N repo(s) …       台帳に無い組が在る。 全部のタブに出し、 続く行に repo と見つかった物
 #   weekly_audit: known only (N repo(s) …) 既知だけ。 normal のタブにだけ 1 行
 #   weekly_audit: STALE / NO RUN / clean   今までどおり
+#   weekly_audit: INCOMPLETE (…)          一番新しい log に終わりの行が無い (= 走っている最中か、 途中で止まった)。
+#                                         続く行は、 終わりの行を持つ一番新しい log で判定した物
 
 set -uo pipefail
 export LC_ALL=C
@@ -99,13 +101,28 @@ unknown_rows() {
 }
 
 latest_log() { ls -t "$AUDIT_DIR"/weekly-audit-*.log 2>/dev/null | head -1; }
+# 終わりの行 (= `=== done: N repo(s) with findings ===`) を持つ一番新しい log。 走っている最中と、
+#   途中で止まった log は終わりの行を持たない
+finished_log() {
+    local log
+    while IFS= read -r log; do
+        if grep -qE '^=== done: [0-9]+ repo' "$log"; then printf '%s\n' "$log"; return; fi
+    done < <(ls -t "$AUDIT_DIR"/weekly-audit-*.log 2>/dev/null)
+}
+age_days() { echo $(( ( $(date +%s) - $(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1") ) / 86400 )); }
 
 cmd_status() {
-    local last n age rows new tier nrepo_new
-    last="$(latest_log)"
-    if [ -z "$last" ]; then echo "weekly_audit: NO RUN (no log in $AUDIT_DIR)"; return; fi
+    local last newest n age rows new tier nrepo_new
+    newest="$(latest_log)"
+    if [ -z "$newest" ]; then echo "weekly_audit: NO RUN (no log in $AUDIT_DIR)"; return; fi
+    last="$(finished_log)"
+    # 終わりの行の無い log を 0 件と読むと、 一つ前の本物の結果が「clean」 に隠れる
+    if [ "$newest" != "$last" ]; then
+        echo "weekly_audit: INCOMPLETE ($(basename "$newest") has no end line, $(age_days "$newest")d old: running, or stopped half way) -> the lines below are from the last finished run"
+    fi
+    if [ -z "$last" ]; then echo "weekly_audit: NO RUN (no finished log in $AUDIT_DIR)"; return; fi
     n="$(grep -oE 'done: [0-9]+ repo' "$last" | grep -oE '[0-9]+' | tail -1)"
-    age=$(( ( $(date +%s) - $(stat -c %Y "$last" 2>/dev/null || stat -f %m "$last") ) / 86400 ))
+    age="$(age_days "$last")"
     if [ -z "$n" ] || [ "$n" -eq 0 ]; then
         if [ "$age" -gt "$STALE_DAYS" ]; then
             echo "weekly_audit: STALE (last run ${age}d ago: $(basename "$last"))"

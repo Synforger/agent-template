@@ -340,6 +340,8 @@ echo "    history, the agent fixes what it can (files, future commits). Once the
 echo "    run the guard's 'weekly-audit.sh --accept <repo>' (a log with areas) or 'bash .tooling/startup/audit-known.sh"
 echo "    adopt <log>' (a log without); run it only on that decision, never to silence a line"
 echo "  - weekly_audit nothing for this tab -> the findings are in areas other tabs read: do not read it out"
+echo "  - weekly_audit INCOMPLETE -> the newest audit has not finished (running, or stopped half way); the lines under it"
+echo "    are from the last finished run. Say it in the briefing when that log is 1d old or more (= it stopped)"
 echo "  - weekly_audit known only -> nothing new since the last look (normal tab only): do not read it out; the operator"
 echo "    removes a finding from the ledger with 'audit-known.sh forget <repo> [<source> [<word>]]' after it is gone from history"
 echo "  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local"
