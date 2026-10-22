@@ -158,7 +158,7 @@ commit までで停止。 **PR と merge は統括**。
 
 ## 子のタブ (= session をまたいで回る体)
 
-Agent tool の体は親の会話の中でしか動けず、 自動の入れ替えで親の会話が替わると一緒に消える。 子のタブは client (= 画面の配信と入れ替えを持つ道具) の一覧に出るエージェントのタブで、 自分の会話と自分の入れ替えを持つので、 親が替わっても回り続ける。 **立てる・閉じるは統括の判断で行う** (= 起動の許可が要る Agent tool / Workflow tool とは別)。 命令 (= `tabs new` / `tabs children` / `tabs send` / `tabs close` / 子の側の `tabs report`) の使い方と、 子の側の手順は client の skill が持つ。
+Agent tool の体は親の会話の中でしか動けず、 自動の入れ替えで親の会話が替わると一緒に消える。 子のタブは client (= 画面の配信と入れ替えを持つ道具) の一覧に出るエージェントのタブで、 自分の会話と自分の入れ替えを持つので、 親が替わっても回り続ける。 **立てる・閉じるは統括の判断で行う** (= 起動の許可が要る Agent tool / Workflow tool とは別)。 命令 (= `tabs new` / `tabs children` / `tabs send` / `tabs close` / 子の側の `tabs report`) の使い方と、 子の側の手順は client の plugin の skill `pwa-client:tabs` が持つ (= 子の側のエージェントの決まりは § 子の側の決まり)。
 
 - 体の決まりはこの skill の上の節と同じ (= 渡す本文は § prompt テンプレ、 git は commit まで、 worktree は統括が切る、 PR と merge は統括、 中央で受け取る時の 7 点)
 - **子は親と同じ階層に立つ** (= 立てる命令が親の階層を渡す。 本文の検査は「子は親と同じ境界を読む」 前提で通るので、 違う階層の子には親だけが読んだ物が通ってしまう)
@@ -190,6 +190,16 @@ Agent tool の体は親の会話の中でしか動けず、 自動の入れ替�
 5. journal の「やったこと」 に子の id と成果を書く (= 子は journal を書かない)
 
 詰まった子は、 判断を返して続けさせるか、 引き取って閉じる。 起動の検査が `完了` か `詰まり` を 1 本でも出したら、 その session のうちに回収する。
+### 子の側の決まり (= 子のタブとして動く時。 手順の本体は skill `pwa-client:tabs § Working as a child`)
+
+見分けは環境変数 `AGENT_CHILD=1`。 手順に次のエージェントの決まりを足す。
+
+- **起動と締めは、 `CLAUDE.md` の開始時と終了時の手順の代わりに、 この節と skill `pwa-client:tabs` で行う** (= 子に親と同じ起動の読み込みをさせない)。 読むのは `rules/always.md` と `profile/profile.md` と親が渡した仕事 (= 最初の発話の本文。 自動の入れ替えで起動し直した時は、 タブのメモ `$PWA_NOTE` の「渡された仕事」 と「引き継ぎ」)。 journal / vision / 起動の検査 / ブリーフィングは無く、 エージェントの pull も起動の script が飛ばす (= 親が同じ clone で作業している)
+- 読了は 1 行で出し、 挨拶もブリーフィングもせずに仕事へ入る。 着手の前に、 § prompt テンプレと同じ 3 行の復唱を出す
+- 子は journal の代わりにタブのメモの `## 引き継ぎ` に続きを書く (= 締めの skill `session-end` は親の物)
+- エージェント自身の file を直す仕事でも、 親と同じ checkout の主 branch には commit しない (= 渡された worktree と branch の中で commit まで)
+- 操作者がこのタブで直に打った発話は、 普通の操作者の発話として扱う (= GO の判定は `rules/always.md`)
+
 
 ## 中央 merge の責務
 

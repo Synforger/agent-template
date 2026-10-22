@@ -1,8 +1,10 @@
 """Read the trigger table, and find which skills a session's transcript shows were read.
 
-Read means: the body the harness injects when a skill is loaded (`Base directory for this skill: .../<name>`),
-or a Read tool call on `.claude/skills/<name>/SKILL.md`. A Bash command that only names the file (an edit, a
-search) is not a read. Called by `skill_gate.py`.
+Read means: the body the harness injects when a skill is loaded (`Base directory for this skill: <folder>`),
+or a Read tool call on the skill's SKILL.md. A skill the table gives a `file` is found by that file: its folder
+after the mark, or its path in the Read call. Any other skill is found by its name: `.../<name>` after the mark,
+or `skills/<name>/SKILL.md` in the Read call. A Bash command that only names the file (an edit, a search) is not
+a read. Called by `skill_gate.py`.
 """
 import json
 import re
@@ -34,15 +36,17 @@ def transcript_of(payload: dict) -> Path | None:
     return main_path
 
 
-def read_skills(transcript: Path, names: list[str]) -> set[str]:
-    """Which of the named skills the transcript shows were read."""
+def read_skills(transcript: Path, names: list[str], files: dict[str, Path] | None = None) -> set[str]:
+    """Which of the named skills the transcript shows were read (`files` maps a name to its SKILL.md when the
+    table gives one)."""
+    files = files or {}
     raw = transcript.read_text(encoding="utf-8", errors="replace")
-    wanted = [name for name in names if name in raw]
-    loaded = {name: re.compile(re.escape(LOADED_MARK) + r"[^\n\"]*/" + re.escape(name) + r"(?![\w-])")
-              for name in wanted}
+    needles = {name: str(files[name].parent) if name in files else name for name in names}
+    wanted = [name for name in names if needles[name] in raw]
+    loaded = {name: _loaded_pattern(name, files.get(name)) for name in wanted}
     found: set[str] = set()
     for line in raw.splitlines():
-        candidates = [name for name in wanted if name not in found and name in line]
+        candidates = [name for name in wanted if name not in found and needles[name] in line]
         if not candidates:
             continue
         try:
@@ -61,9 +65,21 @@ def read_skills(transcript: Path, names: list[str]) -> set[str]:
                 if row.get("type") == "user" and loaded[name].search(text):
                     found.add(name)
                 elif block.get("type") == "tool_use" and block.get("name") in READING_TOOLS \
-                        and f"skills/{name}/SKILL.md" in arguments:
+                        and _read_path(name, files.get(name)) in arguments:
                     found.add(name)
     return found
+
+
+def _loaded_pattern(name: str, file: Path | None) -> re.Pattern[str]:
+    """The mark the harness writes when it loads the skill: its folder, or any folder ending in its name."""
+    if file is None:
+        return re.compile(re.escape(LOADED_MARK) + r"[^\n\"]*/" + re.escape(name) + r"(?![\w-])")
+    return re.compile(re.escape(LOADED_MARK) + r"\s*" + re.escape(str(file.parent)) + r"(?![\w/.-])")
+
+
+def _read_path(name: str, file: Path | None) -> str:
+    """What a Read call's arguments must hold to count as reading the skill."""
+    return f"skills/{name}/SKILL.md" if file is None else str(file)
 
 
 def first_bytes(path_text: str) -> bytes:
