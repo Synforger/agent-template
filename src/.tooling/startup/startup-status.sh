@@ -83,10 +83,8 @@ step_company_terms() {
 }
 
 # 6b. 番人の週次の深い監査の、 最後の回の結果 (= log に書くだけで誰にも届かず、 10 週見つけ続けていた。
-#     2026-10-20 の事故)。 履歴に残った物は消すと決めるまで毎週出続けるので、 台帳の既知と比べ、
-#     今回初めて見えた組だけを NEW として全部のタブへ出す (= 既知だけなら normal のタブに 1 行)。
-#     見出しに repo の境界が書かれた log は、 番人が既知を除いて書くので、 その境界を読めるタブにだけ出す。
-#     7 日より古ければ STALE。 比べ方と台帳の扱いは audit-known.sh と audit_findings.py の頭書き。
+#     2026-10-20 の事故)。 番人が既知を除いて書くので、 見つかった物は全部新しい漏れで、 その repo の境界を
+#     読めるタブにだけ出す。 判定と出し方は audit_findings.py の頭書き。
 step_weekly_audit() {
     bash .tooling/startup/audit-known.sh status
 }
@@ -334,16 +332,14 @@ echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then
 echo "    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this."
 echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
 echo "  - weekly_audit NEW / STALE / NO RUN -> say it first in the briefing, with the repos and what was found (NEW = findings"
-echo "    the known ledger does not hold yet; in a log that names each repo's area, findings the guard has not accepted,"
-echo "    shown only to the tabs that read that area: the new: lines name them). The operator decides what to remove from"
-echo "    history, the agent fixes what it can (files, future commits). Once the operator decides to accept what is listed,"
-echo "    run the guard's 'weekly-audit.sh --accept <repo>' (a log with areas) or 'bash .tooling/startup/audit-known.sh"
-echo "    adopt <log>' (a log without); run it only on that decision, never to silence a line"
+echo "    the guard has not accepted, shown only to the tabs that read that repo's area: the new: lines name them). The"
+echo "    operator decides what to remove from history, the agent fixes what it can (files, future commits). Once the"
+echo "    operator decides to accept what is listed, run the guard's 'weekly-audit.sh --accept [--as-of <time>] <repo>'"
+echo "    from a tab that reads that area; run it only on that decision, never to silence a line"
 echo "  - weekly_audit nothing for this tab -> the findings are in areas other tabs read: do not read it out"
 echo "  - weekly_audit INCOMPLETE -> the newest audit has not finished (running, or stopped half way); the lines under it"
 echo "    are from the last finished run. Say it in the briefing when that log is 1d old or more (= it stopped)"
-echo "  - weekly_audit known only -> nothing new since the last look (normal tab only): do not read it out; the operator"
-echo "    removes a finding from the ledger with 'audit-known.sh forget <repo> [<source> [<word>]]' after it is gone from history"
+echo "  - weekly_audit OLD LOG -> the guard that wrote the log names no repo's area: deploy the guard as the line says"
 echo "  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local"
 echo "    core.hooksPath (the global dispatcher already delegates to .githooks/) before committing there"
 echo "  - agent_guard MISSING -> this machine's guard-dispatcher checkout predates agent-hooks/ (the agent can read"
