@@ -38,7 +38,7 @@ agent-template/
     │   ├── session-end/               # 終了時の手順が呼ぶ extract-artifact-index.sh
     │   ├── docs-check/                # docs-check.sh (= 多軸 docs 検査) と step ごとの検査本体
     │   ├── rules/                     # build-rule-registry.py (= 階層ごとのルール ID 台帳、 発火記録の宛先)
-    │   ├── hooks/                     # go-gate-reminder.sh (= 毎発話 GO-gate リマインダ) と code_writing_gate.py (= 最初に code を書く前に skill code-writing を読ませる)
+    │   ├── hooks/                     # go-gate-reminder.sh (= 毎発話 GO-gate リマインダ) と skill_gate.py (= 表の操作を初めてする時に、 その skill を 1 回だけ読ませる。 表 = skill-triggers.toml)
     │   ├── commit/                    # git hook が呼ぶ script と、 その導入 (= setup-hooks.sh)
     │   ├── distribute/                # base との同期 (= init が同期 script 2 本をここへ置く) と番人の更新
     │   ├── lib/                       # 複数の役割から呼ばれる部品

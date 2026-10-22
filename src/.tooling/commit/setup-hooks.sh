@@ -54,18 +54,21 @@ UserPromptSubmit に追加 (= 毎発話に GO-gate リマインダ極短注入�
 
 (= 既存の他 hook entry は触らない、 配列末尾に append)
 
-Add to "hooks" > "PreToolUse" (stops the first code write of a session until the
-code-writing skill is read; recommended):
+Add to "hooks" > "PreToolUse", "UserPromptSubmit" and "SessionStart" (asks for a skill once, the first
+time a session does what the skill is for; the table is .tooling/hooks/skill-triggers.toml; recommended):
 
   {
-    "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+    "matcher": "*",
     "hooks": [
       {
         "type": "command",
-        "command": "python3 <agent-repo-root>/.tooling/hooks/code_writing_gate.py"
+        "command": "f=\"<agent-repo-root>/.tooling/hooks/skill_gate.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\""
       }
     ]
   }
+
+  (UserPromptSubmit and SessionStart: the same "hooks" entry without "matcher". The command checks the
+  file first: python exits 2 on a missing file, and 2 is a hook's stop)
 
 🚨 SessionEnd hook は設置しない (= 2026-06-29 廃止):
     旧運用で SessionEnd hook 経由で extract-artifact-index.sh を自動発火していたが、
