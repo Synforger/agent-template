@@ -26,6 +26,10 @@ _scratch/
 journal/**/session-*-auto-index.jsonl
 journal/**/session-*-friction.jsonl
 
+# タブのメモ (= 階層ごとの pages/<タブの id>/memo.md は PC ローカル、 雛形の memo.md だけ追跡する)
+**/pages/*/memo.md
+!**/pages/_template-tab/memo.md
+
 # anon-words 実体 (= 派生先で各自書く、 .example のみ追跡)
 .tooling/local-ci/anon-words.txt
 

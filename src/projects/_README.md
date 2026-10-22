@@ -1,8 +1,8 @@
 ---
 title: projects フォルダ
 description: 自己完結プロジェクト群の運用 (= 判定 / 標準構造 / 階層インターフェース / 使い分け)
-updated: 2026-10-09
-capacity: 6KB
+updated: "2026-10-22"
+capacity: 7KB
 ---
 
 # projects/
@@ -42,6 +42,7 @@ projects/<project>/
 │   └── always.md   ← プロジェクト起動時必読 (= Phase B-階層固有、 1 file)
 ├── plans/          ← 計画書 (= 完了は `_archive/` へ)
 ├── research/       ← このプロジェクト固有の調査
+├── pages/          ← 説明のページとタブのメモ (= 任意、 運用 = 親の `pages/_README.md`)
 ├── journal/        ← セッションログ (YYYY-MM-DD/session-NN.md)
 └── subprojects/    ← サブプロジェクト (= 同構造の子、 journal も独立)
 ```
@@ -53,7 +54,7 @@ project / subproject が必ず持つ最小セット (= 雛形 cp で自動充足
 - **必須 file**: `_README.md` / `rules/always.md` (= 固有 rule が無い間も空雛形を置く)
 - **起動時必読**: `vision.md` (= 長期の状態 1 枚、 上限 4KB)。 未作成の階層は docs-check step 10 が WARN で出すので、 次にその階層で起動した session の終了時に作る
 - **必須 dir**: `journal/` / `plans/`
-- **任意**: `research/` / `subprojects/` / `tooling/` / `.claude/skills/` / `_scratch/` (= 使う階層のみ。 `_scratch/` は残す前提の無い出力で、 検査の対象外)
+- **任意**: `research/` / `pages/` / `subprojects/` / `tooling/` / `.claude/skills/` / `_scratch/` (= 使う階層のみ。 `_scratch/` は残す前提の無い出力で、 検査の対象外)
 - **frontmatter 必須キー** (= `_README.md` + rules 層): `title` / `description` / `updated` / `capacity` (= 検査は docs-check step 1-2)
 
 欠落は docs-check step 10 が FAIL で検出。
@@ -93,4 +94,4 @@ cp -R projects/_template-project/ projects/<新名>/
 
 - 親が直に持つ repo の物は、 親の `research/<repo>/` と skill `<repo>` に置く (= project を切るのは、 起動を分ける理由が在る時だけ)
 - 仕様の本体は repo 側 docs、 エージェント 側はプロジェクト運用文書だけ (= 混ざったら即移設)
-- プロジェクトの追加 / 削除は folder の作成 / 削除だけで完結する (= 判定の真値は `ls` 結果 1 箇所、 書き換える表は無い)
+- プロジェクトの追加 / 削除は folder の作成 / 削除だけで完結する

@@ -1,7 +1,7 @@
 ---
 title: 自動化機構運用
 description: 自動化 script の発火経路 / 出力 / 反応規律 (= 機構改修時の参照)
-updated: 2026-09-28
+updated: "2026-10-22"
 stable: true
 when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.json の hook 配列を編集する直前
 ---
@@ -23,8 +23,8 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/startup/check-deployed-clones.sh` | startup-status から (= `step_clone_deploys`) | `clone_deploy(<名前>): ok` / `BEHIND <n>` / `UNKNOWN` (= この機械が手元の clone から配備している repo が、 追う branch の origin より遅れていないか。 見るのは派生が `.tooling/startup/deployed-clones.txt` に宣言した clone だけで、 file が無ければ何も出さない。 雛形 = `deployed-clones.example.txt`、 test = `tests/test-deployed-clones.sh`) |
 | `.tooling/startup/pc-labels.txt` | startup-status から | PC 識別 (= 雛形 = `pc-labels.example.txt`) |
 | `.tooling/startup/detect-stale-rules.sh` | startup-status から | 7 日無更新 rule 一覧 (= `stable: true` + `_README.md` は除外) |
-| `.tooling/startup/detect-duplicates.py` | startup-status + SessionEnd hook | `.tooling/_output/duplicates.md` |
-| `.tooling/session-end/extract-artifact-index.sh` | SessionEnd hook | `journal/<date>/session-NN-auto-index.jsonl` (= commit subject は 100 字で切る。 引数の階層へ書けない session では、 書かずに exit 1) |
+| `.tooling/startup/detect-duplicates.py` | startup-status + 終了時 Step 2 | `.tooling/_output/duplicates.md` |
+| `.tooling/session-end/extract-artifact-index.sh` | 終了時 Step 2 (= 引数に当 session の journal 階層) | `journal/<date>/session-NN-auto-index.jsonl` (= commit subject は 100 字で切る。 引数の階層へ書けない session では、 書かずに exit 1) |
 | `.tooling/commit/precommit-conflict-check.sh` | git pre-commit hook | stderr で重複警告 (= blocking なし) |
 | `.tooling/docs-check/docs-check.sh` | 終了時 Step 2 + 手動 | PASS / WARN / FAIL (= FAIL ≥ 1 は同 session fix) |
 | `.tooling/docs-check/docs-scan.py` | docs-check step 1-5 | `step \| level \| message` の TSV (= 文言は docs-check.sh と 1 対 1) |
@@ -62,6 +62,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 ### detector を書く時の実装規律
 
 - **opt-out / suppress marker は「対象行の上」も見る**: 理由を書く長さのコメントは行末に収まらないので上に書かれる。 同一行だけ見る実装は、 既に打たれている marker を黙って無効化する
+  - Why: path を見る gate が同一行限定で、 数か月前から打たれていた marker が効かず fresh clone で常時赤だった実例がある。 marker を同一行に押し込む対症より判定側を広げるのが正
 - **検出は環境に依らず同じ色を出す形で作る**: build 生成物 / 実行時生成物への参照は「未 build なら赤」になる。 opt-out を用意するだけでなく**既存の全該当箇所に打ってから** landed させる
 - **allow-list は構造で書く**: exact 一致の行は次の 1 件で破れる (= 雛形とその複製のような「構造上かならず一致する組」 は、 判定側で外す)
 - **baseline 方式の出力に「どこに残っているか」を含める**: 件数だけ出すと、 1 箇所直しても数が減らない時 (= basename 単位 dedup 等) に担当が判断できない
@@ -72,29 +73,19 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
   - Why: 検査 tool を強くする方向より、 主張を強い守り手へ押し込む方向が効く
 - **同じ事実を 2 箇所に書くのは運用上あり**。 条件 = **宣言結線** (= pair / mirror 化)。 敵は複製そのものでなく**未宣言の複製** (= 誰にも結線されず別々に育って割れる)
 - **恒常 WARN は 0 が定常**。 掃除は「除外で黙らせる」 でなく対象別に正しい形 (= 機械修正 / 参照修正 / 構造 skip) を選ぶ
+- 操作者の「表示が違う」 報告は、 成果物より先に配信経路 (= キャッシュ / 常駐 service) の故障を疑う
 
 ## 新 script 追加手順
 
 1. **置き場所** = `.tooling/<役割の folder>/<name>.{sh,py}` (= folder の意味の真値 = `.tooling/_README.md § folder`。 複数の役割から呼ばれる部品だけ `lib/`)。 LLM 不使用 / token 自動消費ゼロを死守
-2. **発火経路** = 起動時 `startup-status.sh` 集約 (= 軽量 1 行 summary のみ) / SessionEnd hook / git pre-commit の 3 択 (= PreToolUse 系は「発火時 = 判断後で手遅れ」 で非推奨)
+2. **発火経路** = 起動時 `startup-status.sh` 集約 (= 軽量 1 行 summary のみ) / 終了時 Step 2 (= 階層を引数に取る物) / git pre-commit の 3 択 (= PreToolUse 系は「発火時 = 判断後で手遅れ」 で非推奨)
 3. **失敗は fail-open**: `exit 0` で main 処理を止めない、 stderr に 1 行ログのみ
 4. **重い script は最後に `elapsed: N.Ns` を出す** (= test / build / gate / CI と、 それを束ねる入口)
    - Why: 遅くなったことに気づけるのは数字が出ている時だけ。 出ていないと「そういうもの」 として受け入れてしまう
    - 閾値で止めない (= 仕方ないのか壊れているのかは、 数字を見てから**中身を読んで**決める)。 1 回の測定で決めつけない (= 初回はキャッシュが冷たく数倍出る)
 5. **出力先**: 1 行 summary → stdout / session 毎の生成物 → `.tooling/_output/<name>.md` (= gitignore 済) / 履歴 → `journal/<date>/session-NN-<name>.jsonl`
-6. **本 file の § 機構と発火 の表に追記**
+6. **本 file の § 機構と発火 の表に追記** (= `.tooling/_README.md` は表を持たず本 file を真値として指すだけ)。 出力に反応が要るなら § 反応規律 の表にも 1 行 (= 起動時 / 終了時 / commit 時のどこで反応するか)
 7. **`setup-hooks.sh` 更新** (= 新 hook を install すべき手順を idempotent に追加)
 8. **docs-check FAIL 0 維持確認**
 
-機構自己拡張の運用フロー = `rules/always.md § meta` (= 本 file は具体実装に集中)。
-
-## base 同期の正規経路
-
-- agent-template との `.tooling` 同期は `sync-from-base.sh` / `promote-to-base.sh` を通す
-  - Why: 手 cp は synced-paths 契約と履歴を素通りし、 drift の出所が追えなくなる
-  - **例外は sync 機構自身の 2 file** (= `sync-from-base.sh` / `promote-to-base.sh`)。 `.synced-paths.txt` の対象外で自分を運べないため、 base checkout からの手 cp が唯一の更新経路 (= bootstrap 問題、 init 時にのみ配布される)
-  - How to apply: 手 cp したら commit message に base の版 (= tag or sha) を明記する (= 履歴が追えなくなる Why への最小の埋め合わせ)
-- 昇格時の匿名化 (= 操作者固有記述の除去) は promote 前に派生側 file で済ませる (= base 側で直すと次の promote で戻る)
-- **中身が派生ごとに違う file は `!` 除外へ置く** (= 索引 / 機構の表 / allow-list。 列挙したままにすると、 昇格のたびに他派生へ他人の実 file 名が流れる)
-- **base に payload file を足したら `.synced-paths.txt` に列挙か `!` 除外宣言のどちらかを必ず書く** (= 制御 file 自身は sync 対象外なので、 忘れると「base は出荷しているのに派生に降りない」 が無検出で成立する)
-  - Why: base CI の `synced-paths-check.sh` が両方向 (= 死に entry / 宣言漏れ) を機械検出する
+機構自己拡張の運用フロー = `rules/always.md § meta` (= 本 file は具体実装に集中)。 型との同期の経路 (= `sync-from-base.sh` / `promote-to-base.sh` / `.synced-paths.txt` の書き方) は `.claude/skills/base-sync/SKILL.md` が真値。

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{階層名}} のページ</title>
+<style>
+:root { --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d0d7de; --link: #0969da; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --link: #58a6ff; }
+}
+:root[data-theme="dark"] { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --link: #58a6ff; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 16px/1.7 system-ui, sans-serif; }
+main { max-width: 760px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 8px; }
+p.sub { color: var(--muted); margin: 0 0 20px; }
+a { color: var(--link); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{階層名}} のページ</h1>
+  <p class="sub">この階層のタブごとの説明のページ。 新しいタブを足したら、 下の表に 1 行足す。</p>
+  <table>
+    <thead><tr><th>タブ</th><th>何のタブか</th></tr></thead>
+    <tbody>
+      <!-- 例: <tr><td><a href="./<タブの id>/index.html">読める名前</a></td><td>このタブで扱った話を 1 行で</td></tr> -->
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

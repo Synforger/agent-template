@@ -49,9 +49,19 @@ agent-template/
     │   ├── _README.md                 # skills folder の運用
     │   ├── _template.md               # 新 skill の雛形
     │   ├── automation-machinery/SKILL.md
-    │   └── rule-registry/SKILL.md
+    │   ├── base-sync/SKILL.md         # 型との同期と、 新しい機械での立ち上げ
+    │   ├── code-writing/SKILL.md      # code の file の書き方
+    │   ├── explainer-pages/SKILL.md   # 依頼文・操作者に見せる文書・説明のページ
+    │   ├── external-implementation/SKILL.md
+    │   ├── implementation-plan/SKILL.md
+    │   ├── public-repo/SKILL.md       # 公開 repo の docs と検査
+    │   ├── review-rules/SKILL.md
+    │   ├── rule-registry/SKILL.md
+    │   ├── session-end/SKILL.md
+    │   └── sub-agent/SKILL.md         # 体と子のタブの使い方
     ├── projects/_template-project/    # プロジェクト雛形 (= 入れ子 subprojects 込み)
     ├── journal/                       # session の記録 (= 追記のみ)
+    ├── pages/                         # 操作者に見せる説明のページとタブのメモ (= index.html とタブの folder の雛形。 memo.md は gitignore)
     ├── plans/                         # やること + どう進めるか (= やることは file 内の見出し)
     ├── research/                      # 調べたこと
     ├── profile/                       # ユーザプロファイル構造
@@ -114,6 +124,8 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 - `.claude/skills/_template.md` — 新 skill の雛形
 - `.claude/skills/automation-machinery/SKILL.md` — `.tooling/*` 運用真値
 - `.claude/skills/rule-registry/SKILL.md` — 検査が突き合わせる台帳と発火記録の書式
+
+全エージェント共通の skill も出荷する: `sub-agent` / `explainer-pages` / `public-repo` / `review-rules` / `base-sync` / `session-end` / `implementation-plan` / `external-implementation` / `code-writing`。 上と同じく sync で降り、 別の版が要る派生は別名で持つか、 手元の `.synced-paths.txt` で path を除外する。
 
 派生固有の rule (= git 運用 / 禁止事項 / sub-agent 起動規律 / その他) は派生の `rules/always.md` / `.claude/skills/<name>/SKILL.md` に自由に追加。 rule 実コンテンツは sync 対象外。
 

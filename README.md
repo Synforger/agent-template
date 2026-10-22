@@ -50,9 +50,19 @@ agent-template/
     │   ├── _README.md                 # how the skills folder is run
     │   ├── _template.md               # scaffold for a new skill
     │   ├── automation-machinery/SKILL.md
-    │   └── rule-registry/SKILL.md
+    │   ├── base-sync/SKILL.md         # syncing with the template, and standing the agent up on a new machine
+    │   ├── code-writing/SKILL.md      # how a code file is written
+    │   ├── explainer-pages/SKILL.md   # requests, documents for the operator, explainer pages
+    │   ├── external-implementation/SKILL.md
+    │   ├── implementation-plan/SKILL.md
+    │   ├── public-repo/SKILL.md       # docs and checks for public repositories
+    │   ├── review-rules/SKILL.md
+    │   ├── rule-registry/SKILL.md
+    │   ├── session-end/SKILL.md
+    │   └── sub-agent/SKILL.md         # how to use sub-agents and child tabs
     ├── projects/_template-project/    # project scaffold (nested subprojects included)
     ├── journal/                       # session log structure (append only)
+    ├── pages/                         # explainer pages and tab memos for the operator (index.html + a tab folder scaffold; memo.md is gitignored)
     ├── plans/                         # what to do and how (tasks live as headings inside a plan)
     ├── research/                      # what has been looked up
     ├── profile/                       # user profile structure
@@ -117,6 +127,8 @@ The template ships only these; below this floor the machinery stops working.
 - `.claude/skills/_template.md` — scaffold for a new skill
 - `.claude/skills/automation-machinery/SKILL.md` — operational truth for `.tooling/*`
 - `.claude/skills/rule-registry/SKILL.md` — the ledger and hit-record format the checks verify against
+
+The template also ships the skills every agent shares: `sub-agent`, `explainer-pages`, `public-repo`, `review-rules`, `base-sync`, `session-end`, `implementation-plan`, `external-implementation` and `code-writing`. They are synced like the files above; an agent that needs a different version keeps it under another name or excludes the path in its local `.synced-paths.txt`.
 
 Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `.claude/skills/<name>/SKILL.md`; rule content is not synced.
 
