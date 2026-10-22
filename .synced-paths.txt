@@ -70,6 +70,8 @@ rules/_README.md
 .claude/skills/_template.md
 .claude/skills/rule-registry/SKILL.md
 .claude/skills/code-writing/SKILL.md
+.claude/skills/explainer-pages/SKILL.md
+.claude/skills/explainer-pages/tab-note.md
 
 # === 構造テンプレ (= 全階層共通の運用 1 本 + 雛形 file 集) ===
 # folder の運用は親の `<kind>/_README.md` 1 本が真値で、 下の階層には写しを置かない。
