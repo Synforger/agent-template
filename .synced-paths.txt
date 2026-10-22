@@ -25,6 +25,8 @@
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
+.tooling/startup/audit-known.sh
+.tooling/startup/audit_findings.py
 .tooling/startup/check-launch-pins.py
 .tooling/distribute/guard-update.sh
 .tooling/startup/check-deployed-clones.sh
@@ -64,6 +66,7 @@
 .tooling/tests/test-launch-pins.sh
 .tooling/tests/test-guard-may-write.sh
 .tooling/tests/test-guard-place.sh
+.tooling/tests/test-audit-known.sh
 .tooling/tests/test-artifact-index-number.sh
 .tooling/tests/test-skill-gate.sh
 .tooling/tests/test-subagent-model-gate.sh
