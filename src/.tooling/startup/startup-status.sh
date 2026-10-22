@@ -10,6 +10,8 @@ _T0="${EPOCHREALTIME:-$(date +%s)}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || { echo "ROOT not found: $ROOT"; exit 2; }
+# shellcheck source=../lib/guard-place.sh
+source "$ROOT/.tooling/lib/guard-place.sh"
 
 echo "===== agent startup status ($(date '+%Y-%m-%d %H:%M:%S')) ====="
 
@@ -81,20 +83,11 @@ step_company_terms() {
 }
 
 # 6b. 番人の週次の深い監査の、 最後の回の結果 (= log に書くだけで誰にも届かず、 10 週見つけ続けていた。
-#     2026-10-20 の事故)。 見つけた repo が 1 本でもあれば FINDINGS、 7 日より古ければ STALE。
+#     2026-10-20 の事故)。 履歴に残った物は消すと決めるまで毎週出続けるので、 台帳の既知と比べ、
+#     今回初めて見えた組だけを NEW として全部のタブへ出す (= 既知だけなら normal のタブに 1 行)。
+#     7 日より古ければ STALE。 比べ方と台帳の扱いは audit-known.sh の頭書き。
 step_weekly_audit() {
-    local dir="$HOME/.local/state/guard-dispatcher" last n age
-    last=$(ls -t "$dir"/weekly-audit-*.log 2>/dev/null | head -1)
-    if [ -z "$last" ]; then echo "weekly_audit: NO RUN (no log in $dir)"; return; fi
-    n=$(grep -oE 'done: [0-9]+ repo' "$last" | grep -oE '[0-9]+' | tail -1)
-    age=$(( ( $(date +%s) - $(stat -f %m "$last") ) / 86400 ))
-    if [ -n "$n" ] && [ "$n" -gt 0 ]; then
-        echo "weekly_audit: FINDINGS in $n repo(s) ($(basename "$last"), ${age}d ago) -> read the FINDINGS blocks of that log"
-    elif [ "$age" -gt 7 ]; then
-        echo "weekly_audit: STALE (last run ${age}d ago: $(basename "$last"))"
-    else
-        echo "weekly_audit: clean ($(basename "$last"), ${age}d ago)"
-    fi
+    bash .tooling/startup/audit-known.sh status
 }
 
 # 7. git guard armament across every checkout on this machine.
@@ -104,7 +97,7 @@ step_weekly_audit() {
 #    keeps personal identifiers out of commit subjects and bodies. The
 #    dispatcher's own doctor only inspects the current directory unless given a
 #    glob, which is why two repos sat shadowed unnoticed; sweep them all here.
-#    Work checkouts also live inside the areas of ~/.config/guard/areas.txt
+#    Work checkouts also live inside the areas of the guard's areas.txt
 #    (= machine-local, the same boundary the guard reads), nested to any depth;
 #    a sweep of the personal repos folder alone reported "armed" while a client repo ran no
 #    guard at all. A local `guard.scope exempt` is a shadow too (= the
@@ -126,7 +119,7 @@ step_git_guard() {
             guard_repos="${guard_repos} ${_d#"$HOME"/}(exempt)"
         fi
     done < <({ printf '%s\n' "$HOME"/repos/*/*/ "$ROOT"
-               _areas="$HOME/.config/guard/areas.txt"
+               _areas="$(guard_place areas.txt)"
                [ -f "${_areas}" ] && awk '!/^[[:space:]]*#/ && NF >= 2 && $1 != "_exempt" { for (i = 2; i <= NF; i++) print $i }' "${_areas}" \
                    | sed "s#^~#$HOME#" | while IFS= read -r _root; do
                        find "${_root}" -maxdepth 7 \( -name third_party -o -name .venv -o -name node_modules \
@@ -142,8 +135,8 @@ step_git_guard() {
     # The agent entry guard lives in the dispatcher checkout and is reached through
     # ~/.git-hooks; the settings entry passes silently when it is missing (a blocking
     # hook would stop every tool call), so its absence has to be said here.
-    if [ -e "${GUARD_CONFIG_DIR:-$HOME/.config/guard}/agent-off" ]; then
-        echo "agent_guard: OFF (the operator switched it off = ~/.config/guard/agent-off)"
+    if [ -e "$(guard_place agent-off)" ]; then
+        echo "agent_guard: OFF (the operator switched it off = $(guard_place agent-off))"
     elif [ -f "$HOME/.git-hooks/agent-hooks/claude-code/area-guard.py" ]; then
         echo "agent_guard: installed"
     else
@@ -166,7 +159,7 @@ step_claude_settings() {
 #    is repaired automatically, not just reported.
 step_anon_words() {
     WORDS_TRUTH="rules/anon-words.txt"
-    MASTER="$HOME/.config/anon-words/master.txt"
+    MASTER="$(guard_place master-words)"
     if [ -f "$WORDS_TRUTH" ]; then
         # words that must stay out of git (= names only this machine's folders know) come from a
         # local, non-synced generator and are appended before comparing: the machine copy is the
@@ -299,8 +292,8 @@ step_clone_deploys() {
 
 step_children() {
     # このタブが立てた子のタブ (= 入れ替わった親が、 自分の子とその状態を読む口。 PWA のタブの外では UNKNOWN)
-    if [ -f .tooling/work/tabs.py ]; then
-        python3 .tooling/work/tabs.py children --summary 2>/dev/null || echo "children: UNKNOWN"
+    if command -v tabs >/dev/null 2>&1; then
+        tabs children --summary 2>/dev/null || echo "children: UNKNOWN"
     fi
 }
 
@@ -339,15 +332,19 @@ echo "  - docs-check FAIL >= 1 -> must fix within the same session"
 echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task."
 echo "    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this."
 echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
-echo "  - weekly_audit FINDINGS / STALE / NO RUN -> say it first in the briefing, with the repos and what was found;"
-echo "    the operator decides what to remove from history, the agent fixes what it can (files, future commits)"
+echo "  - weekly_audit NEW / STALE / NO RUN -> say it first in the briefing, with the repos and what was found (NEW = findings"
+echo "    the known ledger does not hold yet: the new: lines name them). The operator decides what to remove from history,"
+echo "    the agent fixes what it can (files, future commits). Once the operator decides to accept what is listed, run"
+echo "    'bash .tooling/startup/audit-known.sh adopt <log>'; run it only on that decision, never to silence a line"
+echo "  - weekly_audit known only -> nothing new since the last look (normal tab only): do not read it out; the operator"
+echo "    removes a finding from the ledger with 'audit-known.sh forget <repo> [<source> [<word>]]' after it is gone from history"
 echo "  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local"
 echo "    core.hooksPath (the global dispatcher already delegates to .githooks/) before committing there"
 echo "  - agent_guard MISSING -> this machine's guard-dispatcher checkout predates agent-hooks/ (the agent can read"
 echo "    areas and write anywhere until then): in the guard-dispatcher clone run 'git fetch origin &&"
 echo "    git checkout -B develop origin/develop && bash scripts/bootstrap-machine.sh' (= its README)"
 echo "  - agent_guard OFF -> the operator switched the entry guard off on purpose: say so in the briefing and do"
-echo "    not reinstall or remove the file (= the operator removes ~/.config/guard/agent-off to switch it on)"
+echo "    not reinstall or remove the file (= the operator removes the guard's agent-off to switch it on)"
 echo "  - model_pin PINNED -> a launch path names a model version or a variant suffix; use the bare alias"
 echo "    (opus / fable / sonnet / haiku) so every release and every default change is picked up; a settings(...)"
 echo "    hit is the per-machine model key the CLI writes back: delete that key"
@@ -363,5 +360,5 @@ echo "    (UNKNOWN -> say the deploy state of that repo was not checked)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
 echo "    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply"
 echo "  - children 完了 / 詰まり >= 1 -> a child tab this tab opened has reported: read its report, take the result in"
-echo "    (merge / remove its worktree), then 'tabs.py close <id>', and say it in the briefing. 作業中 children keep"
-echo "    running on their own (= 'tabs.py children' lists them); the steps are skill sub-agent § 子のタブ"
+echo "    (merge / remove its worktree), then 'tabs close <id>', and say it in the briefing. 作業中 children keep"
+echo "    running on their own (= 'tabs children' lists them); the steps are skill sub-agent § 子のタブ"
