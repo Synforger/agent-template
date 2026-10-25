@@ -216,6 +216,36 @@ printf '%s\n<session-rollover phase="start">\ntier=projects/_template-project\n<
 launch --first-message-file "${T}/msg"
 check "_ 始まりの folder は引き継ぐ階層にならない" lacks "${T}/out/env" "AGENT_TIER=projects/_template-project"
 
+# --- client が階層ごとに立てたタブ -----------------------------------------------------
+
+# 封筒の 1 行目は "client" を含む (= 発話の名前で当てると Client の階層を採る)
+OPENED='Tab opened by the client for its tier (the operator did not type this):'
+
+setup
+printf '%s\n<tab-open>\ntier=normal\n</tab-open>' "${OPENED}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "立てたタブの階層が normal なら、 1 行目に階層の名前が在っても normal" has "${T}/out/env" "AGENT_TIER=normal"
+
+# AP は Client より短い名前 (= 発話の名前で当てると、 1 行目の client で長い Client を採って外れる)
+setup
+mkdir -p "${T}/agent/projects/AP/subprojects/番人"
+printf '%s\n<tab-open>\ntier=projects/AP\n</tab-open>' "${OPENED}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "立てたタブはプロジェクトの階層で起動する" has "${T}/out/env" "AGENT_TIER=projects/AP"
+
+setup
+mkdir -p "${T}/agent/projects/AP/subprojects/番人"
+printf '%s\n<tab-open>\ntier=projects/AP/subprojects/番人\n</tab-open>' "${OPENED}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "立てたタブはサブプロジェクトの階層で起動する" has "${T}/out/env" "AGENT_TIER=projects/AP/subprojects/番人"
+check "立てたタブの封筒は最初の発話として渡る" [ "$(tail -1 "${T}/out/args")" = "</tab-open>" ]
+
+setup
+printf '%s\n<tab-open>\ntier=projects/Nowhere\n</tab-open>' "${OPENED}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "立てたタブの階層の folder が無ければ発話から決め直す" has "${T}/out/env" "AGENT_TIER=projects/Client"
+check "立てたタブの決め直しを 1 行で言う" grep -q "引き継いだ階層が見つかりません" "${T}/out/stderr"
+
 # --- fastMode の固定 ---------------------------------------------------------------
 
 setup

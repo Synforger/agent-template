@@ -14,7 +14,7 @@
 環境変数 `AGENT_TIER` で session に渡し、 階層の folder は `GUARD_WORK_FOLDER` で番人に渡す。 自動の入れ替えで起動し直された時 (= 最初の発話が
 `<session-rollover phase="start">` の封筒) は、 前の会話が封筒に書いた階層 (= `tier=` の行) をそのまま採る。
 子のタブ (= 親のタブが `tabs new` で立てたタブ) の最初の発話は `<child-start>` の塊を持ち、 その `tier=` の行
-(= 親の階層) を採る。 子のタブは `--child` で起動され、 `AGENT_CHILD=1` を session に渡す (= 起動と締めの手順が
+(= 親の階層) を採る。 client が階層ごとに立てたタブの最初の発話 (= `<tab-open>` の封筒) も、 その `tier=` の行を採る。 子のタブは `--child` で起動され、 `AGENT_CHILD=1` を session に渡す (= 起動と締めの手順が
 子のタブ用になる。 手順は skill `pwa-client:tabs` と `sub-agent § 子の側の決まり`)。 子はエージェントを pull しない (= 親が同じ clone で作業している)。 口座は `CLAUDE_CONFIG_DIR` (= PWA のアカウント)、 無ければ `~/.claude`。
 再開は、 会話の記録が在る口座で開く (= `~/.claude*/projects/*/<ID>.jsonl`)。 起動の前にエージェントを pull する
 (= session が最初に読む CLAUDE.md を、 別の PC が締めた分まで揃える)。 エージェントの folder は `AGENT_ROOT` で
@@ -121,6 +121,8 @@ ROLLOVER = re.compile(r'<session-rollover phase="start">\n(.*?)\n</session-rollo
 # 子のタブの最初の発話 (= 親のタブからの連絡の封筒) が本文の頭に持つ塊。 中身は `tabs new` が書き、 `tier=` の
 # 行が子の階層 (= 親と同じ階層)。
 CHILD_START = re.compile(r"<child-start>\n(.*?)\n</child-start>", re.S)
+# client が階層ごとにタブを立てて起動した時の最初の発話 (= 封筒だけで本文は無い)。 `tier=` の行が立てた階層。
+TAB_OPEN = re.compile(r"<tab-open>\n(.*?)\n</tab-open>", re.S)
 # `AGENT_TIER` の値の形 (= `_` と `.` で始まる名前は階層ではない)。
 TIER = re.compile(r"projects/[^/\n._][^/\n]*(/subprojects/[^/\n._][^/\n]*)?")
 
@@ -137,17 +139,17 @@ def tier_folder(tier: str) -> Path | None:
 
 
 def handed_tier(message: str) -> str | None:
-    """自動の入れ替えか子のタブの最初の発話が運んでいる階層 (= `tier=` の行。 行が無ければ空)。 その発話でなければ None。
+    """自動の入れ替え・子のタブ・client が立てたタブの最初の発話が運んでいる階層 (= `tier=` の行。 行が無ければ空)。 その発話でなければ None。
 
     発話の部分一致には任せない: 封筒の 1 行目も本文も、 階層の名前と同じ語を含み得る。"""
-    found = ROLLOVER.search(message) or CHILD_START.search(message)
+    found = ROLLOVER.search(message) or CHILD_START.search(message) or TAB_OPEN.search(message)
     if not found:
         return None
     return next((line[5:].strip() for line in found.group(1).splitlines() if line.startswith("tier=")), "")
 
 
 def tier_of(message: str) -> tuple[str, Path]:
-    """会話の最初の発話から階層を決める。 返り値 = (`AGENT_TIER` の値, 階層の folder)。 自動の入れ替えの発話なら
+    """会話の最初の発話から階層を決める。 返り値 = (`AGENT_TIER` の値, 階層の folder)。 自動の入れ替えの発話・子のタブ・client が立てたタブなら
     封筒が運ぶ階層、 でなければ発話の中の名前 (= `pick_tier`)。 起動も、 再開も、 タブの一覧もこれで決める。"""
     handed = handed_tier(message)
     folder = tier_folder(handed) if handed is not None else None
