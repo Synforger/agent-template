@@ -64,6 +64,7 @@
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
 .tooling/tests/test-deployed-clones.sh
 .tooling/tests/test-claude-launch.sh
+.tooling/tests/test-guard-update.sh
 .tooling/tests/test-platform-check.sh
 .tooling/tests/test-build-rule-registry.sh
 .tooling/tests/test-rule-hits-summary.sh

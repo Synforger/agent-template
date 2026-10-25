@@ -98,7 +98,7 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/sync-from-base.sh
 ```
 
-`.synced-paths.txt` に列挙された path のみ base 最新で上書き。 派生固有 file (= synced-paths 外) は触らない。 `git diff` で確認後 commit。
+`.synced-paths.txt` に列挙された path のみ base 最新で上書き。 派生固有 file (= synced-paths 外) は触らない。 base の `.synced-paths.txt` が宣言している path (= 列挙も `!` も) を、 派生の `.synced-paths.txt` が列挙も `!` 除外もしていなければ、 その行を全部名指して、 何も写さずに止まる (= base と同じ行を足すか、 降ろさないなら `!path  # 理由` を足して流し直す)。 `git diff` で確認後 commit。
 
 ### 派生 → base (= 上り)
 
