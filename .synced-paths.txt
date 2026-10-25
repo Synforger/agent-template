@@ -45,6 +45,9 @@
 .tooling/lib/guard-may-write.py
 .tooling/lib/guard-place.sh
 
+# 起動の本体 (= 最初の発話から階層を決めて claude を起動する。 起動の固定の検査 check-launch-pins.py が読む先)
+.tooling/lib/claude-launch.py
+
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
 
@@ -60,6 +63,7 @@
 
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
 .tooling/tests/test-deployed-clones.sh
+.tooling/tests/test-claude-launch.sh
 .tooling/tests/test-platform-check.sh
 .tooling/tests/test-build-rule-registry.sh
 .tooling/tests/test-rule-hits-summary.sh
@@ -125,4 +129,5 @@ profile/_template.md
 !.tooling/startup/duplicates-allowlist.txt  # 登録行は派生の実 file を名指しする (= base へ運ぶと他派生に無い path が並ぶ)
 !.tooling/startup/pc-labels.example.txt     # 派生は pc-labels.txt を自分で持つ、 base 版は書き方の例
 !.tooling/startup/deployed-clones.example.txt # 派生は deployed-clones.txt を自分で持つ、 base 版は書き方の例
+!.tooling/claude-launch.sh          # 起動の入口は agent ごとに claude へ足す旗を持つ (= init で一度だけ届く)
 !pages/index.html                   # 階層のトップは派生がタブの一覧を書く (= 雛形としては init で一度だけ届く)
