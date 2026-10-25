@@ -289,6 +289,14 @@ step_clone_deploys() {
     fi
 }
 
+# 8g. 器 (= manifest で建てた道具・体・常駐の置き場) が、 宣言どおりに揃って動いているか (= 判定の真値は
+#     manifest の `platform check`、 読んで行にするのは check_platform.py)。 器の無い機械では何も出さない
+step_platform_check() {
+    if [ -f .tooling/startup/check_platform.py ]; then
+        python3 .tooling/startup/check_platform.py
+    fi
+}
+
 step_children() {
     # このタブが立てた子のタブ (= 入れ替わった親が、 自分の子とその状態を読む口。 PWA のタブの外では UNKNOWN)
     if command -v tabs >/dev/null 2>&1; then
@@ -309,13 +317,14 @@ step_claude_settings  > "$TMPD/8-settings"   &
 step_launch_pins      > "$TMPD/8b-pins"     &
 step_guard_deploy     > "$TMPD/8d-deploy"   &
 step_clone_deploys    > "$TMPD/8e-clones"   &
+step_platform_check   > "$TMPD/8g-platform" &
 step_children         > "$TMPD/8f-children" &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
-    "$TMPD/8f-children"
+    "$TMPD/8g-platform" "$TMPD/8f-children"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -359,6 +368,10 @@ echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> 
 echo "  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in"
 echo "    the briefing and follow that repo's own deploy steps (the derived agent keeps them, e.g. in a skill)"
 echo "    (UNKNOWN -> say the deploy state of that repo was not checked)"
+echo "  - platform_check N problem(s) -> part of this machine's platform is missing or down (e.g. a config dir that"
+echo "    does not trust the moved checkout, a resident service not loaded / not running / restarting): say it in"
+echo "    the briefing with every problem: line, read the error log a line names, and fix it in this session or"
+echo "    hand it to the tab that owns that part (UNKNOWN -> say the platform was not checked, with the reason)"
 echo "  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the"
 echo "    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply"
 echo "  - children 完了 / 詰まり >= 1 -> a child tab this tab opened has reported: read its report, take the result in"
