@@ -6,7 +6,7 @@
 #
 # 番人 (= guard-dispatcher) を直した後、 もう 1 台の PC で追いつく時、 起動時の点検が guard_deploy STALE を
 # 出した時に流す。 session の中からでも流せる。
-# 1. エージェントの repo を pull する
+# 1. エージェントの repo を pull する (= 追う branch の無い repo は飛ばす)
 # 2. 番人の clone を develop に揃えて導入し直す (= bootstrap。 番人は clone から直接動くので clone は develop に留める。
 #    手元に origin に無い commit / commit していない変更があれば止める。 作業中の変更は worktree で持つ)
 # 3. Claude Code の設定を全 config dir へ配る (= その script を持つ派生だけ。 templates/claude-settings.json が真値)
@@ -21,7 +21,13 @@ LOG="${TMPDIR:-/tmp}/guard-update.log"
 : > "${LOG}"
 
 echo "== 1/3 エージェントの repo を pull"
-git -C "${AGENT}" pull -q --rebase --autostash || { echo "   pull が止まりました。 ${AGENT} の状態を確かめてください"; exit 1; }
+# 追う branch の無い repo (= remote を持たない手元だけの repo) は取り込む先が無いので飛ばして番人の導入へ進む
+# (= 起動の点検の remote_sync と同じ扱い)
+if ! git -C "${AGENT}" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+    echo "   (skipped, no upstream branch)"
+else
+    git -C "${AGENT}" pull -q --rebase --autostash || { echo "   pull が止まりました。 ${AGENT} の状態を確かめてください"; exit 1; }
+fi
 
 echo "== 2/3 番人を develop に揃えて導入し直す"
 git -C "${GUARD_CLONE}" fetch -q origin develop || exit 1
