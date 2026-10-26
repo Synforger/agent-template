@@ -1,7 +1,7 @@
 ---
 title: pages/ の運用 (= 全階層共通の真値)
 description: 操作者に見せる説明のページとタブのメモの置き場。 何を入れるか / 構造 / 新しいタブの足し方 / git から外す物
-updated: "2026-10-22"
+updated: "2026-10-26"
 capacity: 3KB
 ---
 
@@ -27,12 +27,13 @@ capacity: 3KB
 ```
 
 - 階層はタブを起動した階層。 階層が無いタブは `normal` (= 親の階層)
-- `memo.md` は client の 📋 が開く普通のメモ (= そのタブのトップページへのリンクは、 client の画面が 📋 の頭に出す)。 `.gitignore` が `pages/*/memo.md` を外す
+- `memo.md` は client の 📋 が開く普通のメモ (= そのタブのトップページへのリンクは、 client の画面が 📋 の頭に出す。 メモに別の「トップページ」 を書かない)。 `.gitignore` が `pages/*/memo.md` を外す
+- **説明のページと説明の資料はタブの folder にだけ置く**。 道具がほかの場所に書き出す物は、 タブの `index.html` に 1 行足して配線する (= タブのトップページが説明の全部への唯一の入口)
 
 ## 新しいタブ
 
 1. タブの folder と `index.html` は client が作る (= タブの階層を記録した時に、 無ければ `_template-tab/index.html` を写し、 `{{title}}` をタブの題、 `{{tier}}` を階層で埋める。 在るページには触らない)。 `memo.md` は起動の script が置く
-2. 説明のページを置いたら、 タブの `index.html` にそのページへの 1 行を足す
+2. 説明のページを置いたら、 タブの `index.html` にそのページへの 1 行を足し、 `python3 -I .claude/skills/explainer-pages/scripts/check-tab-links.py <タブの folder>` で抜けを 0 にする
 3. タブが最初の説明のページを置いた時に、 階層のトップ `index.html` にそのタブへの 1 行を足す
 
 ## 残す
