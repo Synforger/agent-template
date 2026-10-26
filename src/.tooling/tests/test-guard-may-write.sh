@@ -38,7 +38,7 @@ client  ~/agent/projects/work/subprojects/acme
 AREAS
 cp "${TOOLING}/session-end/extract-artifact-index.sh" "${AGENT}/.tooling/session-end/"
 cp "${TOOLING}/rules/build-rule-registry.py" "${AGENT}/.tooling/rules/"
-cp "${TOOLING}/lib/guard-may-write.py" "${AGENT}/.tooling/lib/"
+cp "${TOOLING}/lib/guard-may-write.py" "${TOOLING}/lib/md_fences.py" "${AGENT}/.tooling/lib/"
 for repo in "${AGENT}" "${COMPANY}" "${CLIENT}"; do
     git init -q "${repo}"
     git -C "${repo}" -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m init
