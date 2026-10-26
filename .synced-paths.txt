@@ -88,6 +88,7 @@ rules/_README.md
 .claude/skills/rule-registry/SKILL.md
 .claude/skills/code-writing/SKILL.md
 .claude/skills/explainer-pages/SKILL.md
+.claude/skills/explainer-pages/scripts/check-tab-links.py
 
 # 全エージェント共通の skill (= 体の使い方 / 公開の repo の作法 / 決め方とレビュー / 型と器の取り込み / 締め / 計画書 / 外の実装)
 .claude/skills/sub-agent/SKILL.md
