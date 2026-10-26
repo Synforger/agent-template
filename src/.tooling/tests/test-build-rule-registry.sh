@@ -18,12 +18,14 @@ PROJ="${T}/projects/demo"
 SUB="${PROJ}/subprojects/sub"
 mkdir -p "${T}/.tooling/rules" "${T}/.tooling/lib" "${T}/rules" "${PROJ}/rules" "${SUB}/rules"
 cp "${HERE}/rules/build-rule-registry.py" "${T}/.tooling/rules/"
-cp "${HERE}/lib/guard-may-write.py" "${T}/.tooling/lib/"
+cp "${HERE}/lib/guard-may-write.py" "${HERE}/lib/md_fences.py" "${T}/.tooling/lib/"
 RUN="${T}/.tooling/rules/build-rule-registry.py"
 
 printf '# rules\n\n## 基本\n\n- 親の決まり\n' > "${T}/rules/always.md"
 printf '# demo\n\n## 基本\n\n- demo の決まり\n\n## 検証\n\n- demo の検証\n' > "${PROJ}/rules/always.md"
 printf '# sub\n\n## 基本\n\n- sub の決まり\n' > "${SUB}/rules/always.md"
+# 4 本の backtick の block は、 中の ``` の行では閉じない (= 中の見出しは節でなく、 閉じた後の見出しは節)
+printf '\n````markdown\n```\n## block の中の見出し\n```\n````\n\n## block の後の節\n\n- 後の決まり\n' >> "${SUB}/rules/always.md"
 # project の階層は、 文字を分ける前に R- で振られた台帳を持つ (= 2 番は退役した節)
 printf '%s\n' \
     '{"id": "R-0001", "file": "projects/demo/rules/always.md", "heading": "基本", "path": "基本", "level": 2, "retired": false}' \
@@ -66,6 +68,8 @@ holds "subproject の ID は S-" "${SUB}/rules/registry.jsonl" '"id": "S-0001", 
 holds "文字を直した階層は、 直した時刻を台帳の隣に持つ" "${PROJ}/rules/hits-since.json" \
     '"lettered_since": "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}[+-][0-9]{2}:[0-9]{2}"'
 holds "既に在った宣言は残る" "${PROJ}/rules/hits-since.json" '"by_id_since": "2026-01-02"'
+ok "4 本の backtick の block の中の見出しは、 節として載らない" "$(! grep -q 'block の中の見出し' "${SUB}/rules/registry.jsonl"; echo $?)"
+holds "4 本の backtick の block が閉じた後の見出しは、 節として載る" "${SUB}/rules/registry.jsonl" '"id": "S-0002", .*"heading": "block の後の節"'
 ok "最初から正しい文字で振った階層は、 直した時刻を持たない" "$([ ! -e "${SUB}/rules/hits-since.json" ]; echo $?)"
 
 stamp="$(cat "${PROJ}/rules/hits-since.json")"

@@ -35,6 +35,8 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+from md_fences import fence_states  # noqa: E402
 
 # 走査対象 = 全階層の rule 層 (= 親 / project / subproject)
 TARGET_GLOBS = [
@@ -111,21 +113,17 @@ def sections(relpath):
     """H2 / H3 見出しを (level, text, breadcrumb) で返す。 fenced code block 内は除外。"""
     out = []
     h2 = None
-    infence = False
     with open(os.path.join(ROOT, relpath), encoding="utf-8") as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if line.lstrip().startswith("```"):
-                infence = not infence
-                continue
-            if infence:
-                continue
-            if line.startswith("### "):
-                text = line[4:].strip()
-                out.append((3, text, f"{h2} > {text}" if h2 else text))
-            elif line.startswith("## "):
-                h2 = line[3:].strip()
-                out.append((2, h2, h2))
+        lines = [line.rstrip("\n") for line in f]
+    for line, infence in zip(lines, fence_states(lines)):
+        if infence:
+            continue
+        if line.startswith("### "):
+            text = line[4:].strip()
+            out.append((3, text, f"{h2} > {text}" if h2 else text))
+        elif line.startswith("## "):
+            h2 = line[3:].strip()
+            out.append((2, h2, h2))
     return out
 
 

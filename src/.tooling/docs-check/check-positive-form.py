@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from md_fences import fence_states  # noqa: E402
 
 # 打ち消しの語尾 (= 節の末尾に来た時だけ主文を否定形にする)
 NEGATIVE_TAIL = re.compile(
@@ -80,11 +82,8 @@ def statement_of(line: str) -> str | None:
 
 def violations_in(text: str) -> list[tuple[int, str]]:
     hits = []
-    in_fence = False
-    for i, line in enumerate(text.splitlines(), 1):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
+    lines = text.splitlines()
+    for i, (line, in_fence) in enumerate(zip(lines, fence_states(lines)), 1):
         if in_fence:
             continue
         stmt = statement_of(line)
@@ -113,6 +112,12 @@ FIXTURE_CLEAN = """\
 
 - **通る道を最後まで静的に読んでから直す** (= 落ちた段だけ直して投げ直すと往復が増える)
   - Why: もっともらしい原因への飛びつきは別経路 leak で再発しない
+
+````markdown
+```
+- **見本の中の否定形は数えない** ― 4 本の backtick の block は中の ``` の行では閉じない
+```
+````
 """
 
 

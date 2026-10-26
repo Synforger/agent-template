@@ -59,6 +59,10 @@
 .tooling/startup/check-static-capacity.sh
 .tooling/lib/skill-listing.py
 .tooling/docs-check/check-positive-form.py
+.tooling/docs-check/check-equals-asides.py
+.tooling/docs-check/check-rewrite-keeps.py
+# 決まりの文を読む検査と台帳が共有する code block の読み方
+.tooling/lib/md_fences.py
 .tooling/docs-check/check-declarations.py
 
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
