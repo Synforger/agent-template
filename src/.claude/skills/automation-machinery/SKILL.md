@@ -38,6 +38,10 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/lib/guard-may-write.py` | 引数や走査で決まる階層へ書く script が、書く前に呼ぶ。extract-artifact-index と build-rule-registry が当たる | exit 0 = 書いてよい。番人が無い機械 / session の外 / 訊く口の無い古い番人もここに入る。exit 1 = 入口の番人が拒んだ。番人の 1 行を stderr に出す。判定は番人が持ち、ここは訊くだけである |
 | `.tooling/lib/skill-listing.py` | check-static-capacity (階層ごと) + `--list` | 1 行 1 file の一覧バイト数 (`description` + `when_to_use`)。`--list` はその階層の一覧で、ハーネスが gitignored な folder を探さない分の代わりになる |
 | `.tooling/docs-check/check-positive-form.py` | docs-check step 15 | 否定形の主文 1 行ずつ。書式の真値は `.claude/skills/rule-registry/SKILL.md § 表現形式` が持つ |
+| `.tooling/docs-check/check-declarations.py` | docs-check step 16 + 手動 (物・道具・テストを足す時) | 置き場の宣言 `.tooling/layout.txt` に無い file と folder、約束の表 `.tooling/contracts.txt` に載っていない道具とテスト、実物の無い行を 1 行ずつ。件が在れば exit 1 |
+| `.tooling/docs-check/check-equals-asides.py` | docs-check step 17 + 手動 (file を引数で渡すと、その file だけ) | `(= …)` の言い足しが残る file 1 行ずつ。code block と `code` の中は数えない。書式の真値は `.claude/skills/rule-registry/SKILL.md § 表現形式` が持つ |
+| `.tooling/docs-check/check-rewrite-keeps.py` | 手動 (文を書き直した時。`--ref <前の版>`) | 書き直した file と前の版で、`code`・「引用」・日付・URL・[発言者] の増減を 1 行ずつ出し、差が在れば exit 1。見出しは段と並びが同じなら文だけ直してよい |
+| `.tooling/lib/md_fences.py` | `check-positive-form.py`・`check-equals-asides.py`・`build-rule-registry.py` が import する | 行ごとに code block の中かを返す。block は開いた印と同じ字で同じ本数以上の印だけの行で閉じる |
 | `.tooling/startup/capacity-candidates.py` | check-static-capacity の超過時 | バイト数降順の削減候補 + 発火実績。「少し削って測り直す」の往復を作らないための出力である |
 | `.tooling/hooks/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入。判定本体は `rules/always.md § forbidden` にあり、hook は再武装のみ行う |
 | `.tooling/hooks/skill_gate.py` (+ `skill_triggers.py`・`skill_reads.py`・表 `skill-triggers.toml`) | PreToolUse (全部の道具)・UserPromptSubmit・SessionStart hook | 表の操作に当たり、会話の記録にその skill を呼んだ跡か Read で読んだ跡が無ければ、道具を 1 回止めて全部まとめて名指す。表の操作は、道具・path・命令・作業の folder・発話・起動の環境である。サブエージェントは自分の記録を見る。発話と起動は止めず、1 行の注意で済ませる。skill ごとに 1 session に 1 回で、読めない時は通す。test は `tests/test-skill-gate.sh` である |
