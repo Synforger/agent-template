@@ -1,15 +1,15 @@
 ---
-title: メタ運用 統合 rule (= 容量 / 書き方 / 増やし方 / 検出機構、 形態 D 基底)
-description: agent-template 出荷時の常時 load 単一 file (= 形態 D)。 派生は本 file に「§ git / § quality / § style / § forbidden 等」 の personal section を追記して統一運用
-updated: 2026-09-28
+title: メタ運用 統合 rule (容量 / 書き方 / 増やし方 / 検出機構、形態 D 基底)
+description: agent-template 出荷時の常時 load 単一 file (形態 D)。派生は本 file に「§ git / § quality / § style / § forbidden 等」の personal section を追記して統一運用
+updated: 2026-10-26
 capacity: 13KB
 ---
 
 # メタ運用 統合 rule
 
-形態 D: 全階層で `rules/always.md` 1 file 統合。 詳細は本 file の section、 特定の作業中にだけ効く手順は skill (= `.claude/skills/<name>/SKILL.md`) が持つ。
+形態 D: 全階層で `rules/always.md` 1 file 統合。詳細は本 file の section が持ち、特定の作業中にだけ効く手順は skill (`.claude/skills/<name>/SKILL.md`) が持つ。
 
-出荷時は本 file = メタ section のみ。 派生は同 file に personal section (= git flow / style / forbidden 等) を追記して 1 file 統合運用、 各階層 (= project / subproject) も同構造。
+出荷時は本 file = メタ section のみ。派生は同 file に personal section を追記して 1 file 統合運用する。personal section は git flow / style / forbidden などである。各階層 (project / subproject) も同構造。
 
 ---
 
@@ -17,14 +17,14 @@ capacity: 13KB
 
 ### 常時 load は読み切れる量に保つ
 
-**常時 load される 1 file は 200 行未満に収める**。 超えた分は場面でだけ読まれる skill (= `.claude/skills/`) へ降ろす。
+**常時 load される 1 file は 200 行未満に収める**。超えた分は場面でだけ読まれる skill (`.claude/skills/`) へ降ろす。
 
-- Why: 長い file は context を食うだけでなく**守られる率そのものを下げる** (= 公式ガイドの推奨値。 原文 "Longer files consume more context and reduce adherence")
-- How: 押し出す対象は**発火実績の下位から選ぶ** (= 行数が稼げる節から選ばない)。 降ろした先に同じことが書かれていないか先に確かめる
+- Why: 長い file は context を食うだけでなく**守られる率そのものを下げる**。公式ガイドの推奨値で、原文は "Longer files consume more context and reduce adherence" である
+- How: 押し出す対象は**発火実績の下位から選ぶ**。行数が稼げる節からは選ばない。降ろした先に同じことが書かれていないか先に確かめる
 
-### 静的容量上限 (= 階層別合計)
+### 静的容量上限 (階層別合計)
 
-派生で階層別合計上限を frontmatter `capacity:` の合計で管理する。 例:
+派生で階層別合計上限を frontmatter `capacity:` の合計で管理する。例えば次の表のようにする。
 
 | 階層 | 上限例 | 内訳例 |
 |---|---|---|
@@ -32,103 +32,103 @@ capacity: 13KB
 | プロジェクト固有 | 20 KB | `projects/<P>/_README.md` + `projects/<P>/rules/always.md` |
 | サブプロ固有 | 10 KB | `projects/<P>/subprojects/<S>/_README.md` + 同 `rules/always.md` |
 
-Why: 際限ない rule 増殖を物量で止める、 常時 load で全体把握できる量に固定。
+Why: 際限ない rule 増殖を物量で止める、常時 load で全体把握できる量に固定。
 
 ### 動的読込 = 上限外
 
-`ls` / journal / plans / messages / startup-status / skill 本文の Read 等は上限に含めない。 skill の一覧 (= `description` + `when_to_use`) は毎 session 文脈に入るので別枠で数える。 監視 script (= `.tooling/startup/check-static-capacity.sh`、 startup-status が呼ぶ) が階層ごとの静的合計を計算する。
+`ls` / journal / plans / messages / startup-status / skill 本文の Read 等は上限に含めない。skill の一覧 (`description` + `when_to_use`) は毎 session 文脈に入るので別枠で数える。階層ごとの静的合計は、監視 script の `.tooling/startup/check-static-capacity.sh` が計算する。startup-status がこの script を呼ぶ。
 
 ### 形態 D
 
 ```
-<階層>/rules/always.md                 ← 1 file 統合 (= 全 always section)
-<階層>/.claude/skills/<name>/SKILL.md  ← 個別維持 (= 場面ごとの when_to_use)
+<階層>/rules/always.md                 ← 1 file 統合 (全 always section)
+<階層>/.claude/skills/<name>/SKILL.md  ← 個別維持 (場面ごとの when_to_use)
 ```
 
-Why: always = 1 file で構造美 + 容量管理が `wc -c` 1 発、 skill = 一覧はハーネスが出し、 本文は呼んだ時だけ読まれる。
+Why: always = 1 file で構造美 + 容量管理が `wc -c` 1 発、skill = 一覧はハーネスが出し、本文は呼んだ時だけ読まれる。
 
 ### 書き方
 
-- **やることで書く** (= 「X はするな」 でなく「Y をする」)。 対で意味を持つ列挙は肯定側を先に並べ、 具体は `(= ...)` に入れて残す
-  - Why: 否定形の指示は肯定形より通りにくく、 長い禁止リストは読み飛ばされる側に回る
-- 基本ペア = 短文 1 行 + `Why: ...` 1 行、 必要時 `How: ...` 1 行
-- 表は同種要素並列のみ、 3 列以内
+- **やることで書く** (「X はするな」でなく「Y をする」)。対で意味を持つ列挙は肯定側を先に並べ、具体は `(= ...)` に詰めず、例の文に入れて残す
+  - Why: 否定形の指示は肯定形より通りにくく、長い禁止リストは読み飛ばされる側に回る
+- 基本ペア = 短文 1 行 + `Why: ...` 1 行、必要時 `How: ...` 1 行
+- 表は同種要素並列のみ、3 列以内
 - 散文は file 冒頭 1-2 行のみ
 
 rule 本体に書かないもの:
 
-- 過去失敗のラベル化 (= 「反復違反」「サボり」「いつもの」 等の自己卑下や反復事象への命名)
-- 経緯付記 (= `(= 2026-06-30 確定)` / `(= PR #123 で...)`) — 履歴の真値は git log と journal
-- 強調 3 連語 (= 「必須・例外なし・スキップ禁止」 → 「必須」)
-- 弱表現 (= 「念のため」「一応」「場合があります」「かも」)
-- コードを読めば分かること (= 構造の概要説明、 lint が既に守っている style)
+- 過去失敗のラベル化 (「反復違反」「サボり」「いつもの」等の自己卑下や反復事象への命名)
+- 経緯付記 (`(= 2026-06-30 確定)` / `(= PR #123 で...)`) — 履歴の真値は git log と journal
+- 強調 3 連語 (「必須・例外なし・スキップ禁止」→「必須」)
+- 弱表現 (「念のため」「一応」「場合があります」「かも」)
+- コードを読めば分かること (構造の概要説明、lint が既に守っている style)
 
 ### 違反時動作
 
-- 起動時 `.tooling/startup/startup-status.sh` が階層別静的合計を計算 (= 派生で階層別上限を script 内 or 別 config で調整)
-- 上限超過 = WARN 出力、 同 session 内で削る (= 凝縮 / 統合 / 削除、 上限の緩和は最終手段)
+- 起動時 `.tooling/startup/startup-status.sh` が階層別静的合計を計算する。派生は階層別上限を script 内か別 config で調整する
+- 上限超過 = WARN 出力、同 session 内で削る。削り方は凝縮 / 統合 / 削除で、上限の緩和は最終手段である
 - 緩和 commit = `.tooling/commit/precommit-conflict-check.sh § 容量緩和 reflex 警告` で soft fail
 
 ### ルールを増やす / 減らす
 
-**増やすのはユーザが明示した時**。 エージェントが「要る」 と思ったものは journal に候補として書き残し、 2 回目に同じ場面へ来た時にユーザへ 1 行で出す。
+**増やすのはユーザが明示した時**。エージェントが「要る」と思ったものは journal に候補として書き残し、2 回目に同じ場面へ来た時にユーザへ 1 行で出す。
 
-- Why: 常時 load は物量で効きが落ちる。 増やす判断を自分に許すと、 守られない文が積み上がって全体の遵守率が下がる
-- **機構で守れるものは機構へ**: 文章で 2 回守れなかったものは detector / hook / 生成へ移す (= 文章と機構の二重化はしない)
-- **減らす方は自走でよい**: 冗長 / 古い / 重複は削る、 真値が 2 箇所以上なら 1 箇所へ集約して残りは参照 1 行に圧縮
+- Why: 常時 load は物量で効きが落ちる。増やす判断を自分に許すと、守られない文が積み上がって全体の遵守率が下がる
+- **機構で守れるものは機構へ**: 文章で 2 回守れなかったものは detector / hook / 生成へ移す。文章と機構の二重化はしない
+- **減らす方は自走でよい**: 冗長 / 古い / 重複は削る、真値が 2 箇所以上なら 1 箇所へ集約して残りは参照 1 行に圧縮
 
-### 機械検出機構 (= LLM 不使用、 token ゼロ)
+### 機械検出機構 (LLM 不使用、token ゼロ)
 
 | 検出対象 | 機構 | 発火 |
 |---|---|---|
-| frontmatter 欠落 / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths / journal 整合 / 階層インターフェース / 参照先の実在 / 発火記録の有無 / vision の形 / 主文の肯定形 | docs-check.sh (= 15 step) | 起動 + 終了 |
-| section 単位重複 (= LCS、 雛形とその複製は構造で除外) | detect-duplicates.py | 同上 |
-| 7 日無更新 (= 形骸化) | detect-stale-rules.sh | 同上 |
-| 静的容量階層別 (= skill の一覧は別枠) | check-static-capacity.sh | 起動 |
+| frontmatter 欠落 / capacity / 索引 / dead link / placeholder / 動的検索 / プロジェクト整合 / synced-paths / journal 整合 / 階層インターフェース / 参照先の実在 / 発火記録の有無 / vision の形 / 主文の肯定形 / 置き場と約束の宣言 / 言い足しの残り | docs-check.sh (17 step) | 起動 + 終了 |
+| section 単位重複 (LCS)。雛形とその複製は構造で除外する | detect-duplicates.py | 同上 |
+| 7 日無更新 (形骸化) | detect-stale-rules.sh | 同上 |
+| 静的容量階層別。skill の一覧は別枠 | check-static-capacity.sh | 起動 |
 | 容量緩和 commit | precommit-conflict-check.sh | git pre-commit |
 
 エージェント反応:
-- 起動時 `startup-status.sh` 出力に反応 (= FAIL ≥ 1 → 同 session 内 fix)
+- 起動時 `startup-status.sh` 出力に反応 (FAIL ≥ 1 → 同 session 内 fix)
 - WARN 累積 5 件以上 or 同 file 3 件以上 → 自発 sweep
-- 終了時 Step 2 で再走、 残 FAIL = ユーザ報告 + 翌 session 最優先
+- 終了時 Step 2 で再走、残 FAIL = ユーザ報告 + 翌 session 最優先
 
-### 発火記録 (= どの rule が効いたかを貯める)
+### 発火記録
 
-session 終了時、 効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` に 1 行ずつ書く。 書き漏らした session は docs-check step 13 が出す。
+どの rule が効いたかを貯める記録である。session 終了時、効いた / 違反した rule の ID を `journal/<date>/session-NN-rule-hits.jsonl` に 1 行ずつ書く。書き漏らした session は docs-check step 13 が出す。
 
-- ID の台帳は**階層ごとに 1 本** (= ID は階層内で一意かつ不変、 生成 = `.tooling/rules/build-rule-registry.py`)
-- 実績は 2 つに効く: 容量超過時に**どの節から押し出すか**、 そして**沈黙した rule の退役**
-- 沈黙で退役を測れるのは skill の層だけ (= 常時 load は「読まれた」 と「効いた」 が別物なので、 記録が無いことを死んだ証拠に使わない)
+- ID の台帳は**階層ごとに 1 本**。ID は階層内で一意かつ不変で、生成は `.tooling/rules/build-rule-registry.py` が行う
+- 実績は 2 つに効く: 容量超過時に**どの節から押し出すか**、そして**沈黙した rule の退役**
+- 沈黙で退役を測れるのは skill の層だけ。常時 load は「読まれた」と「効いた」が別物なので、記録が無いことは死んだ証拠にならない
 
-**記録の書式 / ID の引き方 / 押し出しと退役の判定 / どの階層に置くかは `.claude/skills/rule-registry/SKILL.md` が真値**。 ルールを足す / 改訂する / 記録を書く直前に読む。
+**記録の書式 / ID の引き方 / 押し出しと退役の判定 / どの階層に置くかは `.claude/skills/rule-registry/SKILL.md` が真値**。ルールを足す / 改訂する / 記録を書く直前に読む。
 
 ### 弱点パターン発見時の機構自己拡張
 
-エージェント or ユーザが「過去 2 回同じパターン違反 / エージェント見落とし構造」 を見つけた時:
+エージェント or ユーザが「過去 2 回同じパターン違反 / エージェント見落とし構造」を見つけた時:
 
-1. 機械検出可能性を評価する (= grep / awk / python で機械化できるか)
-2. 可能なら `docs-check.sh` に step 追加 (= false positive 抑制パターン込)
+1. 機械検出可能性を評価する。grep / awk / python で機械化できるかを見る
+2. 可能なら `docs-check.sh` に step 追加する。false positive 抑制パターンを込みにする
 3. 可能なら `detect-duplicates.py` / `detect-stale-rules.sh` の精度を上げる
-4. 機械化できないものだけ本 file § meta に規律として足す (= 足す判断はユーザが持つ)
-5. 既存 step が形骸化 (= hit 常時 0 で 1 month+) したら廃止 or 検出基準を調整
+4. 機械化できないものだけ本 file § meta に規律として足す。足す判断はユーザが持つ
+5. 既存 step が形骸化 (hit 常時 0 で 1 month+) したら廃止 or 検出基準を調整
 
-「detector 追加」 のハードルは意識して下げる = ユーザ指摘 2 回で detector 化、 エージェントは機械出力に反応するだけで品質が保てる形にする。
+「detector 追加」のハードルは意識して下げる。ユーザ指摘 2 回で detector 化し、エージェントは機械出力に反応するだけで品質が保てる形にする。
 
 ### detector 出力判別
 
 **dup_pairs** = 真値分散 vs reference:
-- 真値分散 = 同じ説明文 / ルール本体が複数 file → 集約 (= 1 file 真値、 他は参照 1 行)
-- reference = 同じ command / path / file 名が複数 file から legitimate 参照 → 残置 (= 起動時即実行性 / 各 file 自己完結性のための意図的重複)
+- 真値分散 = 同じ説明文 / ルール本体が複数 file → 集約。1 file を真値にして、他は参照 1 行にする
+- reference = 同じ command / path / file 名が複数 file から legitimate 参照 → 残置。起動時即実行性と各 file 自己完結性のための意図的重複である
 
-判別軸 = 「この共通部分は本体ルールか、 引用 reference か」。
+判別軸 = 「この共通部分は本体ルールか、引用 reference か」。
 
 **stale_rules** = 永続原則 vs 真の dead:
-- frontmatter `stable: true` + path pattern (= `_README.md` 全般) 除外で機械分離済
+- frontmatter `stable: true` + path pattern (`_README.md` 全般) 除外で機械分離済
 - 残った stale 候補は真の改訂対象として自走判断
 
 ### 関連 skill
 
-- 自動化機構 (= `.tooling/*` script / settings.json hook) 改修 → `.claude/skills/automation-machinery/SKILL.md`
+- 自動化機構 (`.tooling/*` script / settings.json hook) 改修 → `.claude/skills/automation-machinery/SKILL.md`
 - skill を足す / 置き場と命名 → `.claude/skills/_README.md`
 - ルール台帳 / 発火記録 / 配置と退役の判定 → `.claude/skills/rule-registry/SKILL.md`
 
@@ -136,22 +136,22 @@ session 終了時、 効いた / 違反した rule の ID を `journal/<date>/se
 
 ## § git
 
-commit 規約 / branch flow / 匿名性 / merge の判断軸 / 記録の置き場と棚卸しをここに書く。 出荷時は空で、 派生が最初の規律を書いた時点で中身が入る。
+commit 規約 / branch flow / 匿名性 / merge の判断軸 / 記録の置き場と棚卸しをここに書く。出荷時は空で、派生が最初の規律を書いた時点で中身が入る。
 
 ## § quality
 
-エラーの扱い / 原因特定の順序 / 検出機構の整備 / 「緑」 と言う前の条件をここに書く。 出荷時は空。
+エラーの扱い / 原因特定の順序 / 検出機構の整備 / 「緑」と言う前の条件をここに書く。出荷時は空。
 
 ## § style
 
-path 表記 / 出力の簡潔さ / 表現 / 長い作業の見せ方 / ユーザ指示の解釈をここに書く。 出荷時は空。
+path 表記 / 出力の簡潔さ / 表現 / 長い作業の見せ方 / ユーザ指示の解釈をここに書く。出荷時は空。
 
 ## § forbidden
 
-第三者への副作用操作 / 破壊操作 / session 進行の中断 / 規模を理由にした妥協 / 明示 GO まで読み取り専用をここに書く (= `go-gate-reminder.sh` hook と対で運用する)。 出荷時は空。
+第三者への副作用操作 / 破壊操作 / session 進行の中断 / 規模を理由にした妥協 / 明示 GO まで読み取り専用をここに書く。`go-gate-reminder.sh` hook と対で運用する。出荷時は空。
 
 ---
 
-出荷時に本 file が持つのは `§ meta` と、 上の 4 つの空節だけ。 **空でも節は置いたまま**にする (= 出荷 doc が `rules/always.md § git` のように名指しており、 節ごと無いと読む先が消える。 docs-check step 12 がその死を検出する)。
+出荷時に本 file が持つのは `§ meta` と、上の 4 つの空節だけ。**空でも節は置いたまま**にする。出荷 doc が `rules/always.md § git` のように名指しており、節ごと無いと読む先が消える。docs-check step 12 がその死を検出する。
 
-Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、 § 見出しで section 検索性も保てる。 200 行に収まらなくなったら、 発火実績の下位から skill へ降ろす (= `rules/always-<section>.md` への分割は、 降ろし先が無い時だけ)。
+Why: personal rule を 1 file にまとめると `wc -c` で容量管理が単純、§ 見出しで section 検索性も保てる。200 行に収まらなくなったら、発火実績の下位から skill へ降ろす。`rules/always-<section>.md` への分割は、降ろし先が無い時だけである。
