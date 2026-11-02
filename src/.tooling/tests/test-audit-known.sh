@@ -1,7 +1,8 @@
 #!/bin/bash
 # .tooling/startup/audit-known.sh (= 判定は audit_findings.py) の test。 作り物の監査の記録と番人の身代わりで、
-# 新しい漏れがその repo の境界を読めるタブにだけ出る事、 番人に訊けない時は全部が出る事、 終わりの行の無い記録を
-# clean と読まない事、 境界の無い記録を判定しない事、 clean / STALE / NO RUN を確かめる。
+# 新しい漏れがその repo の境界を読めるタブにだけ出る事、係のタブ (印の file を置いた階層) が読む境界はほかのタブに
+# 出ない事、境界の外の repo は normal のタブだけに出る事、番人に訊けない時は全部が出る事、終わりの行の無い記録を
+# clean と読まない事、境界の無い記録を判定しない事、clean / STALE / NO RUN を確かめる。
 #
 #   bash .tooling/tests/test-audit-known.sh
 set -uo pipefail
@@ -16,24 +17,37 @@ AUDIT_DIR="${T}/audit"
 export AUDIT_LOG_DIR="${AUDIT_DIR}"
 mkdir -p "${AUDIT_DIR}"
 
-# 番人の身代わり: `reach` に FAKE_REACH (= 空白区切り) の名前を 1 行ずつ返す。 FAKE_REACH_RC で失敗させる
+# 番人の身代わり: `reach` に FAKE_REACH (空白区切り) の名前を 1 行ずつ返す。FAKE_REACH_RC で失敗させる。
+# GUARD_WORK_FOLDER に .fake-reach が在れば、その folder の階層のタブとしてその中身を返す (.fake-fail が在れば失敗)
 HOOK="${T}/area-guard.py"
 cat > "${HOOK}" <<'PY'
 import os, sys
+from pathlib import Path
 if sys.argv[1:] != ["reach"]:
     sys.exit(2)
+folder = Path(os.environ.get("GUARD_WORK_FOLDER", "/nonexistent"))
+if (folder / ".fake-fail").exists():
+    sys.exit(2)
+if (folder / ".fake-reach").exists():
+    print((folder / ".fake-reach").read_text())
+    sys.exit(0)
 for name in os.environ.get("FAKE_REACH", "").split():
     print(name)
 sys.exit(int(os.environ.get("FAKE_REACH_RC", "0")))
 PY
+# 作り物のエージェントの folder (手元のエージェントの印を読まない)。TIER と CHILD でタブの階層と子かを決める
+AGENT="${T}/agent"
+mkdir -p "${AGENT}"
+TIER=normal
+CHILD=
 
 ok() { pass=$((pass + 1)); }
 bad() { fail=$((fail + 1)); printf 'FAIL: %s\n  got: %s\n' "$1" "${2//$'\n'/ | }"; }
 
 # status <reach> : 起動の行。 reach が "none" なら番人が居ない
 status() {
-    if [ "$1" = none ]; then AREA_GUARD_HOOK="${T}/no-guard.py" bash "${KNOWN}" status
-    else AREA_GUARD_HOOK="${HOOK}" FAKE_REACH="$1" bash "${KNOWN}" status; fi
+    if [ "$1" = none ]; then AREA_GUARD_HOOK="${T}/no-guard.py" AGENT_ROOT="${AGENT}" AGENT_TIER="${TIER}" AGENT_CHILD="${CHILD}" bash "${KNOWN}" status
+    else AREA_GUARD_HOOK="${HOOK}" FAKE_REACH="$1" AGENT_ROOT="${AGENT}" AGENT_TIER="${TIER}" AGENT_CHILD="${CHILD}" GUARD_WORK_FOLDER="${T}/tab" bash "${KNOWN}" status; fi
 }
 # <説明> <reach> <期待する行の正規表現> / expect_not は出てはいけない行
 expect() { local out; out="$(status "$2")"; if grep -qE -- "$3" <<< "${out}"; then ok; else bad "$1 (want: $3)" "${out}"; fi; }
@@ -71,7 +85,7 @@ body_areas() {
 # 1. 新しい漏れは、 その repo の境界を読めるタブにだけ出る
 mklog 2026-03-08 3 body_areas
 age_log 2026-03-08 1
-expect 'a tab that reads no area gets the repos outside every area' '' '^weekly_audit: NEW in 1 repo\(s\).*2 other repo\(s\) with findings in areas this tab does not read'
+expect 'a tab that reads no area gets the repos outside every area' '' '^weekly_audit: NEW in 1 repo\(s\).*2 other repo\(s\) with findings that other tabs read out'
 expect 'the repo outside every area is named' '' 'new: /work/own/repo-public -> git history blob: wordthree$'
 expect_not 'a tab that reads no area is not told an area repo' '' 'repo-x|repo-y'
 expect 'a tab of one area gets its repo' client-x 'new: /work/area-a/repo-x -> commit messages: wordone$'
@@ -83,8 +97,35 @@ expect_not 'a clean repo is never named' '' 'repo-clean'
 
 # 2. 番人に訊けない時は全部を出す
 expect 'with no guard every repo is shown' none '^weekly_audit: NEW in 3 repo\(s\).*areas unknown'
-out="$(AREA_GUARD_HOOK="${HOOK}" FAKE_REACH_RC=2 bash "${KNOWN}" status)"
+out="$(AREA_GUARD_HOOK="${HOOK}" FAKE_REACH_RC=2 AGENT_ROOT="${AGENT}" bash "${KNOWN}" status)"
 grep -qE '^weekly_audit: NEW in 3 repo\(s\).*areas unknown' <<< "${out}" && ok || bad 'a guard without reach shows every repo' "${out}"
+
+# 2b. 係のタブが読む境界は、ほかのタブに出さない。境界の外の repo は normal だけ。子は係にならない
+READER="${AGENT}/projects/co/subprojects/hub"
+mkdir -p "${READER}" "${AGENT}/projects/co/subprojects/sdk" "${AGENT}/projects/AP"
+touch "${READER}/.weekly-audit-reader"
+printf 'client-x\n' > "${READER}/.fake-reach"
+TIER=projects/co/subprojects/hub
+expect 'the reader tab reads out its area' client-x 'new: /work/area-a/repo-x -> commit messages: wordone$'
+TIER=projects/co/subprojects/sdk
+expect 'another tab still gets an area the reader does not read' 'client-x client-y' '^weekly_audit: NEW in 1 repo\(s\)'
+expect 'another tab is told the area the reader does not read' 'client-x client-y' 'new: /work/area-b/repo-y'
+expect_not 'another tab is not told the area the reader reads' 'client-x client-y' 'repo-x'
+expect 'a tab of only the reader area is told it is for other tabs' client-x '^weekly_audit: nothing for this tab \(3 repo\(s\)'
+TIER=projects/AP
+expect 'a tier tab that reads no area leaves the outside repos to normal' '' '^weekly_audit: nothing for this tab'
+expect_not 'a tier tab that reads no area is not told the outside repo' '' 'repo-public'
+TIER=normal
+expect 'normal still reads out the outside repos' '' 'new: /work/own/repo-public'
+TIER=projects/co/subprojects/hub
+CHILD=1
+expect 'a child of the reader tab reads nothing out' client-x '^weekly_audit: nothing for this tab'
+CHILD=
+TIER=projects/co/subprojects/sdk
+touch "${READER}/.fake-fail"
+expect 'when the reader cannot be asked, its area is shown to every tab of it' client-x 'new: /work/area-a/repo-x'
+rm -f "${READER}/.fake-fail" "${READER}/.weekly-audit-reader"
+TIER=normal
 
 # 3. 読み解けない記録は黙らせない
 body_unparsed() { printf '\n--- /work/area-a/repo-x (full, area client-x) ---\nsomething the reader has never seen\n--- /work/area-a/repo-x: FINDINGS ---\n'; }
