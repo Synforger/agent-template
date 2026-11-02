@@ -4,10 +4,17 @@
 `audit-known.sh status` が、 監査の記録の置き場を渡して呼ぶ (= 起動の検査の 6b)。
 
 番人は既知と決めた物 (= `weekly-audit.sh --accept [--as-of <時刻>]`) を除いて FINDINGS に書くので、
-FINDINGS の repo は全部が新しい漏れになる。 新しい漏れは、 その repo の境界 (= 見出しの `, area <名前>`) を
-読めるタブにだけ出す。 境界の外の repo (= `area -`) は、 境界を 1 つも読まないタブに出す。 このタブが
-読める境界は入口の番人に訊く (= `area-guard.py reach`。 判定は番人が持ち、 ここは訊いた名前と記録の名前を
-突き合わせるだけ)。 番人に訊けない時は全部を出す (= 黙って隠すより、 読めない境界の名前が出る方を選ぶ)。
+FINDINGS の repo は全部が新しい漏れになる。 新しい漏れは、 境界ごとに 1 つの係のタブだけが読み上げる。
+
+- 境界の外の repo (`area -`、個人の側) の係は normal のタブ
+- 境界の中の repo の係は、階層の folder に印の file `.weekly-audit-reader` を置いた階層のタブ。印の在る階層が
+  読める境界の repo は、ほかのタブには出さない。印が無い・係に訊けない境界の repo は、その境界を読めるタブ全部に出す
+- 子のタブ (`AGENT_CHILD=1`) は係にならない
+
+印を file にするのは、会社の階層の名前を git に載るこの file に書かずに係を決めるため。タブと係が読める境界は
+入口の番人に訊く (`area-guard.py reach` を、係ならその階層の folder を `GUARD_WORK_FOLDER` に渡して呼ぶ)。
+判定は番人が持ち、ここは訊いた名前と記録の名前を突き合わせるだけ。番人に訊けない時は全部を出す。黙って隠すより、
+読めない境界の名前が出る方を選ぶ。
 
 出す行:
   weekly_audit: NO RUN                    記録が無い / 終わった記録が無い
@@ -15,13 +22,14 @@ FINDINGS の repo は全部が新しい漏れになる。 新しい漏れは、 
                                           続く行は、 終わりの行を持つ一番新しい記録で判定した物
   weekly_audit: clean / STALE             見つかった物が無い (= 7 日より古ければ STALE)
   weekly_audit: NEW in N repo(s) …        このタブの境界の新しい漏れ。 続く `new:` 行に repo と見つかった物
-  weekly_audit: nothing for this tab (…)  見つかった物は他のタブの境界にだけ在る
+  weekly_audit: nothing for this tab (…)  見つかった物は、ほかのタブの境界にだけ在るか、係のタブが読み上げる
   weekly_audit: OLD LOG (…)               見出しに境界の無い記録 (= 書いた番人が古い)。 判定しない
 
 走らせ方:
   python3 .tooling/startup/audit_findings.py <監査の記録の folder>
 
-番人の在処は `AREA_GUARD_HOOK` で差し替えられる (= 既定は番人が導入される `~/.git-hooks/` の下)。
+番人の在処は `AREA_GUARD_HOOK` で差し替えられる (既定は番人が導入される `~/.git-hooks/` の下)。
+このタブの階層は `AGENT_TIER` (無ければ normal)、エージェントの folder は `AGENT_ROOT` (無ければこの file の 2 つ上)。
 """
 import os
 import re
@@ -38,6 +46,10 @@ STALE_DAYS = 7
 SECONDS_PER_DAY = 86400
 LOG_GLOB = "weekly-audit-*.log"
 OUTSIDE = "-"
+NORMAL_TIER = "normal"
+READER_MARKER = ".weekly-audit-reader"
+READER_GLOBS = (f"projects/*/{READER_MARKER}", f"projects/*/subprojects/*/{READER_MARKER}")
+AGENT_DIR = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2])
 
 HEADER = re.compile(r"^--- (?P<repo>.*) \((?P<notes>.*)\) ---$")
 AREA_NOTE = re.compile(r"(?:^|, )area (?P<area>[^,]+)$")
@@ -91,8 +103,18 @@ def parse(text: str) -> AuditLog:
     return AuditLog(findings, has_areas, int(counts[-1]) if counts else None)
 
 
+@dataclass
+class Audience:
+    """このタブが誰か。読める境界、係か、normal か、係のタブが読み上げる境界 (訊けなければ空)。"""
+
+    reach: set[str]
+    is_reader: bool
+    is_normal: bool
+    covered: set[str]
+
+
 def split_by_reach(findings: list[Finding], reach: set[str]) -> tuple[list[Finding], list[Finding]]:
-    """→ (このタブに出す物, 他の境界のタブに出す物)。 境界を読まないタブは境界の外の repo を受け持つ。"""
+    """→ (このタブが読める物, 他の境界のタブの物)。 境界を読まないタブは境界の外の repo を受け持つ。"""
     if reach:
         mine = [f for f in findings if f.area in reach]
     else:
@@ -100,7 +122,18 @@ def split_by_reach(findings: list[Finding], reach: set[str]) -> tuple[list[Findi
     return mine, [f for f in findings if f not in mine]
 
 
-def finding_lines(log: AuditLog, name: str, age_days: int, reach: set[str] | None) -> list[str]:
+def split_for(findings: list[Finding], audience: Audience) -> tuple[list[Finding], list[Finding]]:
+    """→ (このタブが読み上げる物, ほかのタブが読み上げる物)。係でないタブは、係の境界と境界の外を normal に譲る。"""
+    readable, _ = split_by_reach(findings, audience.reach)
+    if audience.is_reader:
+        mine = readable
+    else:
+        mine = [f for f in readable
+                if (f.area == OUTSIDE and audience.is_normal) or (f.area != OUTSIDE and f.area not in audience.covered)]
+    return mine, [f for f in findings if f not in mine]
+
+
+def finding_lines(log: AuditLog, name: str, age_days: int, audience: Audience | None) -> list[str]:
     """終わった記録 1 本の判定の行 (= 1 行目が要約、 続く行が repo ごとの見つかった物)。"""
     if not log.findings and not log.declared_count:
         if age_days > STALE_DAYS:
@@ -112,14 +145,14 @@ def finding_lines(log: AuditLog, name: str, age_days: int, reach: set[str] | Non
     if log.declared_count != len(log.findings):
         return [f"weekly_audit: NEW in {log.declared_count} repo(s) ({name}, {age_days}d ago, log not parsed)"
                 " -> read the FINDINGS blocks of that log"]
-    if reach is None:
+    if audience is None:
         mine, others, note = log.findings, [], "; this tab's areas unknown, every repo shown"
     else:
-        mine, others = split_by_reach(log.findings, reach)
-        note = f"; {len(others)} other repo(s) with findings in areas this tab does not read, not shown"
+        mine, others = split_for(log.findings, audience)
+        note = f"; {len(others)} other repo(s) with findings that other tabs read out, not shown"
     if not mine:
-        return [f"weekly_audit: nothing for this tab ({len(others)} repo(s) with findings in areas this tab"
-                f" does not read; {name})"]
+        return [f"weekly_audit: nothing for this tab ({len(others)} repo(s) with findings that other tabs"
+                f" read out; {name})"]
     lines = [f"weekly_audit: NEW in {len(mine)} repo(s) ({name}, {age_days}d ago{note}) -> say it first in the briefing"]
     for finding in mine:
         found = "; ".join(f"{place}: {words}" for place, words in finding.places)
@@ -127,7 +160,7 @@ def finding_lines(log: AuditLog, name: str, age_days: int, reach: set[str] | Non
     return lines
 
 
-def status_lines(logs: list[tuple[str, int, str]], reach: set[str] | None, folder: str) -> list[str]:
+def status_lines(logs: list[tuple[str, int, str]], audience: Audience | None, folder: str) -> list[str]:
     """記録を新しい順に並べた (名前, 古さの日数, 本文) から、 起動の検査に出す行。"""
     if not logs:
         return [f"weekly_audit: NO RUN (no log in {folder})"]
@@ -141,7 +174,7 @@ def status_lines(logs: list[tuple[str, int, str]], reach: set[str] | None, folde
     if not finished:
         return lines + [f"weekly_audit: NO RUN (no finished log in {folder})"]
     name, age_days, text = finished[0]
-    return lines + finding_lines(parse(text), name, age_days, reach)
+    return lines + finding_lines(parse(text), name, age_days, audience)
 
 
 def load_logs(folder: Path) -> list[tuple[str, int, str]]:
@@ -152,13 +185,16 @@ def load_logs(folder: Path) -> list[tuple[str, int, str]]:
             for p in paths]
 
 
-def load_reach() -> set[str] | None:
-    """このタブが読める境界の名前 (= 入口の番人の答え)。 番人が無い・訊く口の無い古い番人なら None。"""
+def load_reach(work_folder: Path | None = None) -> set[str] | None:
+    """タブが読める境界の名前 (入口の番人の答え)。folder を渡すとその階層のタブとして訊く。訊けなければ None。"""
     if not HOOK.is_file():
         return None
+    env = dict(os.environ)
+    if work_folder is not None:
+        env["GUARD_WORK_FOLDER"] = str(work_folder)
     try:
         done = subprocess.run([sys.executable, str(HOOK), "reach"], capture_output=True, text=True,
-                              timeout=TIMEOUT_SEC, check=False)
+                              timeout=TIMEOUT_SEC, check=False, env=env)
     except (OSError, subprocess.TimeoutExpired):
         return None
     if done.returncode != 0:
@@ -166,13 +202,33 @@ def load_reach() -> set[str] | None:
     return {line.strip() for line in done.stdout.splitlines() if line.strip()}
 
 
+def load_audience() -> Audience | None:
+    """環境と印の file と番人から、このタブが誰かを組む。このタブの境界を番人に訊けなければ None。"""
+    reach = load_reach()
+    if reach is None:
+        return None
+    tier = os.environ.get("AGENT_TIER") or NORMAL_TIER
+    is_child = os.environ.get("AGENT_CHILD") == "1"
+    tier_folder = AGENT_DIR if tier == NORMAL_TIER else AGENT_DIR / tier
+    covered: set[str] = set()
+    for marker in sorted(m for pattern in READER_GLOBS for m in AGENT_DIR.glob(pattern)):
+        reader_reach = load_reach(marker.parent)
+        if reader_reach is None:
+            # 係が読む境界を訊けない時は、境界のタブ全部に出す側へ倒す
+            covered = set()
+            break
+        covered |= reader_reach
+    return Audience(reach=reach, is_reader=not is_child and (tier_folder / READER_MARKER).is_file(),
+                    is_normal=not is_child and tier == NORMAL_TIER, covered=covered)
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
         print("usage: audit_findings.py <folder of the audit logs>", file=sys.stderr)
         return 2
     logs = load_logs(Path(argv[0]))
-    reach = load_reach() if logs else None
-    for line in status_lines(logs, reach, argv[0]):
+    audience = load_audience() if logs else None
+    for line in status_lines(logs, audience, argv[0]):
         print(line)
     return 0
 
