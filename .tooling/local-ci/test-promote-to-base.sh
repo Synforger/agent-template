@@ -55,6 +55,14 @@ check "派生が ! で外した path は書き戻さない" \
     [ "$(git -C "${BASE}" show feature/test:src/.tooling/lib/helper.sh 2>/dev/null)" = "helper v1" ]
 check "派生だけの file は書き戻さない" [ ! -e "${BASE}/src/.tooling/startup/mine.sh" ]
 
+# --- 例外を何も書かない派生 (= 宣言が注釈だけで終わる) --------------------------------------
+setup
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+promote "chore: promote"
+check "注釈だけの宣言の派生から昇格できる" [ $? -eq 0 ]
+check "注釈だけの宣言の派生は base の列挙を全部書き戻す" \
+    [ "$(git -C "${BASE}" show feature/test:src/.tooling/lib/helper.sh 2>/dev/null)" = "helper mine" ]
+
 # --- --file で絞る -----------------------------------------------------------------
 setup
 printf '%s\n' "!.tooling/lib/helper.sh   # this agent keeps its own" > "${AGENT}/.synced-paths.txt"

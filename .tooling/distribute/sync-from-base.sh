@@ -64,7 +64,7 @@ declarations() {
     while IFS= read -r line || [ -n "$line" ]; do
         line="${line%%#*}"
         line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-        [ -n "$line" ] && printf '%s\n' "$line"
+        if [ -n "$line" ]; then printf '%s\n' "$line"; fi
     done < "$1"
 }
 
