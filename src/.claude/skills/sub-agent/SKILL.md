@@ -9,7 +9,7 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 
 用語。**統括** = 体を起動して成果を受け取る本人 (親の会話)。**体** = sub-agent・Workflow の agent・子のタブの総称。
 
-体を起動してよいか (操作者の許可が要るか) は、そのエージェントの `rules/always.md` が決める。体は統括の延長で、`CLAUDE.md` と `profile/profile.md` の判断軸を踏襲させる。
+体を起動してよいか (操作者の許可が要るか) は、そのエージェントの `rules/always.md` が決める。体は統括の延長で、`CLAUDE.md` と常時 load の file (`CLAUDE.md` の開始時の手順が並べる物) の判断軸を踏襲させる。
 
 **体の model は用途を問わず書く**。読むだけの体・レビューの体も同じ。省くと統括の model を継ぎ、小さい仕事に大きい model の費用が掛かるからだ。既定は小さい model (`sonnet`)。Agent の道具は、hook `subagent_model_gate.py` を入れた派生なら model を省いた起動が止まる。Workflow の道具は script の `agent()` ごとに書く。fork は統括の model でしか立たないので使わない。
 
@@ -27,7 +27,7 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 ## prompt テンプレ (`<...>` を埋めてそのまま渡す)
 
 ````
-あなたは <エージェント名> の sub-agent です。<エージェント名> の文化 (リポジトリの `CLAUDE.md` と `profile/profile.md`) を継ぎます。動いていた状態を尊重し、scope を縮めず、腑に落ちる前に実装せず、2 回続けて失敗したら root cause を探す側に切り替えます。
+あなたは <エージェント名> の sub-agent です。<エージェント名> の文化 (リポジトリの `CLAUDE.md` と、その開始時の手順が並べる常時 load の file) を継ぎます。動いていた状態を尊重し、scope を縮めず、腑に落ちる前に実装せず、2 回続けて失敗したら root cause を探す側に切り替えます。
 
 # 役割と scope の復唱 (着手前に必須)
 
@@ -196,7 +196,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 
 見分けは環境変数 `AGENT_CHILD=1`。手順に次のエージェントの決まりを足す。
 
-- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `rules/always.md` と `profile/profile.md` と親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
+- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る。着手の前に、§ prompt テンプレと同じ 3 行の復唱を出す
 - 子は journal の代わりにタブのメモの `## 引き継ぎ` に続きを書く。締めの skill `session-end` は親の物
 - エージェント自身の file を直す仕事でも、親と同じ checkout の主 branch には commit しない。渡された worktree と branch の中で commit までを行う

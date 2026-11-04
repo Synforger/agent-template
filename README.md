@@ -30,7 +30,8 @@ agent-template/
 │   ├── distribute/sync-from-base.sh   # base → derivation (pull down)
 │   ├── distribute/promote-to-base.sh  # derivation → base (promote up)
 │   ├── local-ci/synced-paths-check.sh # .synced-paths.txt vs the shipped payload
-│   └── local-ci/test-sync-from-base.sh # sync-from-base.sh against a fake base and derivation
+│   ├── local-ci/test-sync-from-base.sh # sync-from-base.sh against a fake base and derivation
+│   └── local-ci/test-promote-to-base.sh # promote-to-base.sh against a fake base and derivation
 ├── .synced-paths.txt                  # the paths shipped down to derivations
 └── src/                               # ★ what a derived agent receives
     ├── CLAUDE.template.md             # becomes the derivation's CLAUDE.md (persona)
@@ -100,9 +101,9 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/sync-from-base.sh
 ```
 
-Only the paths listed in `.synced-paths.txt` are overwritten with the base version; derivation-specific files are never touched. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries. When the base's `.synced-paths.txt` declares a path (listed or `!`) that the derivation's own file neither lists nor excludes, the sync names each such line and stops before copying anything: add the line as the base has it, or as `!path  # why` to keep the file out, then sync again. Review with `git diff`, then commit.
+The sync overwrites every path the base's `.synced-paths.txt` lists, plus any path the derivation's own `.synced-paths.txt` adds, except the ones the derivation keeps out with `!path  # why`; derivation-specific files are never touched. A path the base adds later therefore reaches every derivation on its next sync, with nothing to declare. Keeping out a path the base lists needs the reason after `#`: a `!` line without one is named and the sync stops before copying anything. Every sync lists what the derivation keeps out, with its reason. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries. Review with `git diff`, then commit.
 
-`.synced-paths.txt` is the single truth for both directions, and it declares both halves: listed paths ship, and `!path  # why` lines record what the base deliberately keeps derivation-owned (an index whose content is the derivation's own, a rule file the derivation merges by hand). Anything shipped under `src/.tooling/` or `src/rules/` that is neither listed nor declared fails the base's own CI (`task synced-paths`) — the control file cannot sync itself, so a forgotten entry would otherwise mean "the base ships it, but no derivation receives it" with nothing to catch it.
+The base's `.synced-paths.txt` is the single truth for both directions, and it declares both halves: listed paths ship, and `!path  # why` lines record what the base deliberately keeps derivation-owned (an index whose content is the derivation's own, a rule file the derivation merges by hand). Anything shipped under `src/.tooling/` or `src/rules/` that is neither listed nor declared fails the base's own CI (`task synced-paths`) — the control file cannot sync itself, so a forgotten entry would otherwise mean "the base ships it, but no derivation receives it" with nothing to catch it.
 
 ### Derivation → base (promote up)
 
@@ -113,12 +114,12 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/promote-to-base.sh "feat: add a new docs-check step"
 ```
 
-This cuts a feature branch on the base, pushes it, and the change lands via a pull request. Files outside `.synced-paths.txt` are rejected.
+This cuts a feature branch on the base, pushes it, and the change lands via a pull request. It writes back the same set of paths a sync copies; any other file is rejected.
 
 ### Conflict policy
 
 - **Always run `sync-from-base.sh` before promoting** (resolve conflicts on the derivation side).
-- If a derivation wants to override a base file permanently, the policy is the derivation's choice: keep a differently-named local file, propose the change upstream via PR, or edit its local `.synced-paths.txt` to exclude the path.
+- If a derivation wants to override a base file permanently, the policy is the derivation's choice: keep a differently-named local file, propose the change upstream via PR, or keep the path out with `!path  # why` in its local `.synced-paths.txt`.
 
 ## Required rules (do not delete in derivations)
 
@@ -129,7 +130,7 @@ The template ships only these; below this floor the machinery stops working.
 - `.claude/skills/automation-machinery/SKILL.md` — operational truth for `.tooling/*`
 - `.claude/skills/rule-registry/SKILL.md` — the ledger and hit-record format the checks verify against
 
-The template also ships the skills every agent shares: `sub-agent`, `explainer-pages`, `public-repo`, `review-rules`, `base-sync`, `session-end`, `implementation-plan`, `external-implementation` and `code-writing`. They are synced like the files above; an agent that needs a different version keeps it under another name or excludes the path in its local `.synced-paths.txt`.
+The template also ships the skills every agent shares: `sub-agent`, `explainer-pages`, `public-repo`, `review-rules`, `base-sync`, `session-end`, `implementation-plan`, `external-implementation` and `code-writing`. They are synced like the files above, so every agent receives all of them, and one the template adds later, without listing anything. They name an agent's files by role (the always-loaded files `CLAUDE.md`'s startup steps list) rather than by path, so they fit an agent whose files are named differently. An agent that needs a different version keeps it under another name, or keeps the path out with `!path  # why` in its local `.synced-paths.txt`.
 
 Derivation-specific rules (git conventions, prohibitions, subagent discipline, anything else) go freely into the derivation's `rules/always.md` / `.claude/skills/<name>/SKILL.md`; rule content is not synced.
 

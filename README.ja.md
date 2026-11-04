@@ -98,7 +98,7 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/sync-from-base.sh
 ```
 
-`.synced-paths.txt` に列挙された path のみ base 最新で上書き。 派生固有 file (= synced-paths 外) は触らない。 base の `.synced-paths.txt` が宣言している path (= 列挙も `!` も) を、 派生の `.synced-paths.txt` が列挙も `!` 除外もしていなければ、 その行を全部名指して、 何も写さずに止まる (= base と同じ行を足すか、 降ろさないなら `!path  # 理由` を足して流し直す)。 `git diff` で確認後 commit。
+base の `.synced-paths.txt` が列挙する path と、 派生の `.synced-paths.txt` が足した path を、 派生が `!path  # 理由` で外した物を除いて base 最新で上書き。 派生固有 file (= どちらにも列挙されていない path) は触らない。 base が後から足した path は、 派生が何も書かなくても次の取り込みで降りる。 base が列挙する path を外すには `#` の後ろの理由が要り、 理由の無い `!` 行は名指して、 何も写さずに止まる。 外している物は毎回、 理由つきで並べて出す。 `git diff` で確認後 commit。
 
 ### 派生 → base (= 上り)
 
@@ -109,12 +109,12 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/promote-to-base.sh "feat: 新 docs-check step 追加"
 ```
 
-base 側に feature branch を切って push、 PR 経由で merge。 synced-paths 外の派生固有 file は弾かれる。
+base 側に feature branch を切って push、 PR 経由で merge。 書き戻すのは sync が写す path と同じ集合で、 その外の派生固有 file は弾かれる。
 
 ### 競合解決
 
 - promote する前に**必ず先に sync-from-base.sh を実行** (= 競合を派生側で解決)
-- 派生で base file を独自 override したい時の方針は派生側で決める (= 例: `<file>.local.md` で別名運用 / base への PR で改善提案 / `.synced-paths.txt` をローカル編集して除外)
+- 派生で base file を独自 override したい時の方針は派生側で決める (= 例: `<file>.local.md` で別名運用 / base への PR で改善提案 / 手元の `.synced-paths.txt` に `!path  # 理由` を書いて外す)
 
 ## 必須 rule (= 派生で消さない)
 
@@ -125,7 +125,7 @@ agent-template が出荷する rule は以下のみ。 これ未満では機構�
 - `.claude/skills/automation-machinery/SKILL.md` — `.tooling/*` 運用真値
 - `.claude/skills/rule-registry/SKILL.md` — 検査が突き合わせる台帳と発火記録の書式
 
-全エージェント共通の skill も出荷する: `sub-agent` / `explainer-pages` / `public-repo` / `review-rules` / `base-sync` / `session-end` / `implementation-plan` / `external-implementation` / `code-writing`。 上と同じく sync で降り、 別の版が要る派生は別名で持つか、 手元の `.synced-paths.txt` で path を除外する。
+全エージェント共通の skill も出荷する: `sub-agent` / `explainer-pages` / `public-repo` / `review-rules` / `base-sync` / `session-end` / `implementation-plan` / `external-implementation` / `code-writing`。 上と同じく sync で降りるので、 どのエージェントも全部を、 後から足された物も何も列挙せずに受け取る。 エージェントの file は path でなく役割 (= `CLAUDE.md` の開始時の手順が並べる常時 load の file) で名指すので、 file の名前が違うエージェントにも合う。 別の版が要る派生は別名で持つか、 手元の `.synced-paths.txt` に `!path  # 理由` を書いて外す。
 
 派生固有の rule (= git 運用 / 禁止事項 / sub-agent 起動規律 / その他) は派生の `rules/always.md` / `.claude/skills/<name>/SKILL.md` に自由に追加。 rule 実コンテンツは sync 対象外。
 

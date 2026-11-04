@@ -131,19 +131,44 @@ done
 pass
 
 echo "[8/17] synced-paths consistency check..."
-# agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。
-# 列挙された path が repo に実在することをチェック、 および base ↔ 派生 diff を検出。
-# base 側比較は BASE_REPO_PATH 環境変数があれば実施 (= ローカル比較)、 無ければ skip。
+# agent-template 由来の派生 repo であれば .synced-paths.txt が root にある。 派生の file は例外 (= `!<path>  # 理由`
+# と、 派生だけが足す path) を書く。 BASE_REPO_PATH 環境変数があれば base の列挙も合わせた集合 (= sync が写す集合) で、
+# 無ければ派生の列挙だけで、 path が repo に実在することと base ↔ 派生 diff を見る。 理由の無い `!` 行も名指す
 SP_FILE="$ROOT/.synced-paths.txt"
 if [ -f "$SP_FILE" ]; then
   missing=0
   drift=0
-  while IFS= read -r line || [ -n "$line" ]; do
-    line="${line%%#*}"
+  unexplained=0
+  sp_listed=""
+  sp_excluded=""
+  while IFS= read -r raw || [ -n "$raw" ]; do
+    line="${raw%%#*}"
     line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     [ -z "$line" ] && continue
-    # `!` prefix = sync 対象外の明示宣言 (= 派生に降ろさない file、 実在検査の対象外)
-    case "$line" in "!"*) continue ;; esac
+    case "$line" in
+      "!"*)
+        sp_excluded="$sp_excluded${line#!}"$'\n'
+        reason=""
+        case "$raw" in *"#"*) reason="$(printf '%s' "${raw#*#}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" ;; esac
+        if [ -z "$reason" ]; then
+          warn "synced-paths: $line has no reason (write it as '$line  # <reason>')"
+          unexplained=$((unexplained+1))
+        fi
+        ;;
+      *) sp_listed="$sp_listed$line"$'\n' ;;
+    esac
+  done < "$SP_FILE"
+  if [ -n "${BASE_REPO_PATH:-}" ] && [ -f "$BASE_REPO_PATH/.synced-paths.txt" ]; then
+    while IFS= read -r raw || [ -n "$raw" ]; do
+      line="${raw%%#*}"
+      line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+      case "$line" in ""|"!"*) continue ;; esac
+      sp_listed="$sp_listed$line"$'\n'
+    done < "$BASE_REPO_PATH/.synced-paths.txt"
+  fi
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    printf '%s' "$sp_excluded" | grep -xF -- "$line" > /dev/null && continue
     target="$ROOT/$line"
     if [ ! -e "$target" ]; then
       warn "synced-paths: $line missing (possibly deleted after a sync)"
@@ -159,8 +184,8 @@ if [ -f "$SP_FILE" ]; then
         fi
       fi
     fi
-  done < "$SP_FILE"
-  if [ "$missing" -eq 0 ] && [ "$drift" -eq 0 ]; then
+  done < <(printf '%s' "$sp_listed" | awk '!seen[$0]++')
+  if [ "$missing" -eq 0 ] && [ "$drift" -eq 0 ] && [ "$unexplained" -eq 0 ]; then
     pass
   fi
 else

@@ -11,8 +11,8 @@ set -euo pipefail
 #   ./.tooling/distribute/promote-to-base.sh [--file <path>]... [<commit-message>]
 #
 # Options:
-#   --file <path> : 指定 file のみ promote (= 複数指定可、 synced-paths 内のもののみ受理)。
-#                   省略時は .synced-paths.txt 全件を書き戻し。
+#   --file <path> : 指定 file のみ promote (= 複数指定可、 書き戻せる集合の中のもののみ受理)。
+#                   省略時は集合の全件を書き戻し。
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記)
@@ -23,8 +23,9 @@ set -euo pipefail
 # 動作:
 #   1. **先に sync-from-base.sh を実行することを推奨** (= 競合解決を派生で済ます)
 #   2. base を tmpdir に clone (or BASE_REPO_PATH を直参照)
-#   3. .synced-paths.txt を読んで、 派生/<path> → base/src/<path> に書き戻し
-#      (= 派生独自 file (synced-paths 外) は弾く、 --file 指定時は対象を絞る)
+#   3. 書き戻す path を決める: base の .synced-paths.txt が列挙する path と派生が列挙する path を合わせ、
+#      派生が `!` で外した path を引く (= sync-from-base.sh が写す path と同じ集合)。 派生/<path> → base/src/<path>
+#      に書き戻す (= 派生独自 file (集合の外) は弾く、 --file 指定時は対象を絞る)
 #   4. base 側で feature branch を切って commit + push
 #   5. PR 提案 (= gh pr create) or push URL を出力
 # =============================================================================
@@ -81,16 +82,32 @@ else
     git clone --branch="$BASE_BRANCH" "$DEFAULT_BASE_URL" "$BASE_DIR"
 fi
 
-# .synced-paths.txt を読む (= synced 集合)
+# 書き戻せる path の集合 (= sync-from-base.sh が写す集合と同じ。 この file は自分を運べないので、 同じ組み方を
+# ここにも置く)。 1 行 1 path、 # コメント / 空行 skip、 `!` prefix はそのまま
+declarations() {
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%%#*}"
+        line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        [ -n "$line" ] && printf '%s\n' "$line"
+    done < "$1"
+}
+
+own_declared="$(declarations "$SYNCED_PATHS_FILE")"
+own_listed="$(printf '%s\n' "$own_declared" | grep -v '^!' || true)"
+excluded_paths="$(printf '%s\n' "$own_declared" | grep '^!' | sed 's/^!//' || true)"
+if [ -f "$BASE_DIR/.synced-paths.txt" ]; then
+    base_listed="$(declarations "$BASE_DIR/.synced-paths.txt" | grep -v '^!' || true)"
+    candidates="$(printf '%s\n%s\n' "$base_listed" "$own_listed" | sed '/^$/d' | awk '!seen[$0]++')"
+else
+    candidates="$own_listed"
+fi
 all_sync_paths=()
-while IFS= read -r line || [ -n "$line" ]; do
-    line="${line%%#*}"
-    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-    [ -z "$line" ] && continue
-    # `!` prefix = sync 対象外の明示宣言 (= 昇格対象でもない)
-    case "$line" in "!"*) continue ;; esac
-    all_sync_paths+=("$line")
-done < "$SYNCED_PATHS_FILE"
+while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    printf '%s\n' "$excluded_paths" | grep -xF -- "$p" > /dev/null && continue
+    all_sync_paths+=("$p")
+done <<< "$candidates"
 
 # --file 指定がある場合は selective、 synced-paths 内のもののみ受理
 sync_paths=()
@@ -105,7 +122,7 @@ if [ "${#SELECTED_FILES[@]}" -gt 0 ]; then
             fi
         done
         if [ "$found" -eq 0 ]; then
-            echo "error: --file '$sel' is not in .synced-paths.txt (derived-only files cannot be promoted)" >&2
+            echo "error: --file '$sel' is neither shipped by the base nor listed in .synced-paths.txt, or this agent keeps it out (derived-only files cannot be promoted)" >&2
             exit 1
         fi
     done

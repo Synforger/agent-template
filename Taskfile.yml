@@ -21,6 +21,7 @@ tasks:
       - bash .tooling/local-ci/docs-check.sh
       - bash .tooling/local-ci/synced-paths-check.sh
       - bash .tooling/local-ci/test-sync-from-base.sh
+      - bash .tooling/local-ci/test-promote-to-base.sh
       - task: test
 
   test:

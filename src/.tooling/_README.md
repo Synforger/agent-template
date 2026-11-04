@@ -47,7 +47,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 5. **placeholder 残し** — `projects/_template-project/` 配下の雛形から `{{...}}` と `<日本語 含む 文>` を**動的抽出**して禁止 list 化、 active file 内ヒットを FAIL (= 雛形 cp 後の埋め忘れ防止)
 6. **動的検索パターン残骸** — `ls + head` 動線等の旧式参照パターン検出
 7. **プロジェクト folder 整合** — `projects/<name>/_README.md` 不在 = プロジェクト未成立検出
-8. **synced-paths 整合** — `.synced-paths.txt` 列挙 path が実在することをチェック (= 派生 repo の場合)、 `BASE_REPO_PATH` 環境変数指定時は base ↔ 派生 diff も検出
+8. **synced-paths 整合** — sync が写す path の実在をチェック (= 派生 repo の場合。 `BASE_REPO_PATH` 環境変数指定時は base の列挙も合わせた集合で見て、 base ↔ 派生 diff も検出。 無ければ派生の列挙だけ)。 理由の無い `!` 行も名指す
 9. **journal 整合** — `docs-check/journal-integrity.py` で全 journal の file 名 / frontmatter / 階層を単一パス検査
 10. **階層インターフェース** — project / subproject の必須 file (`_README.md` / `rules/always.md` / `vision.md`) + 必須 dir (`journal/` / `plans/`) の実在検査 (= 真値 = `projects/_README.md § 階層インターフェース`)。 gitignored で skill を持つ階層は、 `_README.md` に一覧を出す行 (= `skill-listing.py --list`) も求める
 11. **ルール台帳整合** — `build-rule-registry.py --check` で `rules/registry.jsonl` が全 rule section を網羅しているか (= 見出し改名 / section 増減で発火記録の宛先が切れるのを検出)

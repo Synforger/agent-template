@@ -16,8 +16,8 @@ set -euo pipefail
 #   1. agent-dir が既存なら error (= --force で上書き)
 #   2. base の src/ 配下で git が追跡している file を agent-dir 直下へ写す
 #      (= 追跡外の file = 手元の作業の跡は写さない)
-#   3. base の運用 file (LICENSE / .githooks/pre-commit / .synced-paths.txt) を
-#      agent-dir にも同梱
+#   3. base の運用 file (LICENSE / .githooks/pre-commit) を agent-dir にも同梱し、 派生の .synced-paths.txt を
+#      外す物も足す物も無い形で書く (= 何を降ろすかは base の宣言が決めるので、 新しい派生は全部受け取る)
 #   4. base の sync-from-base.sh / promote-to-base.sh を派生 .tooling/distribute/ に配置
 #   5. *.template 拡張子を実 file に rename (= CLAUDE.template.md → CLAUDE.md 等)
 #   6. agent-dir で git init -b main + initial commit
@@ -69,9 +69,20 @@ else
     rsync -a "$BASE_DIR/src/" "$AGENT_DIR/"
 fi
 
-echo "==> copy operational files (LICENSE / .githooks / .synced-paths.txt)"
+echo "==> copy operational files (LICENSE / .githooks) and write .synced-paths.txt"
 cp "$BASE_DIR/LICENSE" "$AGENT_DIR/LICENSE"
-cp "$BASE_DIR/.synced-paths.txt" "$AGENT_DIR/.synced-paths.txt"
+cat > "$AGENT_DIR/.synced-paths.txt" <<'SYNCED'
+# =============================================================================
+# このエージェントが agent-template から受け取る物の例外
+# =============================================================================
+# 何を降ろすかの真値は agent-template の .synced-paths.txt。 sync-from-base.sh はそこに列挙された path を全部写し、
+# ここには例外だけを書く:
+#   !<path>  # <理由>   base が全エージェントへ降ろす path を、 このエージェントでは受け取らない (= 理由は必須。
+#                        無いと sync が名指して止まる)
+#   <path>              base が列挙していない path を、 このエージェントだけ受け取る
+# 表記は派生先 root からの相対 path (= base 側の src/ プレフィックスは剥がす)。 末尾 / で dir 全体
+# =============================================================================
+SYNCED
 mkdir -p "$AGENT_DIR/.githooks"
 cp "$BASE_DIR/.githooks/pre-commit" "$AGENT_DIR/.githooks/pre-commit"
 chmod +x "$AGENT_DIR/.githooks/pre-commit"
