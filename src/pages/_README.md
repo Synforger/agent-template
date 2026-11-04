@@ -33,7 +33,7 @@ capacity: 3KB
 ## 新しいタブ
 
 1. タブの folder と `index.html` は client が作る (= タブの階層を記録した時に、 無ければ `_template-tab/index.html` を写し、 `{{title}}` をタブの題、 `{{tier}}` を階層で埋める。 在るページには触らない)。 `memo.md` は起動の script が置く
-2. 説明のページを置いたら、 タブの `index.html` にそのページへの 1 行を足し、 `python3 -I .claude/skills/explainer-pages/scripts/check-tab-links.py <タブの folder>` で抜けを 0 にする
+2. 説明のページを置いたら、 タブの `index.html` にそのページへの 1 行を足し、 `python3 -I .claude/skills/explainer-pages/scripts/install_toc.py <タブの folder>` で横の目次を入れ、 同じ folder の `check-tab-links.py` で抜けを 0 にする
 3. タブが最初の説明のページを置いた時に、 階層のトップ `index.html` にそのタブへの 1 行を足す
 
 ## 残す
