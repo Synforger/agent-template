@@ -96,6 +96,12 @@ sync
 check "base の宣言を全部写した派生の file は今までどおり通る" [ $? -eq 0 ]
 check "同じ path を 2 か所が列挙しても 1 回だけ写す" grep -qF "sync 2 paths" "${T}/out"
 
+# --- 最後の行が注釈の宣言 ----------------------------------------------------------
+setup
+printf '%s\n' "!.tooling/lib/helper.sh   # this agent keeps its own" "# trailing note" > "${AGENT}/.synced-paths.txt"
+sync
+check "最後の行が注釈の宣言でも通る" [ $? -eq 0 ]
+
 # --- 宣言を持たない古い base -------------------------------------------------------
 setup
 rm "${BASE}/.synced-paths.txt"
