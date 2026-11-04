@@ -6,6 +6,8 @@
 1. タブの folder の直下の `*.html` (= 説明のページ) が、全部トップページからリンクされている
 2. トップページのリンクの先が、全部実在する (= `#` だけのリンクと `http` のリンクは除く)
 3. メモ (= `memo.md`) に書いた file の path が、全部トップページからもリンクされている (= メモだけに入口を作らない)
+4. 直下の `*.html` が、全部横の目次の部品 (`../_common/toc-sidebar.js`) を読んでいる
+5. 階層の `pages/_common/toc-sidebar.js` が在り、真値と同じ中身 (入れるのは隣の `install_toc.py`)
 
 小さな検査なので、読み書きと判定を 1 file に入れている (= 規則の「役割ごとに file」から外れる理由)。
 """
@@ -14,6 +16,12 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import unquote
+
+# `python3 -I` では隣の file が import の道に乗らないので、自分の folder を足す
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from install_toc import COMPONENT_NAME, SCRIPT_TAG, SOURCE  # noqa: E402
+
+TAB_COMPONENT_SRC = f"../_common/{COMPONENT_NAME}"
 
 HREF_PATTERN = re.compile(r'href="([^"]+)"')
 MEMO_PATH_PATTERN = re.compile(r"`(~/[^`]+?\.(?:html|md|pdf|pptx|docx|xlsx|png|svg))`")
@@ -54,6 +62,15 @@ def check(tab_dir: Path) -> list[str]:
                 continue
             if target not in targets:
                 problems.append(f"メモにだけ書かれ、トップページから辿れない: {written}")
+    for page in sorted(tab_dir.glob("*.html")):
+        found = SCRIPT_TAG.search(page.read_text(encoding="utf-8"))
+        if not found or found.group(1) != TAB_COMPONENT_SRC:
+            problems.append(f"横の目次を読む行が無い: {page.name} (install_toc.py で入れる)")
+    component = tab_dir.parent / "_common" / COMPONENT_NAME
+    if not component.is_file():
+        problems.append(f"横の目次の部品が無い: {component} (install_toc.py で入れる)")
+    elif component.resolve() != SOURCE and component.read_bytes() != SOURCE.read_bytes():
+        problems.append(f"横の目次の部品が真値と違う: {component} (install_toc.py で写し直す)")
     return problems
 
 
