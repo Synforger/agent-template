@@ -24,6 +24,8 @@ from install_toc import COMPONENT_NAME, SCRIPT_TAG, SOURCE  # noqa: E402
 TAB_COMPONENT_SRC = f"../_common/{COMPONENT_NAME}"
 
 HREF_PATTERN = re.compile(r'href="([^"]+)"')
+# HTML のコメントの中 (雛形の書き方の例など) はリンクにも読み込みにも数えない
+HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 MEMO_PATH_PATTERN = re.compile(r"`(~/[^`]+?\.(?:html|md|pdf|pptx|docx|xlsx|png|svg))`")
 SKIPPED_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
 
@@ -32,7 +34,7 @@ def linked_targets(index_path: Path) -> tuple[set[Path], list[str]]:
     """トップページのリンクの先 (= 実在する物) と、実在しないリンクを返す。"""
     targets: set[Path] = set()
     missing: list[str] = []
-    for href in HREF_PATTERN.findall(index_path.read_text(encoding="utf-8")):
+    for href in HREF_PATTERN.findall(HTML_COMMENT.sub("", index_path.read_text(encoding="utf-8"))):
         if href.startswith(SKIPPED_PREFIXES):
             continue
         path_part = unquote(href.split("#", 1)[0])
@@ -63,7 +65,7 @@ def check(tab_dir: Path) -> list[str]:
             if target not in targets:
                 problems.append(f"メモにだけ書かれ、トップページから辿れない: {written}")
     for page in sorted(tab_dir.glob("*.html")):
-        found = SCRIPT_TAG.search(page.read_text(encoding="utf-8"))
+        found = SCRIPT_TAG.search(HTML_COMMENT.sub("", page.read_text(encoding="utf-8")))
         if not found or found.group(1) != TAB_COMPONENT_SRC:
             problems.append(f"横の目次を読む行が無い: {page.name} (install_toc.py で入れる)")
     component = tab_dir.parent / "_common" / COMPONENT_NAME

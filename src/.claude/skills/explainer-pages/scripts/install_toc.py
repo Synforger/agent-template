@@ -8,7 +8,8 @@
 2. ページの `</body>` の前に、その file を読む 1 行を足す。path はページから階層の `pages/_common/` への相対で、
    タブの folder のページなら `../_common/toc-sidebar.js`。既に読む行が在れば、path だけを直す
 3. 2 回流しても増えない。file ごとに added / fixed / ok を 1 行ずつ出す
-4. 名前が `.template.html` で終わる file (組み立ての元) は触らずに skipped と出す。書き出し先から見た path は、
+4. 組み立ての元は触らずに skipped と出す。元とみなすのは、階層から見て `src/` の下の file と、名前に `template` を
+   含む `.html`。書き出し先から見た path は、
    この file の置き場からは決まらないので、元には人が書き出し先から見た path で 1 行を入れる
 
 小さな道具なので、読み書きと判定を 1 file に入れている (規則の「役割ごとに file」から外れる理由)。
@@ -27,7 +28,8 @@ TIER_MARKER = "vision.md"
 SCRIPT_TAG = re.compile(r'<script\b[^>]*\bsrc="([^"]*' + re.escape(COMPONENT_NAME) + r')"[^>]*>\s*</script>')
 BODY_END = re.compile(r"</body\s*>", re.IGNORECASE)
 SKIPPED_FOLDER = "_archive"
-BUILD_TEMPLATE_SUFFIX = ".template.html"
+BUILD_SOURCE_FOLDER = "src"
+BUILD_TEMPLATE_WORD = "template"
 
 
 def tier_of(page: Path) -> Path:
@@ -67,9 +69,15 @@ def pages_in(target: Path) -> list[Path]:
     return sorted(p for p in target.rglob("*.html") if SKIPPED_FOLDER not in p.parts)
 
 
+def is_build_source(page: Path) -> bool:
+    """組み立ての元か。`src/` は階層から見た相対の path で見る (根が `src/` の下に在る repo でも全部を飛ばさない)。"""
+    inside_tier = page.resolve().relative_to(tier_of(page)).parts[:-1]
+    return BUILD_SOURCE_FOLDER in inside_tier or BUILD_TEMPLATE_WORD in page.name.lower()
+
+
 def install(page: Path) -> str:
     """ページ 1 本に部品を入れ、結果の 1 語を返す。"""
-    if page.name.endswith(BUILD_TEMPLATE_SUFFIX):
+    if is_build_source(page):
         return "skipped"
     component = component_for(tier_of(page))
     if component.resolve() != SOURCE and (not component.is_file() or component.read_bytes() != SOURCE.read_bytes()):
@@ -91,10 +99,15 @@ def main() -> int:
     if not SOURCE.is_file():
         print(f"部品の真値が無い: {SOURCE}", file=sys.stderr)
         return 1
+    outside = 0
     for target in (Path(arg).expanduser() for arg in sys.argv[1:]):
         for page in pages_in(target):
+            if not page.resolve().is_relative_to(AGENT_DIR):
+                print(f"outside: {page} (この道具のエージェントの folder {AGENT_DIR} の外。そのエージェントの道具で流す)")
+                outside += 1
+                continue
             print(f"{install(page)}: {page}")
-    return 0
+    return 1 if outside else 0
 
 
 if __name__ == "__main__":
