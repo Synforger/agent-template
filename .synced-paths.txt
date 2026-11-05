@@ -49,6 +49,8 @@
 
 # 起動の本体 (= 最初の発話から階層を決めて claude を起動する。 起動の固定の検査 check-launch-pins.py が読む先)
 .tooling/lib/claude-launch.py
+# 階層を何段でも同じ手順で数える部品 (= 起動・docs-check・台帳・容量の検査が import か呼び出しで使う。 無いと読み込みで落ちる)
+.tooling/lib/tier_paths.py
 
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
