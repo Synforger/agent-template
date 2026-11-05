@@ -32,28 +32,13 @@ chmod +x "$HOOKS_DIR/pre-commit"
 echo "Installed: $HOOKS_DIR/pre-commit -> .tooling/commit/precommit-conflict-check.sh"
 echo ""
 echo "=================================================="
-echo "Claude Code UserPromptSubmit hook setup (optional, for multi-PC sync)"
+echo "Claude Code hook setup (optional, for multi-PC sync)"
 echo "=================================================="
 echo ""
 echo "NOTE: this script does not edit ~/.claude/settings.json (so existing entries are never broken)"
 echo "    add the entry below to your existing hooks array manually:"
 echo ""
 cat <<'JSON'
-UserPromptSubmit に追加 (= 毎発話に GO-gate リマインダ極短注入、 推奨):
-
-~/.claude/settings.json の "hooks" > "UserPromptSubmit" に追加:
-
-  {
-    "hooks": [
-      {
-        "type": "command",
-        "command": "bash <agent-repo-root>/.tooling/hooks/go-gate-reminder.sh"
-      }
-    ]
-  }
-
-(= 既存の他 hook entry は触らない、 配列末尾に append)
-
 Add to "hooks" > "PreToolUse", "UserPromptSubmit" and "SessionStart" (asks for a skill once, the first
 time a session does what the skill is for; the table is .tooling/hooks/skill-triggers.toml; recommended):
 

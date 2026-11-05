@@ -15,6 +15,8 @@ A `when` matches when every condition it writes holds:
 - `path`    a regular expression searched in the path the tool reads or writes
 - `command` a regular expression searched in a Bash command
 - `cwd`     a regular expression searched in the session's working folder
+- `subagent` a regular expression searched in the Agent tool's `subagent_type` (`general-purpose` when the call
+          leaves it out)
 - `prompt`  a regular expression searched in the operator's message
 - `env`     `NAME=value` pairs that the hook's environment holds
 - `code`    true: the path is a code file (by suffix, or `#!` on the first line), outside the temporary roots
@@ -62,13 +64,13 @@ def searched(pattern: str, text: str, root: str) -> bool:
 def when_matches(when: dict, event: dict) -> bool:
     """Whether one `when` of the table holds for the event.
 
-    `event` carries: name, tool, path, command, cwd, prompt, env (dict), root, is_code (bool).
+    `event` carries: name, tool, path, command, cwd, subagent, prompt, env (dict), root, is_code (bool).
     """
     if when.get("event", DEFAULT_EVENT) != event["name"]:
         return False
     if "tools" in when and not tool_matches(event["tool"], when["tools"]):
         return False
-    for key in ("path", "command", "cwd", "prompt"):
+    for key in ("path", "command", "cwd", "subagent", "prompt"):
         if key in when and not searched(when[key], event[key], event["root"]):
             return False
     for pair in when.get("env", []):

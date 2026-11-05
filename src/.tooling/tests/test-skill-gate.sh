@@ -69,6 +69,12 @@ tools = ["Bash"]
 command = '\btabs\s+report\b'
 
 [[skill]]
+name = "writer-body"
+[[skill.when]]
+tools = ["Agent"]
+subagent = '^(?!(Explore|claude-code-guide)$)'
+
+[[skill]]
 name = "pwa-client:ops"
 file = "{platform}/tools/client/skills/ops/SKILL.md"
 [[skill.when]]
@@ -157,6 +163,11 @@ out="$(hook "${NONE}" "$(tool Read "{\"file_path\":\"${W}/platform/tools/client/
 check "同じ木の別の file を Read する時は止める" denies "${out}"
 check "止める時は読む skill の file を名指す" grep -qF "(${OPS_FILE})" <<< "${out}"
 check "その skill の SKILL.md を Edit する時は止める" denies "$(hook "${NONE}" "$(tool Edit "{\"file_path\":\"${OPS_FILE}\"}")")"
+
+# 体の種類 (= subagent_type) で当てる。 省いた呼び出しは general-purpose と見る
+check "書ける体は止める" denies "$(hook "${NONE}" "$(tool Agent '{"subagent_type":"general-purpose","prompt":"x"}')")"
+check "体の種類を省いた呼び出しも止める" denies "$(hook "${NONE}" "$(tool Agent '{"prompt":"x"}')")"
+check "読むだけの体は通る" silent "$(hook "${NONE}" "$(tool Agent '{"subagent_type":"claude-code-guide","prompt":"x"}')")"
 
 check "表が無ければ黙る" silent "$(SKILL_GATE_TABLE="${W}/missing.toml" hook "${NONE}" "$(tool Write "${CODE}")")"
 check "読めない入力は黙る" silent "$(printf 'not json' | python3 "${HOOKS}/skill_gate.py")"

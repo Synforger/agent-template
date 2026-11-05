@@ -44,6 +44,7 @@ def event_of(payload: dict) -> dict:
         "path": path_text,
         "command": tool_input.get("command") or "",
         "cwd": payload.get("cwd") or "",
+        "subagent": tool_input.get("subagent_type") or "general-purpose",
         "prompt": payload.get("prompt") or "",
         "env": dict(os.environ),
         "root": str(ROOT),
