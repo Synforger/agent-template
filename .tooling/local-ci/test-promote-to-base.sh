@@ -74,6 +74,28 @@ promote --file .tooling/startup/status.sh "chore: promote"
 check "--file で base が列挙する path を指せば書き戻す" \
     [ "$(git -C "${BASE}" show feature/test:src/.tooling/startup/status.sh 2>/dev/null)" = "status v2" ]
 
+# --- folder の行で配る物の中の file を --file で名指す ------------------------------------
+setup
+mkdir -p "${BASE}/src/pages/_common" "${AGENT}/pages/_common"
+echo "toc v1" > "${BASE}/src/pages/_common/toc.js"
+echo "kept v1" > "${BASE}/src/pages/_common/kept.js"
+echo "pages/_common/" >> "${BASE}/.synced-paths.txt"
+git -C "${BASE}" add -A
+git -C "${BASE}" commit -q -m "ship a folder"
+echo "toc v2" > "${AGENT}/pages/_common/toc.js"
+echo "kept mine" > "${AGENT}/pages/_common/kept.js"
+printf '%s\n' "!pages/_common/kept.js   # this agent keeps its own" > "${AGENT}/.synced-paths.txt"
+promote --file pages/_common/toc.js "chore: promote"
+check "--file で folder の行の中の file を指せば受ける" [ $? -eq 0 ]
+check "--file で folder の行の中の file を指せばその file を書き戻す" \
+    [ "$(git -C "${BASE}" show feature/test:src/pages/_common/toc.js 2>/dev/null)" = "toc v2" ]
+check "--file で folder の行の中の file を指しても同じ folder のほかの file は書き戻さない" \
+    [ "$(git -C "${BASE}" show feature/test:src/pages/_common/kept.js 2>/dev/null)" = "kept v1" ]
+promote --file pages/_common/kept.js "chore: promote"
+check "--file で folder の行の中でも派生が ! で外した file を指すと断る" [ $? -ne 0 ]
+promote --file pages/_commonx/toc.js "chore: promote"
+check "--file で folder の名前の頭だけが同じ path を指すと断る" [ $? -ne 0 ]
+
 # --- 宣言を持たない古い base -------------------------------------------------------
 setup
 git -C "${BASE}" rm -q .synced-paths.txt

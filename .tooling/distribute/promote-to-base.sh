@@ -11,7 +11,8 @@ set -euo pipefail
 #   ./.tooling/distribute/promote-to-base.sh [--file <path>]... [<commit-message>]
 #
 # Options:
-#   --file <path> : 指定 file のみ promote (= 複数指定可、 書き戻せる集合の中のもののみ受理)。
+#   --file <path> : 指定 file のみ promote (= 複数指定可、 書き戻せる集合の中のもののみ受理。
+#                   folder の行で配る物は、 その中の file を名指してもよい)。
 #                   省略時は集合の全件を書き戻し。
 #
 # Environment:
@@ -115,12 +116,18 @@ if [ "${#SELECTED_FILES[@]}" -gt 0 ]; then
     for sel in "${SELECTED_FILES[@]}"; do
         found=0
         for p in "${all_sync_paths[@]}"; do
-            if [ "$sel" = "$p" ]; then
+            # folder の行 (`pages/_common/`) で配る物は、その中の file を名指しても受ける
+            if [ "$sel" = "$p" ] || [[ "$sel" == "${p%/}/"* ]]; then
                 sync_paths+=("$sel")
                 found=1
                 break
             fi
         done
+        # 受けた folder の中でも、派生が `!` で外した file は書き戻さない
+        if [ "$found" -eq 1 ] && printf '%s\n' "$excluded_paths" | grep -xF -- "$sel" > /dev/null; then
+            unset 'sync_paths[${#sync_paths[@]}-1]'
+            found=0
+        fi
         if [ "$found" -eq 0 ]; then
             echo "error: --file '$sel' is neither shipped by the base nor listed in .synced-paths.txt, or this agent keeps it out (derived-only files cannot be promoted)" >&2
             exit 1
