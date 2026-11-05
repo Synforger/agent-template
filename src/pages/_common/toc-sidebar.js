@@ -7,6 +7,9 @@
  *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く
  *   右: このページの中の節 (h2・h3)。今読んでいる節に印。幅 RIGHT_MIN_PX 以上で出す
  *   下: 前のページ・次のページ (タブの中のページだけ、トップページの並び順)
+ * タブのトップは、この file の置き場から決める。この file は `<階層>/pages/_common/` に在るので、ページが
+ * `<階層>/pages/<タブ>/` の下に在れば、枝の folder の中 (`<タブ>/model/x.html` など) でも `<タブ>/index.html` がトップで、
+ * 枝の中のページもタブの中として前と次に並ぶ。それ以外の置き場のページは、ページの隣の index.html をトップにする。
  * 狭い画面では左が引き出しになり、右は左の今のページの下に入る。開け閉めは localStorage に覚える (使えない時は毎回開いた形)。
  * 見出しの id が無い物には `toc-<番号>` を振る。色はページの --bg・--fg・--line・--link・--card・--muted を使う。
  */
@@ -25,6 +28,9 @@
   var STORE_LEFT = "toc-sidebar:left";
   var STORE_RIGHT = "toc-sidebar:right";
   var INDEX_PAGE = "index.html";
+  var COMPONENT_FILE = "toc-sidebar.js";
+  /** この部品を読んだ script の行。document.currentScript は script の実行中にしか取れないので、ここで取っておく */
+  var SELF_SCRIPT = document.currentScript;
 
   var CSS = [
     "body.tsb{padding-top:" + (BAR_HEIGHT_PX + 20) + "px!important;}",
@@ -92,6 +98,20 @@
     return url.href;
   }
 
+  /** ページのタブのトップ {url, isTab}。isTab は、ページが `<階層>/pages/<タブ>/` の下に在り、枝の folder も
+   *  タブの中に数える時に真。部品の行が見つからない時と、タブの folder の外のページは、隣の index.html で isTab は偽。 */
+  function topPage(here) {
+    var script = SELF_SCRIPT || document.querySelector('script[src*="' + COMPONENT_FILE + '"]');
+    if (script && script.src) {
+      var pagesRoot = pageUrl("../", script.src);
+      if (here.indexOf(pagesRoot) === 0) {
+        var inside = here.slice(pagesRoot.length).split("/");
+        if (inside.length > 1) { return { url: pagesRoot + inside[0] + "/" + INDEX_PAGE, isTab: true }; }
+      }
+    }
+    return { url: pageUrl(INDEX_PAGE, here), isTab: false };
+  }
+
   /** 目次に載せる見出しを集め、id の無い物に id を振って返す。 */
   function collectHeadings() {
     var root = document.querySelector("main") || document.body;
@@ -127,8 +147,9 @@
     return { list: list, links: links, parents: parents };
   }
 
-  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, pages:[{href, title, inTab}]}] を読む。 */
-  function readGroups(indexDocument, indexUrl) {
+  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, pages:[{href, title, inTab}]}] を読む。
+   *  inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
+  function readGroups(indexDocument, indexUrl, nested) {
     var root = indexDocument.querySelector("main") || indexDocument.body;
     var groups = [];
     var current = { caption: "", pages: [] };
@@ -145,7 +166,7 @@
       if (seen[absolute]) { return; }
       seen[absolute] = true;
       var folder = indexUrl.replace(/[^/]*$/, "");
-      var inTab = absolute.indexOf(folder) === 0 && absolute.slice(folder.length).indexOf("/") === -1;
+      var inTab = absolute.indexOf(folder) === 0 && (nested || absolute.slice(folder.length).indexOf("/") === -1);
       current.pages.push({ href: absolute, title: text(node), inTab: inTab });
     });
     if (current.pages.length) { groups.push(current); }
@@ -153,14 +174,14 @@
   }
 
   /** トップページを読んで段の一覧を返す (= 今のページがトップならその文書を使う。読めなければ空の一覧)。 */
-  function loadGroups(indexUrl) {
+  function loadGroups(indexUrl, nested) {
     if (pageUrl(location.href, location.href) === indexUrl) {
-      return Promise.resolve(readGroups(document, indexUrl));
+      return Promise.resolve(readGroups(document, indexUrl, nested));
     }
     return fetch(indexUrl).then(function (response) {
       return response.ok ? response.text() : Promise.reject(response.status);
     }).then(function (html) {
-      return readGroups(new DOMParser().parseFromString(html, "text/html"), indexUrl);
+      return readGroups(new DOMParser().parseFromString(html, "text/html"), indexUrl, nested);
     }).catch(function () { return []; });
   }
 
@@ -192,7 +213,8 @@
     var collected = collectHeadings();
     var headings = collected.headings;
     var here = pageUrl(location.href, location.href);
-    var indexUrl = pageUrl(INDEX_PAGE, location.href);
+    var top = topPage(here);
+    var indexUrl = top.url;
     var style = element("style");
     style.textContent = CSS;
     document.head.appendChild(style);
@@ -341,13 +363,7 @@
     window.addEventListener("resize", function () { applyState(); shown = -2; update(); });
     update();
 
-    if (here === indexUrl) {
-      fillPages(readGroups(document, indexUrl).map(function (group) {
-        return { caption: group.caption, pages: group.pages };
-      }));
-    } else {
-      loadGroups(indexUrl).then(fillPages);
-    }
+    loadGroups(indexUrl, top.isTab).then(fillPages);
   }
 
   if (document.readyState === "loading") {
