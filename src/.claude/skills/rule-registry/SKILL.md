@@ -2,7 +2,7 @@
 title: ルール台帳と発火記録 (重みを実測で決める機構)
 description: ルール ID / 発火記録 / 足す時の判定 / 置き場と書式 / 退役
 when_to_use: 発火記録を書く直前 / ルールを足す・改訂する直前 / 押し出しや退役を決める時
-updated: 2026-10-26
+updated: 2026-11-05
 ---
 
 # ルール台帳と発火記録
@@ -17,13 +17,13 @@ updated: 2026-10-26
 
 ## 台帳 (`rules/registry.jsonl`)
 
-1 行 1 section、ID は頭の文字 + 4 桁 (親 `R-0001` / project `P-0001` / subproject `S-0001`) で**一度振ったら不変**。ID は台帳だけが持ち、`file` + `heading` で本体と紐付ける。本体に書くと常時 load 層の容量を食うためだ。
+1 行 1 section、ID は頭の文字 + 4 桁 (親 `R-0001` / project `P-0001` / 1 段目の subproject `S-0001` / その下の 2 段目 `S2-0001` / 3 段目 `S3-0001`。段の数を `S` に足し、1 段目までの ID は変えない) で**一度振ったら不変**。ID は台帳だけが持ち、`file` + `heading` で本体と紐付ける。本体に書くと常時 load 層の容量を食うためだ。
 
 - 更新: `python3 .tooling/rules/build-rule-registry.py`
 - **規則の file を書き換えたタブ自身が、同じ 1 回の commit で台帳も更新する**。後から別のタブが台帳だけを拾って commit する形はとらない。2 つのタブが同じ repo の規則を同時に直すと、台帳を誰が締めるかが曖昧になるからだ
 - 検査: 同 `--check`。未登録 section と消滅 section を検出する (docs-check step 11)
 - 台帳は**階層ごとに 1 本**。1 本にまとめると gitignored な階層の path が tracked file へ漏れるからだ
-- **ID の頭の文字は階層の深さで決まる**。1 つの session が読むのは 親 → project → subproject の 1 本の系列で、発火記録はその全部の ID を起動した階層の journal 1 本に並べる。文字が違えば、どの台帳の番号かが記録だけで決まる
+- **ID の頭の文字は階層の深さで決まる**。1 つの session が読むのは 親 → project → subproject → その下の段 … の 1 本の系列で、発火記録はその全部の ID を起動した階層の journal 1 本に並べる。文字が違えば、どの台帳の番号かが記録だけで決まる
   - 文字を分ける前に R- で振られた階層の番号は、`build-rule-registry.py` が番号はそのままで文字だけ直し、直した時刻を台帳の隣の `hits-since.json` に 1 度だけ書く。それより前の記録のうち、同じ番号が系列の台帳 2 つ以上に在る物は、集計が数から外す
 - section が消えても行は `retired: true` で残す。過去の発火記録が宛先を失わないためだ
 - `born_date` / `born_subject` = その section が最初に現れた commit。出自で、ドリフト確認に使う

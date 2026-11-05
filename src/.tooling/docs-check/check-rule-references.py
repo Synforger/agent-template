@@ -32,8 +32,11 @@ import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+from tier_paths import tier_files  # noqa: E402
 
 TARGET_GLOBS = [
     "CLAUDE.md",
@@ -45,15 +48,14 @@ TARGET_GLOBS = [
     # rule file だけを見ていた頃、 消えた dir への参照が _README に何か月も残っていた)
     "*/_README.md",
     ".claude/skills/_README.md",
-    "projects/*/_README.md",
-    "projects/*/vision.md",
-    "projects/*/rules/always.md",
-    "projects/*/.claude/skills/*/SKILL.md",
-    "projects/*/subprojects/_README.md",
-    "projects/*/subprojects/*/_README.md",
-    "projects/*/subprojects/*/vision.md",
-    "projects/*/subprojects/*/rules/always.md",
-    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
+]
+# 全階層 (= プロジェクトとサブプロ、 何段でも) の folder からの相対
+TIER_GLOBS = [
+    "_README.md",
+    "vision.md",
+    "rules/always.md",
+    ".claude/skills/*/SKILL.md",
+    "subprojects/_README.md",
 ]
 
 # この repo に固有の綴り (= work repo が同名の dir を持たない。 全階層で測る)
@@ -259,32 +261,33 @@ def main() -> int:
     checked = 0
     missing = []
 
-    for pat in TARGET_GLOBS:
-        for path in sorted(glob.glob(os.path.join(ROOT, pat))):
-            rel = os.path.relpath(path, ROOT)
-            tier = tier_root(rel)
-            try:
-                text = open(path, encoding="utf-8").read()
-            except OSError:
+    targets = [p for pat in TARGET_GLOBS for p in sorted(glob.glob(os.path.join(ROOT, pat)))]
+    targets += [str(p) for pat in TIER_GLOBS for p in tier_files(Path(ROOT), pat, with_templates=True)]
+    for path in targets:
+        rel = os.path.relpath(path, ROOT)
+        tier = tier_root(rel)
+        try:
+            text = open(path, encoding="utf-8").read()
+        except OSError:
+            continue
+        external = declares_external_paths(text)
+        seen = set()
+        for token in BACKTICK.findall(text):
+            token = token.strip()
+            if token in seen:
                 continue
-            external = declares_external_paths(text)
-            seen = set()
-            for token in BACKTICK.findall(text):
-                token = token.strip()
-                if token in seen:
-                    continue
-                gone = section_missing(token, tier)
-                if gone:
-                    seen.add(token)
-                    checked += 1
-                    missing.append((rel, gone))
-                    continue
-                if not is_internal_reference(token, tier, external):
-                    continue
+            gone = section_missing(token, tier)
+            if gone:
                 seen.add(token)
                 checked += 1
-                if not resolve(token, tier, external):
-                    missing.append((rel, token))
+                missing.append((rel, gone))
+                continue
+            if not is_internal_reference(token, tier, external):
+                continue
+            seen.add(token)
+            checked += 1
+            if not resolve(token, tier, external):
+                missing.append((rel, token))
 
     for rel, token in missing:
         print(f"{rel}\t{token}")

@@ -20,27 +20,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 from md_fences import fence_states  # noqa: E402
+from tier_paths import tier_files  # noqa: E402
 
 ASIDE = re.compile(r"[(（]=\s")
 CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)[^\n]+?(?<!`)\1(?!`)")
-GLOBS = (
-    "CLAUDE.md", "profile/profile.md", "rules/always.md", ".claude/skills/*/SKILL.md",
-    "projects/*/rules/always.md", "projects/*/.claude/skills/*/SKILL.md",
-    "projects/*/subprojects/*/rules/always.md",
-    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
-)
+GLOBS = ("CLAUDE.md", "profile/profile.md", "rules/always.md", ".claude/skills/*/SKILL.md")
+# 全階層 (= プロジェクトとサブプロ、 何段でも) の folder からの相対
+TIER_GLOBS = ("rules/always.md", ".claude/skills/*/SKILL.md")
 
 
 
 
 def rule_files() -> list[Path]:
     keep = set()
-    for pat in GLOBS:
-        for p in ROOT.glob(pat):
-            inner = p.relative_to(ROOT).parts
-            if any(seg.startswith("_") for seg in inner):
-                continue
-            keep.add(p)
+    found = [p for pat in GLOBS for p in ROOT.glob(pat)]
+    found += [p for pat in TIER_GLOBS for p in tier_files(ROOT, pat)]
+    for p in found:
+        inner = p.relative_to(ROOT).parts
+        if any(seg.startswith("_") for seg in inner):
+            continue
+        keep.add(p)
     return sorted(keep)
 
 

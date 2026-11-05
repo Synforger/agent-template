@@ -9,11 +9,12 @@
   親        -> rules/registry.jsonl
   project   -> projects/<P>/rules/registry.jsonl
   subproject-> projects/<P>/subprojects/<S>/rules/registry.jsonl
+               (= subproject の下にさらに subprojects/<S> が続く時も同じ形で、 何段でも)
 
   Why: 1 本にまとめると gitignored な階層の path が tracked file へ漏れる。
 
-ID の頭の文字は階層の深さで決まる (= 親 R- / project P- / subproject S-)。
-  Why: 1 つの session が読むのは 親 → project → subproject の 1 本の系列で、 その発火記録は
+ID の頭の文字は階層の深さで決まる (= 親 R- / project P- / 1 段目の subproject S- / 2 段目 S2- / 3 段目 S3- …)。
+  Why: 1 つの session が読むのは 親 → project → subproject → … の 1 本の系列で、 その発火記録は
        起動した階層の journal 1 本に並ぶ。 どの階層も R- の 1 番から振っていた間は、 同じ番号が
        系列の中に 2 つ 3 つ在り、 記録からはどの台帳の番号かを決められなかった。
   頭の文字が階層と違う行 (= 文字を分ける前に振った番号) は、 番号はそのままで文字だけ直し、
@@ -33,21 +34,24 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
 from md_fences import fence_states  # noqa: E402
+from tier_paths import id_letter, tier_files, tier_prefix  # noqa: E402
 
-# 走査対象 = 全階層の rule 層 (= 親 / project / subproject)
+# 走査対象 = 全階層の rule 層 (= 親 / project / subproject、 subproject は何段でも)
 TARGET_GLOBS = [
     "CLAUDE.md",
     "rules/always.md",
     "profile/profile.md",
     ".claude/skills/*/SKILL.md",
-    "projects/*/rules/always.md",
-    "projects/*/.claude/skills/*/SKILL.md",
-    "projects/*/subprojects/*/rules/always.md",
-    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
+]
+# 全階層の folder からの相対
+TIER_TARGET_GLOBS = [
+    "rules/always.md",
+    ".claude/skills/*/SKILL.md",
 ]
 SKIP_BASENAMES = {"_README.md", "_template.md"}
 # `_` prefix の階層 (= 雛形 / system) は対象外
@@ -55,34 +59,22 @@ SKIP_PATH_PARTS = ("_template-project", "_template-subproject", "_archive")
 
 
 def target_files():
+    found = [p for pat in TARGET_GLOBS for p in sorted(glob.glob(os.path.join(ROOT, pat)))]
+    found += [str(p) for pat in TIER_TARGET_GLOBS for p in tier_files(Path(ROOT), pat)]
     out = []
-    for pat in TARGET_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            if os.path.basename(p) in SKIP_BASENAMES:
-                continue
-            rel = os.path.relpath(p, ROOT)
-            if any(part in rel.split(os.sep) for part in SKIP_PATH_PARTS):
-                continue
-            out.append(rel)
+    for p in found:
+        if os.path.basename(p) in SKIP_BASENAMES:
+            continue
+        rel = os.path.relpath(p, ROOT)
+        if any(part in rel.split(os.sep) for part in SKIP_PATH_PARTS):
+            continue
+        out.append(rel)
     return out
 
 
 def tier_of(rel):
     """その file が属する階層 root を返す (= 親は空文字)。"""
-    parts = rel.split(os.sep)
-    if parts and parts[0] == "projects":
-        if "subprojects" in parts:
-            i = parts.index("subprojects")
-            return os.sep.join(parts[: i + 2])
-        return os.sep.join(parts[:2])
-    return ""
-
-
-def letter_of(tier):
-    """その階層の ID の頭の文字 (= 親 R / project P / subproject S)。"""
-    if not tier:
-        return "R"
-    return "S" if "subprojects" in tier.split(os.sep) else "P"
+    return os.sep.join(tier_prefix(rel.split(os.sep)))
 
 
 LETTERED_NAME = "hits-since.json"
@@ -166,11 +158,11 @@ def main():
     for tier, files in sorted(by_tier.items()):
         path = registry_path(tier)
         rows = load_registry(path)
-        letter = letter_of(tier)
+        letter = id_letter(tier)
         relettered = 0
         max_id = 0
         for r in rows:
-            m = re.match(r"([A-Z])-(\d+)$", r["id"])
+            m = re.match(r"([A-Z]\d*)-(\d+)$", r["id"])
             if m:
                 max_id = max(max_id, int(m.group(2)))
                 if m.group(1) != letter:

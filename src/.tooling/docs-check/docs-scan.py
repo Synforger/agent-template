@@ -25,6 +25,8 @@ import sys
 
 # .tooling/lib/ から 3 段上が repo root
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+from tier_paths import tier_prefix  # noqa: E402
 
 # dead link 判定で「外部 repo の root 慣習 file」 として見逃す名前
 EXTERNAL_ROOT_DOCS = {
@@ -82,12 +84,11 @@ def work_repo_basenames():
 
     def lookup(md_path):
         parts = (md_path[2:] if md_path.startswith("./") else md_path).split("/")
-        if parts[0] != "projects" or len(parts) < 3:
+        chain = tier_prefix(parts)
+        if not chain:
             return set()
-        # 自階層と、 サブプロなら親プロの repo 宣言も見る (= 親の repo を引き継ぐ階層がある)
-        tiers = ["/".join(parts[:2])]
-        if len(parts) > 4 and parts[2] == "subprojects":
-            tiers.insert(0, "/".join(parts[:4]))
+        # 自階層と、 サブプロなら親プロから途中の各段までの repo 宣言も見る (= 親の repo を引き継ぐ階層がある)
+        tiers = ["/".join(chain[:end]) for end in range(len(chain), 1, -2)]
         names = set()
         for t in tiers:
             repo = refs.repo_for(t)

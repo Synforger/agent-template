@@ -22,7 +22,9 @@ fail=0
 # script は自分の置き場から階層の根を決めるので、 作り物の階層の中へ写して走らせる
 mkdir -p "${T}/.tooling/rules" "${T}/rules" "${T}/journal/2026-01-01"
 mkdir -p "${T}/projects/demo/rules" "${T}/projects/demo/journal/2026-01-01"
+mkdir -p "${T}/.tooling/lib"
 cp "${SRC}" "${T}/.tooling/rules/rule-hits-summary.py"
+cp "$(dirname "${SRC}")/../lib/tier_paths.py" "${T}/.tooling/lib/"
 RUN="${T}/.tooling/rules/rule-hits-summary.py"
 
 cat > "${T}/rules/always.md" <<'MD'
@@ -106,6 +108,15 @@ printf '%s\n' '{"id": "S-0001", "file": "projects/demo/subprojects/sub/rules/alw
 printf '%s\n' '{"session": "2026-01-05-01", "ts": "2026-01-05T11:00:00+09:00", "fired": ["S-0001", "P-0001", "R-0005"]}' \
     > "${SUB}/journal/2026-01-05/session-01-rule-hits.jsonl"
 
+# subproject の下の 2 段目の階層: 頭の字は S2-。 記録は 親 / project / 1 段目 / 自階層 の 4 つの台帳の番号を持つ
+LEAF="${SUB}/subprojects/leaf"
+mkdir -p "${LEAF}/rules" "${LEAF}/journal/2026-01-05"
+printf '# leaf\n\n## 基本\n\n- leaf の中だけの決まり\n' > "${LEAF}/rules/always.md"
+printf '%s\n' '{"id": "S2-0001", "file": "projects/demo/subprojects/sub/subprojects/leaf/rules/always.md", "heading": "基本", "path": "基本", "retired": false}' \
+    > "${LEAF}/rules/registry.jsonl"
+printf '%s\n' '{"session": "2026-01-05-01", "ts": "2026-01-05T12:00:00+09:00", "fired": ["S2-0001", "S-0001"]}' \
+    > "${LEAF}/journal/2026-01-05/session-01-rule-hits.jsonl"
+
 # <説明> <期待する行の正規表現> [引数] : 出力のどこかの行が一致すれば緑
 expect() {
     local what="$1" pattern="$2" out
@@ -118,14 +129,16 @@ expect() {
     fi
 }
 
-expect "1 行の集計: 生きた rule 7 (= 退役の行は数えない)、 session 5、 寄らなかった記録 5 件 (= 宣言の日より前の 1 件は外れる)" \
-    '^rule_hits: 7 live rules, 5 sessions over 4d .*unresolved=5$'
+expect "1 行の集計: 生きた rule 8 (= 退役の行は数えない)、 session 6、 寄らなかった記録 5 件 (= 宣言の日より前の 1 件は外れる)" \
+    '^rule_hits: 8 live rules, 6 sessions over 4d .*unresolved=5$'
 expect "見出し 2 件・本文の抜粋・ID 直書きが同じ rule に寄り、 project の journal に書かれた R- も親へ寄る (= 発火 4 + 1)" \
     '^  R-0001  発火   5  違反   0  rules/always.md :: § git > 基本$' --detail
 expect "同じ綴りの記録も P- の ID も、 project の階層の rule に寄る (= 見出し 1 + 自階層の journal 1 + subproject の journal 1)" \
     '^  P-0001  発火   3  違反   0  projects/demo/rules/always.md :: 基本$' --detail
-expect "subproject の journal の S- は自階層の rule に寄る" \
-    '^  S-0001  発火   1  違反   0  projects/demo/subprojects/sub/rules/always.md :: 基本$' --detail
+expect "subproject の journal の S- は自階層の rule に寄る (= 2 段目の journal に書かれた S- も 1 段目の台帳へ寄る)" \
+    '^  S-0001  発火   2  違反   0  projects/demo/subprojects/sub/rules/always.md :: 基本$' --detail
+expect "2 段目の階層の S2- は、 その階層の rule に寄る (= 頭の字は段の数で決まる)" \
+    '^  S2-0001  発火   1  違反   0  projects/demo/subprojects/sub/subprojects/leaf/rules/always.md :: 基本$' --detail
 expect "subproject の journal の R- は、 間の project を越えて親の rule に寄る" \
     '^  R-0005  発火   1  違反   0  rules/always.md :: § quality > 番人の運用と点検の手順を機械にする$' --detail
 expect "文字を分ける前の R- でも、 親にしか無い番号は親へ寄る" \

@@ -1,7 +1,7 @@
 ---
 title: session の締め (終了手順 Step 0〜3)
 description: 終了発話か入れ替えの引き金から push (引き金なら起動し直し) までの手順
-updated: "2026-10-26"
+updated: 2026-11-05
 when_to_use: 操作者が断定形で終了を示した直後 (「終わり」「締めよう」「寝る」) / `<session-rollover phase="close">` が届いた時
 ---
 
@@ -26,7 +26,7 @@ Step 0〜3 を全部、この順で踏む。発動の判断 (断定形の終了�
 - **plan の棚卸し** (必須、触れた階層全部): `plans/` の生きている file を 1 本ずつ見て、**plan として終わった物だけ `_archive/` へ移す**。操作者待ちが plan の最後なら移し、途中なら残す。判断軸と手順は `rules/always.md § git` が持つ。残す file は最新化する。完了マークの付与、新規の残タスクの追加、state snapshot (develop/main の tip・open PR・branch) の更新、古い時点の記述の掃除をする。横断は `plans/` 直下、プロジェクト固有は `projects/<P>/plans/` に置く
 - **vision 更新** (現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**し、動いた時だけ書き換える。毎 session の更新義務はない。中身は状態だけで、やることは `plans/` と journal が持つ。無ければ作る。**既にある行を書き換える**。段落は増やさない。節と段落数は `.tooling/docs-check/docs-check.sh` step 14 が見る
 - **発火記録**: 効いた/違反 ID を `journal/<date>/session-NN-rule-hits.jsonl` へ書く。手順は `.claude/skills/rule-registry/SKILL.md` が持つ
-- **ジャーナル記入**: **書く前に階層を起動 keyword から再導出**。compaction で階層文脈が消えるためで、サブプロ起動ならサブプロ journal が正、採番アンカーは自階層の .md から取る。**触れた階層全部に 1 本ずつ書く**。階層は自己完結している。`normal` は `journal/YYYY-MM-DD/session-NN.md`、project は `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、subproject は `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md` に書く。親とサブの両方を触ったら両階層に 1 本ずつ。NN は Step 0 出力の採番をそのまま使い、階層ごとに独立している。規律は `journal/_README.md`、フォーマットは `journal/_template.md` が持つ。**続きが在る時は先頭に `## 生きている依頼`** を置く。操作者の「やって」を言葉のまま、その範囲、次の 1 手を書く。次の 1 手はエージェントが打つ手で書き、「操作者を待つ」と書くのは、答えで次の 1 手が決まる問いを出している時だけ。前の journal から運ばれて来た依頼も、終わるか操作者が取り下げるまで毎回運ぶ
+- **ジャーナル記入**: **書く前に階層を起動 keyword から再導出**。compaction で階層文脈が消えるためで、サブプロ起動なら一番下の段の journal が正、採番アンカーは自階層の .md から取る。**触れた階層全部に 1 本ずつ書く**。階層は自己完結している。`normal` は `journal/YYYY-MM-DD/session-NN.md`、project は `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、subproject は `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md` (その下に段が続く時は `…/subprojects/<S2>/journal/…`、何段でも同じ形) に書く。親とサブの両方を触ったら触れた階層ごとに 1 本ずつ。NN は Step 0 出力の採番をそのまま使い、階層ごとに独立している。規律は `journal/_README.md`、フォーマットは `journal/_template.md` が持つ。**続きが在る時は先頭に `## 生きている依頼`** を置く。操作者の「やって」を言葉のまま、その範囲、次の 1 手を書く。次の 1 手はエージェントが打つ手で書き、「操作者を待つ」と書くのは、答えで次の 1 手が決まる問いを出している時だけ。前の journal から運ばれて来た依頼も、終わるか操作者が取り下げるまで毎回運ぶ
 - **操作者が答えた物は「決めた事」として書き、書く前に真値 (操作者のメモ・plan) へ入れる**。答えは「はい」の形に限らない。方向を言った時も、操作者自身が案を出した時も答えで、例えば「〜の方が絶対良くね」「〜してもいいよ」が当たる。決めた日時と操作者の言葉を添える
   - **`操作者の返事待ち` に書くのは、訊いた後の操作者の発話にその問いへの言及が 1 つも無い物だけ**。書く前に、この session の操作者の発話を問いごとに照らす。context に在るうちに行う
   - Why: 答えの出た問いを「返事待ち」と書くと、次の session が同じ問いを訊き直すか、確かめるために会話の記録を全部読み直して context を食う。journal だけで、何が決まって何が残っているかが読める形にする。操作者が 2 度答えた問いを 2 session 続けて「返事待ち」と書いた実例がある

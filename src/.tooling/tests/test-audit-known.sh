@@ -125,6 +125,16 @@ TIER=projects/co/subprojects/sdk
 touch "${READER}/.fake-fail"
 expect 'when the reader cannot be asked, its area is shown to every tab of it' client-x 'new: /work/area-a/repo-x'
 rm -f "${READER}/.fake-fail" "${READER}/.weekly-audit-reader"
+# 係のタブがサブプロの下の 3 段目に居ても、 同じに読み上げて、 ほかのタブには出さない
+DEEPER="${READER}/subprojects/deeper"
+mkdir -p "${DEEPER}"
+touch "${DEEPER}/.weekly-audit-reader"
+printf 'client-x\n' > "${DEEPER}/.fake-reach"
+TIER=projects/co/subprojects/hub/subprojects/deeper
+expect 'a reader tab at a third level reads out its area' client-x 'new: /work/area-a/repo-x -> commit messages: wordone$'
+TIER=projects/co/subprojects/sdk
+expect_not 'another tab is not told the area a third-level reader reads' 'client-x client-y' 'repo-x'
+rm -f "${DEEPER}/.weekly-audit-reader"
 TIER=normal
 
 # 3. 読み解けない記録は黙らせない

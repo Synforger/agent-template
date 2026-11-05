@@ -91,6 +91,22 @@ expect "表の行が指す道具が無ければ出る" '^contracts: missing \.to
 build; printf '%s\n' 'work/tool.sh | tests/test-absent.sh | 無いテストが守る約束' >> "${R}/.tooling/contracts.txt"
 expect "表の行が指すテストが無ければ出る" '^contracts: missing test \.tooling/tests/test-absent\.sh '
 
+# 入れ子の階層: folder の側の ** の段は 1 段以上のどんな段にも当たる (= 何段続いても 1 行で足りる)
+deep_build() {
+    build
+    mkdir -p "${R}/tiers/a/sub/b/sub/c/sub/d"
+    for t in a/sub/b a/sub/b/sub/c a/sub/b/sub/c/sub/d; do printf 'x\n' > "${R}/tiers/${t}/_README.md"; done
+    swap "${R}/.tooling/layout.txt" 'tiers/* : _README.md notes/**' 'tiers/* : _README.md notes/** sub/'
+    printf '%s\n' 'tiers/**/sub : */' 'tiers/**/sub/* : _README.md ?notes/** ?sub/' >> "${R}/.tooling/layout.txt"
+}
+deep_build; expect "入れ子の階層は何段続いても、 ** の 1 行で足りる" ""
+deep_build; printf 'x\n' > "${R}/tiers/a/sub/b/sub/c/sub/d/stray.txt"
+expect "深い段の宣言に無い file も出る" '^layout: undeclared tiers/a/sub/b/sub/c/sub/d/stray\.txt '
+deep_build; mkdir -p "${R}/tiers/a/sub/b/sub/c/tmp"
+expect "深い段の形に無い folder が出る" '^layout: undeclared tiers/a/sub/b/sub/c/tmp/ '
+deep_build; printf 'tiers/**/gone : *.md\n' >> "${R}/.tooling/layout.txt"
+expect "** の行も、 当たる folder が無ければ出ない (= 形の決まり)" ""
+
 # git の中: 無視される file は見ない、 まだ追っていない file は見る、 無視される folder は行が要る
 build
 git -C "${R}" init -q

@@ -25,6 +25,8 @@ import sys
 # script 所在から ROOT を推定 (= worktree 対応)
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(ROOT / ".tooling" / "lib"))
+from tier_paths import tier_files  # noqa: E402
 
 OUT_PATH = ROOT / ".tooling" / "_output" / "duplicates.md"
 ALLOWLIST_PATH = SCRIPT_DIR / "duplicates-allowlist.txt"
@@ -36,9 +38,9 @@ TARGET_GLOBS = [
     "CLAUDE.md",
     "profile/profile*.md",
     ".claude/skills/*/SKILL.md",
-    "projects/*/.claude/skills/*/SKILL.md",
-    "projects/*/subprojects/*/.claude/skills/*/SKILL.md",
 ]
+# 全階層 (= プロジェクトとサブプロ、 何段でも) の folder からの相対
+TIER_TARGET_GLOBS = [".claude/skills/*/SKILL.md"]
 
 
 def collect_targets() -> list[pathlib.Path]:
@@ -50,6 +52,8 @@ def collect_targets() -> list[pathlib.Path]:
             p = ROOT / pat
             if p.is_file():
                 targets.append(p)
+    for pat in TIER_TARGET_GLOBS:
+        targets.extend(tier_files(ROOT, pat))
     return targets
 
 

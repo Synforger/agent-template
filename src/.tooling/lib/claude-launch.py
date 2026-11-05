@@ -10,7 +10,8 @@
     claude-launch.sh --child ...                  子のタブとして起動する (= 上のどれとも組める。 PWA の子のタブ用の agent)
     (後ろに続く引数は claude へそのまま渡す)
 
-階層の決め方の真値は `projects/_README.md` § プロジェクト判定 (= ここはそれを実装する)。 決めた階層は
+階層の決め方の真値は `projects/_README.md` § プロジェクト判定 (= ここはそれを実装する。 サブプロジェクトの下に
+サブプロジェクトが続く階層も、 同じ手順で何段でも)。 決めた階層は
 環境変数 `AGENT_TIER` で session に渡し、 階層の folder は `GUARD_WORK_FOLDER` で番人に渡す。 自動の入れ替えで起動し直された時 (= 最初の発話が
 `<session-rollover phase="start">` の封筒) は、 前の会話が封筒に書いた階層 (= `tier=` の行) をそのまま採る。
 子のタブ (= 親のタブが `tabs new` で立てたタブ) の最初の発話は `<child-start>` の塊を持ち、 その `tier=` の行
@@ -100,19 +101,25 @@ def found_at(name: str, said: str) -> int:
 
 
 def pick_tier(message: str) -> tuple[str, Path]:
-    """発話から階層を決める。 返り値 = (`AGENT_TIER` の値, 階層の folder)。"""
+    """発話から階層を決める。 返り値 = (`AGENT_TIER` の値, 階層の folder)。
+
+    親プロに当たったら発話の残りで `subprojects/` を探し、 当たったらその残りでさらに下の `subprojects/` を探す
+    (= 当たらなくなるまで何段でも繰り返す)。"""
     said = fold(message)
     hits = [p for p in folders(AGENT / "projects") if found_at(p.name, said) >= 0]
     if not hits:
         return "normal", AGENT
-    project = max(hits, key=lambda p: len(p.name))
-    # 発話の残り = 親プロの名前より後ろ。
-    rest = said[found_at(project.name, said) + len(fold(project.name)):]
-    subs = [s for s in folders(project / "subprojects") if found_at(s.name, rest) >= 0]
-    if subs:
-        sub = max(subs, key=lambda s: len(s.name))
-        return f"projects/{project.name}/subprojects/{sub.name}", sub
-    return f"projects/{project.name}", project
+    folder = max(hits, key=lambda p: len(p.name))
+    tier = f"projects/{folder.name}"
+    # 発話の残り = 当たった名前より後ろ。
+    rest = said[found_at(folder.name, said) + len(fold(folder.name)):]
+    while True:
+        subs = [s for s in folders(folder / "subprojects") if found_at(s.name, rest) >= 0]
+        if not subs:
+            return tier, folder
+        folder = max(subs, key=lambda s: len(s.name))
+        tier = f"{tier}/subprojects/{folder.name}"
+        rest = rest[found_at(folder.name, rest) + len(fold(folder.name)):]
 
 
 # 自動の入れ替えで起動し直された時の最初の発話 (= PWA の backend が封筒に入れて渡す)。 中身は前の会話が
@@ -124,12 +131,12 @@ CHILD_START = re.compile(r"<child-start>\n(.*?)\n</child-start>", re.S)
 # client が階層ごとにタブを立てて起動した時の最初の発話 (= 封筒だけで本文は無い)。 `tier=` の行が立てた階層。
 TAB_OPEN = re.compile(r"<tab-open>\n(.*?)\n</tab-open>", re.S)
 # `AGENT_TIER` の値の形 (= `_` と `.` で始まる名前は階層ではない)。
-TIER = re.compile(r"projects/[^/\n._][^/\n]*(/subprojects/[^/\n._][^/\n]*)?")
+TIER = re.compile(r"projects/[^/\n._][^/\n]*(/subprojects/[^/\n._][^/\n]*)*")
 
 
 def tier_folder(tier: str) -> Path | None:
-    """`AGENT_TIER` の値 (= `normal` / `projects/<P>` / `projects/<P>/subprojects/<S>`) が指す階層の folder。
-    その形でないか、 folder が無ければ None。"""
+    """`AGENT_TIER` の値が指す階層の folder。 値は `normal` / `projects/<P>` / `projects/<P>/subprojects/<S>` と、
+    その下に `/subprojects/<S>` が何段でも続く形。 その形でないか、 folder が無ければ None。"""
     if tier == "normal":
         return AGENT
     if not TIER.fullmatch(tier):
@@ -161,12 +168,14 @@ def tier_of(message: str) -> tuple[str, Path]:
 
 
 def skill_dirs(folder: Path) -> list[str]:
-    """階層の skill を session に読ませる `--add-dir` 引数 (= サブプロなら親プロの分も)。
+    """階層の skill を session に読ませる `--add-dir` 引数 (= サブプロなら、 親プロから自分までの各段の分も)。
 
     session はエージェントの根で始まるので、 階層の `.claude/skills/` は深い folder の扱いになり一覧に載らない。
     skill を持つ folder だけ、 追加の作業 folder として渡す。
     """
-    chain = [folder.parent.parent, folder] if folder.parent.name == "subprojects" else [folder]
+    chain = [folder]
+    while chain[0].parent.name == "subprojects":
+        chain.insert(0, chain[0].parent.parent)
     return [arg for d in chain if (d / ".claude" / "skills").is_dir() for arg in ("--add-dir", str(d))]
 
 

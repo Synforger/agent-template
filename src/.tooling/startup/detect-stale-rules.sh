@@ -21,6 +21,7 @@ esac
 # 除外 = _template.md (= 雛形) / _archive/* (= 履歴)。 個別 file は frontmatter `stable: true` で除外
 # 対象は rule / profile / _README だけなので、 記録と作業用の枝は歩かない
 # (= journal / drafts / plans / research 配下に対象 path は 1 つも無い)
+# -path の `*` は `/` も跨ぐので、 `projects/*/…` はサブプロが何段続いても当たる
 TARGETS=$(find . \
   -path "./.git" -prune -o \
   -path "./.claude/worktrees" -prune -o \
@@ -39,10 +40,7 @@ TARGETS=$(find . \
     -path "./projects/_README.md" -o \
     -path "./projects/*/_README.md" -o \
     -path "./projects/*/rules/always.md" -o \
-    -path "./projects/*/.claude/skills/*/SKILL.md" -o \
-    -path "./projects/*/subprojects/*/_README.md" -o \
-    -path "./projects/*/subprojects/*/rules/always.md" -o \
-    -path "./projects/*/subprojects/*/.claude/skills/*/SKILL.md" \
+    -path "./projects/*/.claude/skills/*/SKILL.md" \
   \) -print 2>/dev/null | grep -v '_template\.md$' | sort)
 
 now_ts=$(date +%s)
