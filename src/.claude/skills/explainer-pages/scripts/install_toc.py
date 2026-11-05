@@ -6,7 +6,8 @@
 1. ページの階層 (`vision.md` の在る一番近い folder) の `pages/_common/toc-sidebar.js` を、真値と同じ中身にする。
    真値はエージェントの根の `pages/_common/toc-sidebar.js` で、根の階層のページはそれをそのまま読む
 2. ページの `</body>` の前に、その file を読む 1 行を足す。path はページから階層の `pages/_common/` への相対で、
-   タブの folder のページなら `../_common/toc-sidebar.js`。既に読む行が在れば、path だけを直す
+   タブの folder のページなら `../_common/toc-sidebar.js`、その中の枝の folder のページなら `../../_common/toc-sidebar.js`。
+   既に読む行が在れば、path だけを直す。枝の中のページのタブのトップは、部品が自分の置き場から決める
 3. 2 回流しても増えない。file ごとに added / fixed / ok を 1 行ずつ出す
 4. 組み立ての元は触らずに skipped と出す。元とみなすのは、階層から見て `src/` の下の file と、名前に `template` を
    含む `.html`。書き出し先から見た path は、
