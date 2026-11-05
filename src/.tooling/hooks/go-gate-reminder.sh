@@ -6,5 +6,5 @@
 # Kept deliberately short (~15 tokens): the full rule lives in the always-load
 # rules (rules/always.md § forbidden in the derivation) — this line only
 # re-arms it. Wire via settings.json (see setup-hooks.sh output).
-echo "[go-gate] standalone explicit GO only; mixed utterance = consult; no momentum."
+echo "[go-gate] standalone explicit GO only; mixed utterance = consult; once GO, carry the work to its end and stop only where the operator has something to decide."
 exit 0
