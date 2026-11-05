@@ -17,7 +17,6 @@
 .tooling/startup/detect-duplicates.py
 .tooling/startup/detect-stale-rules.sh
 .tooling/session-end/extract-artifact-index.sh
-.tooling/hooks/go-gate-reminder.sh
 .tooling/hooks/skill_gate.py
 .tooling/hooks/skill_triggers.py
 .tooling/hooks/skill_reads.py

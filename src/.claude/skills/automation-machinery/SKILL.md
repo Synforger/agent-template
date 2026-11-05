@@ -43,7 +43,6 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/docs-check/check-rewrite-keeps.py` | 手動 (文を書き直した時。`--ref <前の版>`) | 書き直した file と前の版で、`code`・「引用」・日付・URL・[発言者] の増減を 1 行ずつ出し、差が在れば exit 1。見出しは段と並びが同じなら文だけ直してよい |
 | `.tooling/lib/md_fences.py` | `check-positive-form.py`・`check-equals-asides.py`・`build-rule-registry.py` が import する | 行ごとに code block の中かを返す。block は開いた印と同じ字で同じ本数以上の印だけの行で閉じる |
 | `.tooling/startup/capacity-candidates.py` | check-static-capacity の超過時 | バイト数降順の削減候補 + 発火実績。「少し削って測り直す」の往復を作らないための出力である |
-| `.tooling/hooks/go-gate-reminder.sh` | UserPromptSubmit hook | GO 判定リセットの極短注入。判定本体は `rules/always.md § forbidden` にあり、hook は再武装のみ行う |
 | `.tooling/hooks/skill_gate.py` (+ `skill_triggers.py`・`skill_reads.py`・表 `skill-triggers.toml`) | PreToolUse (全部の道具)・UserPromptSubmit・SessionStart hook | 表の操作に当たり、会話の記録にその skill を呼んだ跡か Read で読んだ跡が無ければ、道具を 1 回止めて全部まとめて名指す。表の操作は、道具・path・命令・作業の folder・発話・起動の環境である。サブエージェントは自分の記録を見る。発話と起動は止めず、1 行の注意で済ませる。skill ごとに 1 session に 1 回で、読めない時は通す。test は `tests/test-skill-gate.sh` である |
 | git hook guard (startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧。git は hooksPath を 1 つしか見ず、local 上書き 1 個で scan が丸ごと死ぬ |
 
