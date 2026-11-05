@@ -14,6 +14,8 @@
 body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 16px/1.7 system-ui, sans-serif; }
 main { max-width: 760px; margin: 0 auto; }
 h1 { font-size: 22px; margin: 0 0 8px; }
+h2 { font-size: 18px; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 18px 0 4px; }
 p.sub { color: var(--muted); margin: 0 0 20px; }
 a { color: var(--link); }
 ul { padding-left: 20px; }
@@ -26,9 +28,32 @@ nav { margin-bottom: 16px; }
   <nav><a href="../index.html">階層のトップへ</a></nav>
   <h1>{{title}}</h1>
   <p class="sub">階層: {{tier}}</p>
+  <!-- このページは今の全体像だけを書き、上書きで直す。日付の新しい段を足していかない (skill explainer-pages の「中身の木」) -->
+
+  <h2>何を確かめる仕事か</h2>
+  <p><!-- 1〜2 文で --></p>
+
+  <h2>今の答え</h2>
   <ul>
-    <!-- 例: <li><a href="./<説明>.html">説明の題 (= 1 行で何が分かるか)</a></li> -->
+    <li>分かった事: <!-- 根拠のページへリンクする --></li>
+    <li>分かっていない事: </li>
+    <li>次にやる事: </li>
   </ul>
+
+  <h2>数の要約</h2>
+  <p><!-- 結論を決める数だけ。全量は結果か検証のページに置く --></p>
+
+  <h2>枝</h2>
+  <!-- 枝ごとに見出しを 1 つ置き、その枝の全部のページへリンクする。枝の名前は仕事の種類で変えてよい。例:
+  <h3>前提</h3>
+  <ul><li><a href="./前提/依頼.html">依頼の中身とデータ</a></li></ul>
+  <h3>部品</h3>
+  <ul><li><a href="./部品/<部品>.html">部品の名前 (何をする部品か 1 行)</a></li></ul>
+  <h3>検証</h3>
+  <ul><li><a href="./検証/<日付>-<問い>.html">問い (誰がいつ)</a></li></ul>
+  <h3>会議</h3>
+  <ul><li><a href="./会議/<日付>.html">頼まれた事と答え</a></li></ul>
+  -->
 </main>
 <script src="../_common/toc-sidebar.js" defer></script>
 </body>
