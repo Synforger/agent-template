@@ -7,7 +7,7 @@ capacity: 3KB
 
 # <subproject> サブプロジェクト
 
-> 親プロジェクトの規約は `<親 project>/_README.md` と `<親 project>/rules/always.md`、 ここは本サブプロジェクト固有部分のみ。
+> 一つ上の階層 (= 親プロジェクト。 サブプロジェクトの下に立てた時はその親のサブプロジェクト) の規約は `<親の階層>/_README.md` と `<親の階層>/rules/always.md`、 ここは本サブプロジェクト固有部分のみ。
 
 ## このサブプロジェクトは何か
 
@@ -31,5 +31,5 @@ capacity: 3KB
 
 ## 親プロジェクトとの関係
 
-- **journal は階層自己完結**: 本サブプロジェクト作業の journal は `<親 project>/subprojects/<self>/journal/` に書く。 親+サブ両方触った session は両階層に 1 本ずつ
+- **journal は階層自己完結**: 本サブプロジェクト作業の journal は `<親の階層>/subprojects/<self>/journal/` に書く。 親+サブ両方触った session は両階層に 1 本ずつ
 - 片付いた計画の archive は本サブプロジェクト内 `plans/_archive/`

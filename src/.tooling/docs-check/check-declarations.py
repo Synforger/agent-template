@@ -14,6 +14,8 @@
   - `x/`   = その名前の folder (= その folder 自身の行が要る)
   - `x/**` = その名前の folder と、 その下の全部 (= 中は宣言しない。 日付で増える記録、 残す前提の無い出力、 別の道具の持ち物)
   - folder の側も段ごとの fnmatch で書ける (= `projects/*` は project のどれにも当たる。 入れ子の決まりはこの形で書く)
+  - folder の側の `**` の段は、 1 段以上のどんな段にも当たる (= `projects/**/subprojects/*` は、 サブプロが何段続いても
+    そのどれにも当たる)
   - `?x` = 機械によっては無い物 (= git が運ばない folder や file。 無くても消し忘れとは数えない)
   - 「当たる実物が無い」 と数えるのは、 そのままの綴りで書かれた folder の行と名前だけ。 `*` などを含む
     綴りは、 繰り返される物の形の決まりで、 今 0 個でも明日 1 つ出来る (= git が運ばない階層を名指す行は、
@@ -61,10 +63,17 @@ def read_lines(rel):
         return None
 
 
+def segs_match(path, pattern):
+    """段ごとに fnmatch が通る。 pattern の `**` の段は path の 1 段以上に当たる。"""
+    if not pattern:
+        return not path
+    if pattern[0] == "**":
+        return any(segs_match(path[k:], pattern[1:]) for k in range(1, len(path) + 1))
+    return bool(path) and fnmatch.fnmatchcase(path[0], pattern[0]) and segs_match(path[1:], pattern[1:])
+
+
 def seg_match(path, pattern):
-    """段の数が同じで、 段ごとに fnmatch が通る。"""
-    a, b = path.split("/"), pattern.split("/")
-    return len(a) == len(b) and all(fnmatch.fnmatchcase(x, y) for x, y in zip(a, b))
+    return segs_match(path.split("/"), pattern.split("/"))
 
 
 def tracked():

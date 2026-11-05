@@ -63,30 +63,27 @@ if [ "$parent_size" -gt "$PARENT_LIMIT" ]; then
 fi
 check_skills "agent parent" "" "$SKILLS_PARENT_LIMIT"
 
-for p_dir in projects/*/; do
-    p_name=$(basename "$p_dir")
-    case "$p_name" in _*) continue ;; esac
-    proj_files=("$p_dir/_README.md" "$p_dir/rules/always.md")
-    proj_size=$(sum_files "${proj_files[@]}")
-    if [ "$proj_size" -gt "$PROJECT_LIMIT" ]; then
-        overflows+=("$p_name: ${proj_size} B > ${PROJECT_LIMIT} B")
-        overflow_files+=("${proj_files[@]}")
+# project と、 何段続いても全部の subproject (= 階層の列挙は tier_paths.py が 1 か所で持つ)。
+# 上限は project と subproject の 2 種類で、 subproject は何段目でも同じ上限。 表示名は
+# `projects/` と `subprojects/` を外した `<P>` / `<P>/<S>` / `<P>/<S>/<S>`
+while IFS= read -r tier; do
+    t_dir="${tier}/"
+    t_name=$(sed 's#^projects/##; s#/subprojects/#/#g' <<< "$tier")
+    if [[ "$tier" == *"/subprojects/"* ]]; then
+        t_limit=$SUBPROJECT_LIMIT
+        t_skills_limit=$SKILLS_SUBPROJECT_LIMIT
+    else
+        t_limit=$PROJECT_LIMIT
+        t_skills_limit=$SKILLS_PROJECT_LIMIT
     fi
-    check_skills "$p_name" "$p_dir" "$SKILLS_PROJECT_LIMIT"
-
-    for s_dir in "$p_dir"subprojects/*/; do
-        [ -d "$s_dir" ] || continue
-        s_name=$(basename "$s_dir")
-        case "$s_name" in _*) continue ;; esac
-        sub_files=("$s_dir/_README.md" "$s_dir/rules/always.md")
-        sub_size=$(sum_files "${sub_files[@]}")
-        if [ "$sub_size" -gt "$SUBPROJECT_LIMIT" ]; then
-            overflows+=("$p_name/$s_name: ${sub_size} B > ${SUBPROJECT_LIMIT} B")
-            overflow_files+=("${sub_files[@]}")
-        fi
-        check_skills "$p_name/$s_name" "$s_dir" "$SKILLS_SUBPROJECT_LIMIT"
-    done
-done
+    t_files=("${t_dir}_README.md" "${t_dir}rules/always.md")
+    t_size=$(sum_files "${t_files[@]}")
+    if [ "$t_size" -gt "$t_limit" ]; then
+        overflows+=("$t_name: ${t_size} B > ${t_limit} B")
+        overflow_files+=("${t_files[@]}")
+    fi
+    check_skills "$t_name" "$t_dir" "$t_skills_limit"
+done < <(python3 .tooling/lib/tier_paths.py)
 
 if [ "${#overflows[@]}" -gt 0 ]; then
     echo "static_capacity: ${#overflows[@]} tier(s) over limit"

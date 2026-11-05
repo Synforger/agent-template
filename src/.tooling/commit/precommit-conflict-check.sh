@@ -70,10 +70,10 @@ if [ -n "$META_CAP_LINES" ]; then
     # 削除 (D) / rename (R) は「容量緩和 reflex + 内容追加」 の反例。
     # 形態 D 移行のような cleanup 系 rename が誤警告を出していたため、
     # 追加 (A) + 変更 (M) のみを反 reflex 判定の対象にする。
+    # pathspec の `*` は `/` も跨ぐので、 `projects/*/…` はサブプロが何段続いても当たる
     OTHER_FILES=$(git diff --cached --name-only --diff-filter=AM -- \
         CLAUDE.md 'profile/*.md' '.claude/skills/*/SKILL.md' \
         'projects/*/rules/always.md' 'projects/*/.claude/skills/*/SKILL.md' \
-        'projects/*/subprojects/*/rules/always.md' 'projects/*/subprojects/*/.claude/skills/*/SKILL.md' \
         2>/dev/null | grep -v 'rules/always.md$' || true)
     if [ -n "$OTHER_FILES" ]; then
         echo "" >&2

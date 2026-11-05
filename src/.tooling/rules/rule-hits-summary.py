@@ -41,42 +41,31 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-REGISTRY_GLOBS = [
-    "rules/registry.jsonl",
-    "projects/*/rules/registry.jsonl",
-    "projects/*/subprojects/*/rules/registry.jsonl",
-]
-HITS_GLOBS = [
-    "journal/*/*-rule-hits.jsonl",
-    "projects/*/journal/*/*-rule-hits.jsonl",
-    "projects/*/subprojects/*/journal/*/*-rule-hits.jsonl",
-]
-ID_RE = re.compile(r"[A-Z]-\d{4}")
+sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+from tier_paths import id_letter, lineage, tier_files  # noqa: E402
+
+#: 根の物と、 全階層 (= プロジェクトとサブプロ、 何段でも) の folder からの相対
+REGISTRY_GLOB = "rules/registry.jsonl"
+HITS_GLOB = "journal/*/*-rule-hits.jsonl"
+ID_RE = re.compile(r"[A-Z]\d*-\d{4}")
 
 
-def lineage(tier):
-    """その階層から親までの系列 (= 自階層 → project → 親)。 1 つの session が読む台帳はこの中だけ。"""
-    out = [tier] if tier else []
-    parts = tier.split(os.sep) if tier else []
-    if "subprojects" in parts:
-        out.append(os.sep.join(parts[:parts.index("subprojects")]))
-    out.append("")
-    return out
+def registries():
+    """全階層の台帳の path (= 親、 project、 何段でも続く subproject の順)。"""
+    return [*sorted(glob.glob(os.path.join(ROOT, REGISTRY_GLOB))), *map(str, tier_files(Path(ROOT), REGISTRY_GLOB))]
 
 
-def letter_of(tier):
-    """その階層の ID の頭の文字 (= 台帳を作る側と同じ決め: 親 R / project P / subproject S)。"""
-    if not tier:
-        return "R"
-    return "S" if "subprojects" in tier.split(os.sep) else "P"
+def hit_files():
+    return [*sorted(glob.glob(os.path.join(ROOT, HITS_GLOB))), *map(str, tier_files(Path(ROOT), HITS_GLOB))]
 
 
 def tier_of_id(rid, tier):
-    """ID の頭の文字が指す階層を、 記録が書かれた階層の系列の中から返す (= 系列に無ければ None)。"""
+    """ID の頭の字が指す階層を、 記録が書かれた階層の系列の中から返す (= 系列に無ければ None)。"""
     for t in lineage(tier):
-        if letter_of(t) == rid[0]:
+        if id_letter(t) == rid.split("-")[0]:
             return t
     return None
 
@@ -106,18 +95,17 @@ _ALL_TIERS = []
 
 def load_registry():
     rows = []
-    for pat in REGISTRY_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
-            tier = "" if tier == "." else tier
-            if tier and tier not in _ALL_TIERS:
-                _ALL_TIERS.append(tier)
-            with open(p, encoding="utf-8") as f:
-                for ln in f:
-                    if ln.strip():
-                        r = json.loads(ln)
-                        r["tier"] = tier
-                        rows.append(r)
+    for p in registries():
+        tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
+        tier = "" if tier == "." else tier
+        if tier and tier not in _ALL_TIERS:
+            _ALL_TIERS.append(tier)
+        with open(p, encoding="utf-8") as f:
+            for ln in f:
+                if ln.strip():
+                    r = json.loads(ln)
+                    r["tier"] = tier
+                    rows.append(r)
     return rows
 
 
@@ -150,51 +138,50 @@ def _verdict_of(rec):
 def load_hits():
     """全書式を {tier, session, day, ref, id, verdict, by} の列へ潰す。"""
     out = []
-    for pat in HITS_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            rel = os.path.relpath(p, ROOT)
-            tier = rel.split("/journal/")[0]
-            tier = "" if tier == rel else tier
-            m = DATE_RE.search("/" + rel)
-            day_from_path = m.group(1) if m else ""
-            with open(p, encoding="utf-8") as f:
-                for ln in f:
-                    ln = ln.strip()
-                    if not ln:
-                        continue
-                    try:
-                        rec = json.loads(ln)
-                    except json.JSONDecodeError:
-                        continue
-                    # 書き漏らした session を後から閉じた印 (= 事実は無いので数えない)
-                    if rec.get("unrecorded"):
-                        continue
-                    day = (rec.get("ts") or "")[:10] or day_from_path
-                    session = rec.get("session") or f"{day_from_path}-?"
-                    base = {"tier": tier, "session": session, "day": day, "ts": rec.get("ts") or ""}
+    for p in hit_files():
+        rel = os.path.relpath(p, ROOT)
+        tier = rel.split("/journal/")[0]
+        tier = "" if tier == rel else tier
+        m = DATE_RE.search("/" + rel)
+        day_from_path = m.group(1) if m else ""
+        with open(p, encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    rec = json.loads(ln)
+                except json.JSONDecodeError:
+                    continue
+                # 書き漏らした session を後から閉じた印 (= 事実は無いので数えない)
+                if rec.get("unrecorded"):
+                    continue
+                day = (rec.get("ts") or "")[:10] or day_from_path
+                session = rec.get("session") or f"{day_from_path}-?"
+                base = {"tier": tier, "session": session, "day": day, "ts": rec.get("ts") or ""}
 
-                    # 正規形は fired / violated がどちらも配列。 型が違う記録は
-                    # 行単位の旧形なので、 下の吸収経路へ落とす (= ここで回すと死ぬ)
-                    if isinstance(rec.get("fired"), (list, tuple)) or \
-                            isinstance(rec.get("violated"), (list, tuple)):
-                        for rid in rec.get("fired") or []:
+                # 正規形は fired / violated がどちらも配列。 型が違う記録は
+                # 行単位の旧形なので、 下の吸収経路へ落とす (= ここで回すと死ぬ)
+                if isinstance(rec.get("fired"), (list, tuple)) or \
+                        isinstance(rec.get("violated"), (list, tuple)):
+                    for rid in rec.get("fired") or []:
+                        out.append({**base, "id": rid, "ref": None,
+                                    "verdict": "hit", "by": None})
+                    for v in rec.get("violated") or []:
+                        rid = v.get("id") if isinstance(v, dict) else v
+                        by = v.get("by") if isinstance(v, dict) else None
+                        if rid:
                             out.append({**base, "id": rid, "ref": None,
-                                        "verdict": "hit", "by": None})
-                        for v in rec.get("violated") or []:
-                            rid = v.get("id") if isinstance(v, dict) else v
-                            by = v.get("by") if isinstance(v, dict) else None
-                            if rid:
-                                out.append({**base, "id": rid, "ref": None,
-                                            "verdict": "violation", "by": by})
-                        continue
+                                        "verdict": "violation", "by": by})
+                    continue
 
-                    ref = rec.get("rule") or rec.get("id")
-                    if not ref:
-                        continue
-                    verdict = _verdict_of(rec) or "hit"
-                    rid = ref if ID_RE.fullmatch(str(ref)) else None
-                    out.append({**base, "id": rid, "ref": None if rid else ref,
-                                "verdict": verdict, "by": rec.get("by")})
+                ref = rec.get("rule") or rec.get("id")
+                if not ref:
+                    continue
+                verdict = _verdict_of(rec) or "hit"
+                rid = ref if ID_RE.fullmatch(str(ref)) else None
+                out.append({**base, "id": rid, "ref": None if rid else ref,
+                            "verdict": verdict, "by": rec.get("by")})
     return out
 
 
@@ -209,17 +196,16 @@ LETTERED_KEY = "lettered_since"
 def load_lettered():
     """階層 → 頭の文字を分けた時刻 (= 台帳を作る script が、 文字を直した時に 1 度だけ書く)。"""
     out = {}
-    for pat in REGISTRY_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
-            tier = "" if tier == "." else tier
-            try:
-                with open(os.path.join(os.path.dirname(p), BASELINE_NAME), encoding="utf-8") as f:
-                    when = json.load(f).get(LETTERED_KEY)
-                datetime.datetime.fromisoformat(when)
-            except (OSError, ValueError, AttributeError, TypeError):
-                continue
-            out[tier] = when
+    for p in registries():
+        tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
+        tier = "" if tier == "." else tier
+        try:
+            with open(os.path.join(os.path.dirname(p), BASELINE_NAME), encoding="utf-8") as f:
+                when = json.load(f).get(LETTERED_KEY)
+            datetime.datetime.fromisoformat(when)
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+        out[tier] = when
     return out
 
 
@@ -240,17 +226,16 @@ def written_before(rec, when):
 def load_baselines():
     """階層 → 宣言された日。 file が無い階層は載らない (= 全期間を数える)。"""
     out = {}
-    for pat in REGISTRY_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
-            tier = "" if tier == "." else tier
-            try:
-                with open(os.path.join(os.path.dirname(p), BASELINE_NAME), encoding="utf-8") as f:
-                    day = json.load(f).get("by_id_since")
-            except (OSError, ValueError, AttributeError):
-                continue
-            if isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
-                out[tier] = day
+    for p in registries():
+        tier = os.path.relpath(os.path.dirname(os.path.dirname(p)), ROOT)
+        tier = "" if tier == "." else tier
+        try:
+            with open(os.path.join(os.path.dirname(p), BASELINE_NAME), encoding="utf-8") as f:
+                day = json.load(f).get("by_id_since")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            out[tier] = day
     return out
 
 

@@ -192,6 +192,7 @@ check "再開でも最初の発話の階層の置き場を渡す" has "${T}/out/
 # --- 自動の入れ替えで起動し直された時 -----------------------------------------------------
 
 # 封筒の 1 行目は "client" を含む (= 作り物のエージェントには Client という階層が在る)
+RELAYED='Message from another session, relayed by the client (the operator did not type this):'
 ROLLED='Automatic session rollover, sent by the client (the operator did not type this):'
 
 setup
@@ -245,6 +246,73 @@ printf '%s\n<tab-open>\ntier=projects/Nowhere\n</tab-open>' "${OPENED}" > "${T}/
 launch --first-message-file "${T}/msg"
 check "立てたタブの階層の folder が無ければ発話から決め直す" has "${T}/out/env" "AGENT_TIER=projects/Client"
 check "立てたタブの決め直しを 1 行で言う" grep -q "引き継いだ階層が見つかりません" "${T}/out/stderr"
+
+# --- サブプロジェクトの下にさらに続く階層 (= 3 段目・4 段目。 深さを決め打ちしない) --------------------
+
+DEEP3="projects/見本/subprojects/親/subprojects/子"
+DEEP4="${DEEP3}/subprojects/孫"
+deep_setup() {
+    setup
+    mkdir -p "${T}/agent/${DEEP4}" "${T}/agent/projects/見本/subprojects/親/subprojects/_x"
+}
+
+deep_setup
+printf '見本の親の子を見て' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "3 段目まで発話の名前で決まる" has "${T}/out/env" "AGENT_TIER=${DEEP3}"
+check "番人へ 3 段目の folder を渡す" has "${T}/out/env" "GUARD_WORK_FOLDER=${T}/agent/${DEEP3}"
+
+deep_setup
+printf '見本の親の子の孫の件' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "4 段目も同じ手順で決まる" has "${T}/out/env" "AGENT_TIER=${DEEP4}"
+
+deep_setup
+printf '子は後で。 見本の親の話' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "各段は、 一つ上の段の名前より後ろだけで探す" has "${T}/out/env" "AGENT_TIER=projects/見本/subprojects/親"
+
+deep_setup
+printf '見本の親の _x の話' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "3 段目でも _ 始まりは階層にならない" has "${T}/out/env" "AGENT_TIER=projects/見本/subprojects/親"
+
+deep_setup
+mkdir -p "${T}/agent/projects/見本/.claude/skills" "${T}/agent/${DEEP3}/.claude/skills" "${T}/agent/${DEEP4}/.claude/skills"
+printf '見本の親の子の孫の件' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "skill を持つ段の folder を、 親プロから一番下まで渡す (見本)" has "${T}/out/args" "${T}/agent/projects/見本"
+check "skill を持つ段の folder を渡す (3 段目)" has "${T}/out/args" "${T}/agent/${DEEP3}"
+check "skill を持つ段の folder を渡す (4 段目)" has "${T}/out/args" "${T}/agent/${DEEP4}"
+check "skill を持たない段 (親) の folder は渡さない" lacks "${T}/out/args" "${T}/agent/projects/見本/subprojects/親"
+
+deep_setup
+printf '%s\n<session-rollover phase="start">\ntier=%s\nmode=continue\n</session-rollover>' "${ROLLED}" "${DEEP3}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "入れ替えで引き継ぐ階層は 3 段目でもそのまま採る" has "${T}/out/env" "AGENT_TIER=${DEEP3}"
+
+deep_setup
+printf '%s\n<tab-open>\ntier=%s\n</tab-open>' "${OPENED}" "${DEEP3}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "client が立てたタブは 3 段目の階層で起動する" has "${T}/out/env" "AGENT_TIER=${DEEP3}"
+
+deep_setup
+printf '%s\n<agent-message from="parent" session="ses_p">\n<child-start>\ntier=%s\n</child-start>\n\nやって\n</agent-message>' "${RELAYED}" "${DEEP3}" > "${T}/msg"
+launch --child --first-message-file "${T}/msg"
+check "子のタブは 3 段目の階層で起動する" has "${T}/out/env" "AGENT_TIER=${DEEP3}"
+
+deep_setup
+printf '%s\n<tab-open>\ntier=projects/見本/subprojects/親/subprojects/無い\n</tab-open>' "${OPENED}" > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "3 段目の folder が無ければ、 その階層では起動しない" lacks "${T}/out/env" "AGENT_TIER=projects/見本/subprojects/親/subprojects/無い"
+check "3 段目の決め直しを 1 行で言う" grep -q "引き継いだ階層が見つかりません" "${T}/out/stderr"
+
+deep_setup
+mkdir -p "${T}/home/.claude/projects/-agent" "${T}/agent/${DEEP3}/.claude/skills"
+printf '%s\n' '{"type":"user","message":{"content":"見本の親の子の話"}}' > "${T}/home/.claude/projects/-agent/deep-1.jsonl"
+launch --resume deep-1
+check "再開でも最初の発話の 3 段目の階層を渡す" has "${T}/out/env" "AGENT_TIER=${DEEP3}"
+check "再開でも 3 段目の skill の folder を渡す" has "${T}/out/args" "${T}/agent/${DEEP3}"
 
 # --- fastMode の固定 ---------------------------------------------------------------
 
@@ -342,7 +410,6 @@ check "pull が止まったら 1 行で言う" grep -q "agent の pull が止ま
 
 # --- 子のタブ ----------------------------------------------------------------------
 
-RELAYED='Message from another session, relayed by the client (the operator did not type this):'
 setup
 printf '%s\n<agent-message from="parent" session="ses_p">\n<child-start>\ntier=normal\n</child-start>\n\nClient の資料を直して\n</agent-message>' "${RELAYED}" > "${T}/msg"
 launch --child --first-message-file "${T}/msg"

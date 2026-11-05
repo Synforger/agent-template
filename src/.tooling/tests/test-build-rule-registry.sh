@@ -1,6 +1,6 @@
 #!/bin/bash
 # .tooling/rules/build-rule-registry.py の test。 作り物の階層 (= 親 / project / subproject) で、
-# ID の頭の文字が階層の深さで決まること (= 親 R- / project P- / subproject S-)、 文字を分ける前に
+# ID の頭の文字が階層の深さで決まること (= 親 R- / project P- / 1 段目の subproject S- / 2 段目 S2- / 3 段目 S3-)、 文字を分ける前に
 # R- で振られた階層の番号が、 番号はそのままで文字だけ直ること、 直した時刻が台帳の隣に 1 度だけ
 # 書かれること、 検査だけの時は何も書かずに食い違いを報告することを確かめる。 FAIL 1 行ずつ。
 #
@@ -16,9 +16,11 @@ fail=0
 # script は自分の置き場から階層の根を決めるので、 作り物の階層の中へ写して走らせる
 PROJ="${T}/projects/demo"
 SUB="${PROJ}/subprojects/sub"
-mkdir -p "${T}/.tooling/rules" "${T}/.tooling/lib" "${T}/rules" "${PROJ}/rules" "${SUB}/rules"
+LEAF="${SUB}/subprojects/leaf"
+TWIG="${LEAF}/subprojects/twig"
+mkdir -p "${T}/.tooling/rules" "${T}/.tooling/lib" "${T}/rules" "${PROJ}/rules" "${SUB}/rules" "${LEAF}/rules" "${TWIG}/rules"
 cp "${HERE}/rules/build-rule-registry.py" "${T}/.tooling/rules/"
-cp "${HERE}/lib/guard-may-write.py" "${HERE}/lib/md_fences.py" "${T}/.tooling/lib/"
+cp "${HERE}/lib/guard-may-write.py" "${HERE}/lib/md_fences.py" "${HERE}/lib/tier_paths.py" "${T}/.tooling/lib/"
 RUN="${T}/.tooling/rules/build-rule-registry.py"
 
 printf '# rules\n\n## 基本\n\n- 親の決まり\n' > "${T}/rules/always.md"
@@ -32,6 +34,11 @@ printf '%s\n' \
     '{"id": "R-0002", "file": "projects/demo/rules/always.md", "heading": "昔の節", "path": "昔の節", "level": 2, "retired": true}' \
     > "${PROJ}/rules/registry.jsonl"
 printf '%s\n' '{"by_id_since": "2026-01-02", "why": "test"}' > "${PROJ}/rules/hits-since.json"
+# subproject の下に続く階層 (= 2 段目・3 段目)。 2 段目は、 1 段目の文字 S- で振られた台帳を持つ
+printf '# leaf\n\n## 基本\n\n- leaf の決まり\n' > "${LEAF}/rules/always.md"
+printf '# twig\n\n## 基本\n\n- twig の決まり\n' > "${TWIG}/rules/always.md"
+printf '%s\n' '{"id": "S-0001", "file": "projects/demo/subprojects/sub/subprojects/leaf/rules/always.md", "heading": "基本", "path": "基本", "level": 2, "retired": false}' \
+    > "${LEAF}/rules/registry.jsonl"
 
 # <説明> <file> <期待する正規表現> : file のどこかの行が一致すれば緑
 holds() {
@@ -70,6 +77,9 @@ holds "文字を直した階層は、 直した時刻を台帳の隣に持つ" "
 holds "既に在った宣言は残る" "${PROJ}/rules/hits-since.json" '"by_id_since": "2026-01-02"'
 ok "4 本の backtick の block の中の見出しは、 節として載らない" "$(! grep -q 'block の中の見出し' "${SUB}/rules/registry.jsonl"; echo $?)"
 holds "4 本の backtick の block が閉じた後の見出しは、 節として載る" "${SUB}/rules/registry.jsonl" '"id": "S-0002", .*"heading": "block の後の節"'
+holds "2 段目の subproject の ID は、 番号はそのままで S2- に直る" "${LEAF}/rules/registry.jsonl" '"id": "S2-0001", .*"heading": "基本"'
+ok "2 段目の台帳に S- の行が残らない" "$(! grep -q '"id": "S-' "${LEAF}/rules/registry.jsonl"; echo $?)"
+holds "3 段目の subproject の ID は S3-" "${TWIG}/rules/registry.jsonl" '"id": "S3-0001", .*"heading": "基本"'
 ok "最初から正しい文字で振った階層は、 直した時刻を持たない" "$([ ! -e "${SUB}/rules/hits-since.json" ]; echo $?)"
 
 stamp="$(cat "${PROJ}/rules/hits-since.json")"

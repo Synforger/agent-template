@@ -14,28 +14,29 @@ import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+from tier_paths import tier_files  # noqa: E402
 
-JOURNAL_GLOBS = [
-    "journal/*/session-*.md",
-    "projects/*/journal/*/session-*.md",
-    "projects/*/subprojects/*/journal/*/session-*.md",
-]
+#: 根の物と、 全階層 (= プロジェクトとサブプロ、 何段でも) の folder からの相対
+JOURNAL_GLOB = "journal/*/session-*.md"
 SESSION_RE = re.compile(r"/(\d{4}-\d{2}-\d{2})/session-(\d+)\.md$")
 
 
 def main() -> int:
     sessions = []  # (tier, date, nn, rel path)
-    for pat in JOURNAL_GLOBS:
-        for p in sorted(glob.glob(os.path.join(ROOT, pat))):
-            rel = os.path.relpath(p, ROOT)
-            m = SESSION_RE.search("/" + rel)
-            if not m:
-                continue
-            tier = rel.split("/journal/")[0]
-            tier = "" if tier == rel else tier
-            sessions.append((tier, m.group(1), m.group(2), rel))
+    journals = sorted(glob.glob(os.path.join(ROOT, JOURNAL_GLOB)))
+    journals += map(str, tier_files(Path(ROOT), JOURNAL_GLOB, with_templates=True))
+    for p in journals:
+        rel = os.path.relpath(p, ROOT)
+        m = SESSION_RE.search("/" + rel)
+        if not m:
+            continue
+        tier = rel.split("/journal/")[0]
+        tier = "" if tier == rel else tier
+        sessions.append((tier, m.group(1), m.group(2), rel))
 
     # 階層ごとに「記録を書き始めた日」 を出す
     started = {}

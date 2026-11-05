@@ -211,11 +211,10 @@ done < <(python3 .tooling/docs-check/journal-integrity.py 2>/dev/null)
 # _ prefix folder (= 雛形 / system) は除外。 gitignore 済み project も同一契約 (= 存在するものは検査)
 echo "[10/17] hierarchy interface check..."
 h_fail=0
-for p in projects/*/ projects/*/subprojects/*/; do
+# サブプロが何段続いても数える (= 階層の列挙は tier_paths.py が 1 か所で持つ。 `_` 始まりの雛形は数えない)
+while IFS= read -r h_tier; do
+  p="${h_tier}/"
   [ -d "$p" ] || continue
-  h_base="$(basename "$p")"
-  case "$h_base" in _*) continue ;; esac
-  case "$p" in */_template-project/*) continue ;; esac
   for req in _README.md rules/always.md; do
     [ -f "${p}${req}" ] || { fail "$p: hierarchy interface missing file → $req"; h_fail=1; }
   done
@@ -230,7 +229,7 @@ for p in projects/*/ projects/*/subprojects/*/; do
   fi
   # vision.md は起動で読む現在地 (= 全階層に揃ったので欠落は FAIL。 新しい階層は雛形の cp で入る)
   [ -f "${p}vision.md" ] || { fail "$p: hierarchy interface missing file → vision.md"; h_fail=1; }
-done
+done < <(python3 .tooling/lib/tier_paths.py)
 [ "$h_fail" -eq 0 ] && pass
 
 # ===== 11. ルール台帳の整合 =====

@@ -39,6 +39,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from tier_paths import tier_files  # noqa: E402
+
 HOOK = Path(os.environ.get("AREA_GUARD_HOOK",
                            Path.home() / ".git-hooks/agent-hooks/claude-code/area-guard.py"))
 TIMEOUT_SEC = 60
@@ -48,7 +51,6 @@ LOG_GLOB = "weekly-audit-*.log"
 OUTSIDE = "-"
 NORMAL_TIER = "normal"
 READER_MARKER = ".weekly-audit-reader"
-READER_GLOBS = (f"projects/*/{READER_MARKER}", f"projects/*/subprojects/*/{READER_MARKER}")
 AGENT_DIR = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2])
 
 HEADER = re.compile(r"^--- (?P<repo>.*) \((?P<notes>.*)\) ---$")
@@ -211,7 +213,7 @@ def load_audience() -> Audience | None:
     is_child = os.environ.get("AGENT_CHILD") == "1"
     tier_folder = AGENT_DIR if tier == NORMAL_TIER else AGENT_DIR / tier
     covered: set[str] = set()
-    for marker in sorted(m for pattern in READER_GLOBS for m in AGENT_DIR.glob(pattern)):
+    for marker in sorted(tier_files(AGENT_DIR, READER_MARKER)):
         reader_reach = load_reach(marker.parent)
         if reader_reach is None:
             # 係が読む境界を訊けない時は、境界のタブ全部に出す側へ倒す

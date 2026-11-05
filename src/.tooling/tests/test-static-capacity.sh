@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # check-static-capacity.sh の fixture test (= わざと溢れる形で赤が出ることを実証する)。
 #
-# 3 通りを一時 repo で走らせる:
+# 4 通りを一時 repo で走らせる:
 #   1. skill の一覧だけが溢れる   → exit 1、 skill の行と長い順の内訳が出る
 #   2. 常時 load だけが溢れる     → exit 1、 skill 側の処理で落ちない (= 空配列の展開)
 #   3. どちらも収まる             → exit 0
+#   4. サブプロの下の 2 段目・3 段目の常時 load が溢れる → exit 1、 その階層の名前が出る
 #
 # macOS 標準の /bin/bash (= 3.2) と PATH の bash の両方で回す (= 3.2 だけが空配列の展開で落ちる)。
 #
@@ -17,6 +18,7 @@ fails=0
 limit() { sed -n "s/^$1=\([0-9]*\)$/\1/p" "$SRC/startup/check-static-capacity.sh"; }
 SKILLS_OVER=$(( $(limit SKILLS_PARENT_LIMIT) + 1000 ))
 PARENT_OVER=$(( $(limit PARENT_LIMIT) + 1000 ))
+SUB_OVER=$(( $(limit SUBPROJECT_LIMIT) + 1000 ))
 
 make_repo() {
     local d
@@ -24,7 +26,7 @@ make_repo() {
     git -C "$d" init -q
     mkdir -p "$d/.tooling/lib" "$d/.tooling/startup" "$d/profile" "$d/rules"
     cp "$SRC/startup/check-static-capacity.sh" "$SRC/startup/capacity-candidates.py" "$d/.tooling/startup/"
-    cp "$SRC/lib/skill-listing.py" "$d/.tooling/lib/"
+    cp "$SRC/lib/skill-listing.py" "$SRC/lib/tier_paths.py" "$d/.tooling/lib/"
     printf 'x\n' > "$d/CLAUDE.md"
     printf 'x\n' > "$d/profile/profile.md"
     printf 'x\n' > "$d/rules/always.md"
@@ -58,6 +60,14 @@ for SH in /bin/bash bash; do
 
     r=$(make_repo); add_skill "$r" small 10
     expect "どちらも収まる" 0 "OK" "$r"
+
+    r=$(make_repo); mkdir -p "$r/projects/p/subprojects/s/subprojects/t/rules"
+    head -c "$SUB_OVER" /dev/zero | tr '\0' 'a' > "$r/projects/p/subprojects/s/subprojects/t/rules/always.md"
+    expect "サブプロの下の 3 段目の常時 load が溢れる" 1 "p/s/t: " "$r"
+
+    r=$(make_repo); mkdir -p "$r/projects/p/subprojects/s/subprojects/t/.claude/skills/"
+    add_skill "$r/projects/p/subprojects/s/subprojects/t" big "$(( $(limit SKILLS_SUBPROJECT_LIMIT) + 1000 ))"
+    expect "サブプロの下の 3 段目の skill の一覧が溢れる" 1 "p/s/t skills listing" "$r"
 done
 
 echo "elapsed: $(( $(date +%s) - start ))s"

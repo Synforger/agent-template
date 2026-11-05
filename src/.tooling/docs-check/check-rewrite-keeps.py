@@ -24,6 +24,8 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / ".tooling" / "lib"))
+from tier_paths import tier_prefix  # noqa: E402
 
 HEADING = re.compile(r"^(#{1,6}) (.*)$", re.M)
 PATTERNS = {
@@ -109,12 +111,7 @@ def crumbs(heads: list[tuple[int, str]]) -> list[tuple[str, str]]:
 
 
 def registry_of(rel: Path) -> Path:
-    parts = rel.parts
-    if len(parts) >= 4 and parts[0] == "projects" and parts[2] == "subprojects":
-        return ROOT.joinpath(*parts[:4], "rules", "registry.jsonl")
-    if len(parts) >= 2 and parts[0] == "projects":
-        return ROOT.joinpath(*parts[:2], "rules", "registry.jsonl")
-    return ROOT / "rules" / "registry.jsonl"
+    return ROOT.joinpath(*tier_prefix(rel.parts), "rules", "registry.jsonl")
 
 
 def update_registry(path: Path, before: str, after: str) -> int:

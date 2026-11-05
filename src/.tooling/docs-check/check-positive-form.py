@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 from md_fences import fence_states  # noqa: E402
+from tier_paths import tier_files  # noqa: E402
 
 # 打ち消しの語尾 (= 節の末尾に来た時だけ主文を否定形にする)
 NEGATIVE_TAIL = re.compile(
@@ -45,10 +46,10 @@ EXEMPT_PREFIX = ("Why", "How", "why", "how")
 def rule_files() -> list[Path]:
     """検査対象 = 常時 load と skill のルール本体、 および起動手順の真値。"""
     out = [ROOT / "CLAUDE.md"]
-    for pat in ("rules/always.md", ".claude/skills/*/SKILL.md", "projects/*/rules/always.md",
-                "projects/*/.claude/skills/*/SKILL.md", "projects/*/subprojects/*/rules/always.md",
-                "projects/*/subprojects/*/.claude/skills/*/SKILL.md"):
+    for pat in ("rules/always.md", ".claude/skills/*/SKILL.md"):
         out.extend(ROOT.glob(pat))
+    for pat in ("rules/always.md", ".claude/skills/*/SKILL.md"):
+        out.extend(tier_files(ROOT, pat))
     keep = []
     for p in out:
         parts = p.parts

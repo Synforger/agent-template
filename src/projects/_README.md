@@ -1,7 +1,7 @@
 ---
 title: projects フォルダ
 description: 自己完結プロジェクト群の運用 (= 判定 / 標準構造 / 階層インターフェース / 使い分け)
-updated: "2026-10-22"
+updated: "2026-11-05"
 capacity: 7KB
 ---
 
@@ -15,13 +15,15 @@ capacity: 7KB
 
 **folder 名 = 判定キーワード** = 真値 1 箇所 (= ls 結果のみ)、 mapping 表 / 判定キーワード section は存在しない。 folder 作るだけで自動編入、 削除で自動退役、 改訂忘れが構造的に不可能。
 
-照合順 (= 順序付き、 親 → サブの順):
+照合順 (= 順序付き、 親 → サブの順。 サブプロの下にさらにサブプロが続く時は、 その段も同じ手順で何段でも):
 
 1. `projects/` の親プロ folder 名 (= `_` / `.` prefix 除外) を発話と**部分一致**で照合
-2. 親プロ hit したら **発話の残り (= 親プロ folder 名以降の文字列)** で `ls projects/<親プロ>/subprojects/` の folder 名と照合
-   - サブプロ hit → 親プロ + サブプロ両方採用 (= 並列 Read)
-   - サブプロ miss → 親プロのみ採用
+2. 親プロ hit したら **発話の残り (= hit した folder 名以降の文字列)** で `ls projects/<親プロ>/subprojects/` の folder 名と照合
+   - サブプロ hit → その残りで、 さらに下の `subprojects/` を同じ手順で照合する (= hit する限り続ける)
+   - 照合が止まった段までを全部採用する (= 並列 Read。 journal を読むのは一番下の段だけ)
 3. 親プロも miss なら `normal`
+
+階層の値 `AGENT_TIER` は、 採用した一番下の段の path (= `projects/<親プロ>` / `projects/<親プロ>/subprojects/<サブプロ>` / その下に `/subprojects/<サブプロ>` を続けた形)。
 
 folder 名規約 (= 親プロ / サブプロ共通):
 
@@ -44,12 +46,12 @@ projects/<project>/
 ├── research/       ← このプロジェクト固有の調査
 ├── pages/          ← 説明のページとタブのメモ (= 任意、 運用 = 親の `pages/_README.md`)
 ├── journal/        ← セッションログ (YYYY-MM-DD/session-NN.md)
-└── subprojects/    ← サブプロジェクト (= 同構造の子、 journal も独立)
+└── subprojects/    ← サブプロジェクト (= 同構造の子、 journal も独立。 その下にも同じ形で何段でも続く)
 ```
 
 ## 階層インターフェース (= 必須セット、 機械検査 = docs-check step 10)
 
-project / subproject が必ず持つ最小セット (= 雛形 cp で自動充足、 テンプレの形を暗黙仕様にしない):
+project / subproject (= 何段目でも同じ) が必ず持つ最小セット (= 雛形 cp で自動充足、 テンプレの形を暗黙仕様にしない):
 
 - **必須 file**: `_README.md` / `rules/always.md` (= 固有 rule が無い間も空雛形を置く)
 - **起動時必読**: `vision.md` (= 長期の状態 1 枚、 上限 4KB)。 未作成の階層は docs-check step 10 が WARN で出すので、 次にその階層で起動した session の終了時に作る
@@ -66,6 +68,8 @@ cp -R projects/_template-project/ projects/<新名>/
 ```
 
 で標準構造が一括で立つ。 folder 名 = 判定キーワードなので**ls で自動編入**され、 他に触る file は無い。 `_README.md` の各 section を埋めれば即起動対象。
+
+サブプロジェクトは `projects/_template-project/subprojects/_template-subproject/` を `projects/<P>/subprojects/<S>/` へ `cp -R` して立てる。 その下にさらに段を足す時も、 同じ雛形を `projects/<P>/subprojects/<S>/subprojects/<S2>/` へ写す (= 段ごとの雛形は無い)。
 
 ## `<project>/_README.md` の必須セクション (= 全プロジェクト統一)
 
