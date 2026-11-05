@@ -4,7 +4,8 @@
  * 真値はエージェントの根の pages/_common/ のこの file で、各階層の pages/_common/ へは
  * .claude/skills/explainer-pages/scripts/install_toc.py が写し、行も足す。
  *   上のバー: 左の開け閉め (☰)・「ページ › 今の節」・右の開け閉め
- *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く
+ *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く。
+ *       トップの中に `data-toc-pages` の付いた要素が在れば、その中の h2・h3・リンクだけを読む (無ければ main の中の全部)
  *   右: このページの中の節 (h2・h3)。今読んでいる節に印。幅 RIGHT_MIN_PX 以上で出す
  *   下: 前のページ・次のページ (タブの中のページだけ、トップページの並び順)
  * タブのトップは、この file の置き場から決める。この file は `<階層>/pages/_common/` に在るので、ページが
@@ -29,6 +30,8 @@
   var STORE_RIGHT = "toc-sidebar:right";
   var INDEX_PAGE = "index.html";
   var COMPONENT_FILE = "toc-sidebar.js";
+  /** トップページの中で、左の一覧の元にする範囲の印 (本文の文中のリンクを一覧から外すため) */
+  var PAGES_MARK = "data-toc-pages";
   /** この部品を読んだ script の行。document.currentScript は script の実行中にしか取れないので、ここで取っておく */
   var SELF_SCRIPT = document.currentScript;
 
@@ -151,10 +154,15 @@
    *  inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
   function readGroups(indexDocument, indexUrl, nested) {
     var root = indexDocument.querySelector("main") || indexDocument.body;
+    var selector = "h2, h3, a[href]";
+    if (indexDocument.querySelector("[" + PAGES_MARK + "]")) {
+      root = indexDocument;
+      selector = ["h2", "h3", "a[href]"].map(function (tag) { return "[" + PAGES_MARK + "] " + tag; }).join(", ");
+    }
     var groups = [];
     var current = { caption: "", pages: [] };
     var seen = {};
-    root.querySelectorAll("h2, h3, a[href]").forEach(function (node) {
+    root.querySelectorAll(selector).forEach(function (node) {
       if (node.tagName === "H2" || node.tagName === "H3") {
         if (current.pages.length) { groups.push(current); }
         current = { caption: text(node), pages: [] };

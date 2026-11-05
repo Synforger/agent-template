@@ -4,7 +4,8 @@
 
 確かめる事:
 1. タブの folder の中の `*.html` (= 説明のページ。枝の folder の中も、`_archive/` は除く) が、全部トップページから
-   リンクされている。横の目次の左の一覧はトップページのリンクだけを並べるので、枝の中のページもトップから直に辿る
+   リンクされている。横の目次の左の一覧はトップページのリンクだけを並べるので、枝の中のページもトップから直に辿る。
+   トップに `data-toc-pages` の付いた要素が在れば、左の一覧はその中のリンクだけを並べるので、その中のリンクだけを数える
 2. トップページのリンクの先が、全部実在する (= `#` だけのリンクと `http` のリンクは除く)
 3. メモ (= `memo.md`) に書いた file の path が、全部トップページからもリンクされている (= メモだけに入口を作らない)
 4. 1 のページが、全部横の目次の部品を、ページから見た path で読んでいる (直下なら `../_common/toc-sidebar.js`、
@@ -17,6 +18,7 @@
 import os
 import re
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -29,22 +31,63 @@ HREF_PATTERN = re.compile(r'href="([^"]+)"')
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 MEMO_PATH_PATTERN = re.compile(r"`(~/[^`]+?\.(?:html|md|pdf|pptx|docx|xlsx|png|svg))`")
 SKIPPED_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
+# 横の目次 (toc-sidebar.js の PAGES_MARK) と同じ印
+PAGES_MARK = "data-toc-pages"
 
 
-def linked_targets(index_path: Path) -> tuple[set[Path], list[str]]:
-    """トップページのリンクの先 (= 実在する物) と、実在しないリンクを返す。"""
-    targets: set[Path] = set()
+class _MarkedLinks(HTMLParser):
+    """`data-toc-pages` の付いた要素の中のリンクの href を集める。印の要素と同じ名前の tag の開け閉めで中を追う。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.is_marked = False
+        self.hrefs: list[str] = []
+        self._tag = ""
+        self._depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        names = dict(attrs)
+        if self._depth:
+            if tag == self._tag:
+                self._depth += 1
+            if tag == "a" and names.get("href"):
+                self.hrefs.append(names["href"] or "")
+        elif PAGES_MARK in names:
+            self.is_marked = True
+            self._tag = tag
+            self._depth = 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._depth and tag == self._tag:
+            self._depth -= 1
+
+
+def linked_targets(index_path: Path) -> tuple[set[Path], set[Path], list[str]]:
+    """トップページの全部のリンクの先 (実在する物)、そのうち横の目次の左の一覧に出るリンクの先、実在しないリンクを返す。"""
+    html = HTML_COMMENT.sub("", index_path.read_text(encoding="utf-8"))
+    marked = _MarkedLinks()
+    marked.feed(html)
+    all_targets: set[Path] = set()
     missing: list[str] = []
-    for href in HREF_PATTERN.findall(HTML_COMMENT.sub("", index_path.read_text(encoding="utf-8"))):
-        if href.startswith(SKIPPED_PREFIXES):
+    for href in HREF_PATTERN.findall(html):
+        target = _target_of(index_path, href)
+        if target is None:
             continue
-        path_part = unquote(href.split("#", 1)[0])
-        target = (index_path.parent / path_part).resolve()
         if target.exists():
-            targets.add(target)
+            all_targets.add(target)
         else:
             missing.append(href)
-    return targets, missing
+    if not marked.is_marked:
+        return all_targets, all_targets, missing
+    listed = {t for t in (_target_of(index_path, href) for href in marked.hrefs) if t is not None and t.exists()}
+    return all_targets, listed, missing
+
+
+def _target_of(index_path: Path, href: str) -> Path | None:
+    """リンクの先の file の path。ページの外へのリンクと `#` だけのリンクは None。"""
+    if href.startswith(SKIPPED_PREFIXES):
+        return None
+    return (index_path.parent / unquote(href.split("#", 1)[0])).resolve()
 
 
 def check(tab_dir: Path) -> list[str]:
@@ -54,12 +97,13 @@ def check(tab_dir: Path) -> list[str]:
     index_path = tab_dir / "index.html"
     if not index_path.is_file():
         return [f"トップページが無い: {index_path}"]
-    targets, missing = linked_targets(index_path)
+    targets, listed, missing = linked_targets(index_path)
     problems = [f"リンクの先が無い: {href}" for href in missing]
     pages = pages_in(tab_dir)
     for page in pages:
-        if page.resolve() != index_path.resolve() and page.resolve() not in targets:
-            problems.append(f"トップページから辿れないページ: {page.relative_to(tab_dir)}")
+        if page.resolve() != index_path.resolve() and page.resolve() not in listed:
+            where = f"`{PAGES_MARK}` の範囲" if listed is not targets else "トップページ"
+            problems.append(f"{where}から辿れないページ: {page.relative_to(tab_dir)}")
     memo_path = tab_dir / "memo.md"
     if memo_path.is_file():
         for written in MEMO_PATH_PATTERN.findall(memo_path.read_text(encoding="utf-8")):
