@@ -6,6 +6,7 @@
  *   上のバー: 左の開け閉め (☰)・「ページ › 今の節」・右の開け閉め
  *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く。
  *       トップの中に `data-toc-pages` の付いた要素が在れば、その中の h2・h3・リンクだけを読む (無ければ main の中の全部)
+ *       h3 の見出しとその下のページは、h2 の物より 1 段下げて並べる。下にリンクの無い h2 も、下に h3 の段が在れば見出しを残す
  *   右: このページの中の節 (h2・h3)。今読んでいる節に印。幅 RIGHT_MIN_PX 以上で出す
  *   下: 前のページ・次のページ (タブの中のページだけ、トップページの並び順)
  * タブのトップは、この file の置き場から決める。この file は `<階層>/pages/_common/` に在るので、ページが
@@ -49,6 +50,8 @@
     ".tsb-left{left:0;width:" + LEFT_WIDTH_PX + "px;border-right:1px solid var(--line,GrayText);}",
     ".tsb-right{right:0;width:" + RIGHT_WIDTH_PX + "px;border-left:1px solid var(--line,GrayText);display:none;}",
     ".tsb-side h6{margin:14px 8px 4px;font-size:12px;font-weight:700;color:var(--muted,GrayText);letter-spacing:.02em;}",
+    ".tsb-side h6.tsb-sub{margin:8px 8px 2px 20px;font-size:11.5px;font-weight:600;}",
+    ".tsb-side ol.tsb-sub{margin-left:12px;}",
     ".tsb-side ol{list-style:none;margin:0;padding:0;} .tsb-side li{margin:0;}",
     ".tsb-side a{display:block;padding:3px 8px;border-radius:5px;border-left:3px solid transparent;color:var(--fg,CanvasText);text-decoration:none;}",
     ".tsb-side a:hover{background:var(--bg,Canvas);}",
@@ -150,8 +153,8 @@
     return { list: list, links: links, parents: parents };
   }
 
-  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, pages:[{href, title, inTab}]}] を読む。
-   *  inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
+  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, level, pages:[{href, title, inTab}]}] を読む。
+   *  level は見出しの段 (h2 = 2・h3 = 3)。inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
   function readGroups(indexDocument, indexUrl, nested) {
     var root = indexDocument.querySelector("main") || indexDocument.body;
     var selector = "h2, h3, a[href]";
@@ -160,12 +163,12 @@
       selector = ["h2", "h3", "a[href]"].map(function (tag) { return "[" + PAGES_MARK + "] " + tag; }).join(", ");
     }
     var groups = [];
-    var current = { caption: "", pages: [] };
+    var current = { caption: "", level: 2, pages: [] };
     var seen = {};
     root.querySelectorAll(selector).forEach(function (node) {
       if (node.tagName === "H2" || node.tagName === "H3") {
-        if (current.pages.length) { groups.push(current); }
-        current = { caption: text(node), pages: [] };
+        groups.push(current);
+        current = { caption: text(node), level: node.tagName === "H3" ? 3 : 2, pages: [] };
         return;
       }
       var href = node.getAttribute("href");
@@ -177,8 +180,16 @@
       var inTab = absolute.indexOf(folder) === 0 && (nested || absolute.slice(folder.length).indexOf("/") === -1);
       current.pages.push({ href: absolute, title: text(node), inTab: inTab });
     });
-    if (current.pages.length) { groups.push(current); }
-    return groups;
+    groups.push(current);
+    // ページの無い段は出さない。ただし h2 の段は、その下の h3 の段にページが在れば親の見出しとして残す
+    return groups.filter(function (group, index) {
+      if (group.pages.length) { return true; }
+      if (group.level !== 2 || !group.caption) { return false; }
+      for (var next = index + 1; next < groups.length && groups[next].level === 3; next += 1) {
+        if (groups[next].pages.length) { return true; }
+      }
+      return false;
+    });
   }
 
   /** トップページを読んで段の一覧を返す (= 今のページがトップならその文書を使う。読めなければ空の一覧)。 */
@@ -262,8 +273,10 @@
       var order = [];
       var placed = here === indexUrl;
       groups.forEach(function (group) {
-        if (group.caption) { left.appendChild(element("h6", "", group.caption)); }
-        var list = element("ol");
+        var sub = group.level === 3 ? "tsb-sub" : "";
+        if (group.caption) { left.appendChild(element("h6", sub, group.caption)); }
+        if (!group.pages.length) { return; }
+        var list = element("ol", sub);
         group.pages.forEach(function (page) {
           var item = element("li");
           var link = element("a", page.inTab ? "" : "tsb-out", page.title);
