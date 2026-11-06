@@ -4,6 +4,7 @@
  * 真値はエージェントの根の pages/_common/ のこの file で、各階層の pages/_common/ へは
  * .claude/skills/explainer-pages/scripts/install_toc.py が写し、行も足す。
  *   上のバー: 左の開け閉め (☰)・「ページ › 今の節」・右の開け閉め
+ *   ページの頭: 「タブのトップ › h2 の段 › h3 の段 › このページ」の道しるべ。段の見出しの中にリンク (枝の入口) が在れば押して移れる
  *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く。
  *       トップの中に `data-toc-pages` の付いた要素が在れば、その中の h2・h3・リンクだけを読む (無ければ main の中の全部)
  *       h3 の見出しとその下のページは、h2 の物より 1 段下げて並べる。下にリンクの無い h2 も、下に h3 の段が在れば見出しを残す
@@ -45,6 +46,9 @@
     ".tsb-bar button[aria-pressed=true]{background:var(--bg,Canvas);font-weight:600;}",
     ".tsb-where{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
     ".tsb-where b{font-weight:700;} .tsb-where span{color:var(--muted,GrayText);}",
+    ".tsb-crumbs{margin:0 0 14px;font:13px/1.6 system-ui,sans-serif;color:var(--muted,GrayText);}",
+    ".tsb-crumbs a{color:var(--link,LinkText);text-decoration:none;} .tsb-crumbs a:hover{text-decoration:underline;}",
+    ".tsb-crumbs .tsb-sep{margin:0 6px;} .tsb-crumbs b{color:var(--fg,CanvasText);font-weight:600;}",
     ".tsb-side{position:fixed;top:" + BAR_HEIGHT_PX + "px;bottom:0;overflow-y:auto;z-index:55;box-sizing:border-box;padding:12px 10px 48px;",
     "background:var(--card,Canvas);color:var(--fg,CanvasText);font:14px/1.5 system-ui,sans-serif;}",
     ".tsb-left{left:0;width:" + LEFT_WIDTH_PX + "px;border-right:1px solid var(--line,GrayText);}",
@@ -57,6 +61,8 @@
     ".tsb-side a:hover{background:var(--bg,Canvas);}",
     ".tsb-side a.tsb-here{font-weight:700;background:var(--bg,Canvas);}",
     ".tsb-side a.tsb-out::after{content:' ↗';color:var(--muted,GrayText);}",
+    ".tsb-side h6 a{display:inline;padding:0;border-left:0;border-radius:0;color:inherit;} .tsb-side h6 a:hover{background:none;text-decoration:underline;}",
+    ".tsb-side h6 a.tsb-here{background:none;color:var(--fg,CanvasText);}",
     ".tsb-local{margin:2px 0 6px 10px;border-left:1px solid var(--line,GrayText);}",
     ".tsb-local a{font-size:13px;color:var(--muted,GrayText);}",
     ".tsb-local .tsb-h3 a{padding-left:20px;font-size:12.5px;}",
@@ -153,8 +159,9 @@
     return { list: list, links: links, parents: parents };
   }
 
-  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, level, pages:[{href, title, inTab}]}] を読む。
-   *  level は見出しの段 (h2 = 2・h3 = 3)。inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
+  /** タブのトップページの文書から、見出しの段ごとのページのリンク [{caption, level, href, pages:[{href, title, inTab}]}] を読む。
+   *  level は見出しの段 (h2 = 2・h3 = 3)。href は見出しの中のリンク (枝の入口) で、無ければ空。
+   *  inTab は、トップの folder の下のページか (nested が偽なら直下だけ)。 */
   function readGroups(indexDocument, indexUrl, nested) {
     var root = indexDocument.querySelector("main") || indexDocument.body;
     var selector = "h2, h3, a[href]";
@@ -162,28 +169,40 @@
       root = indexDocument;
       selector = ["h2", "h3", "a[href]"].map(function (tag) { return "[" + PAGES_MARK + "] " + tag; }).join(", ");
     }
+    var folder = indexUrl.replace(/[^/]*$/, "");
+    function inTabOf(absolute) {
+      return absolute.indexOf(folder) === 0 && (nested || absolute.slice(folder.length).indexOf("/") === -1);
+    }
     var groups = [];
-    var current = { caption: "", level: 2, pages: [] };
+    var current = { caption: "", level: 2, href: "", pages: [] };
     var seen = {};
     root.querySelectorAll(selector).forEach(function (node) {
       if (node.tagName === "H2" || node.tagName === "H3") {
         groups.push(current);
-        current = { caption: text(node), level: node.tagName === "H3" ? 3 : 2, pages: [] };
+        var entry = node.querySelector("a[href]");
+        var entryHref = entry ? entry.getAttribute("href") : "";
+        current = { caption: text(node), level: node.tagName === "H3" ? 3 : 2,
+                    href: entryHref && /\.html?(#|$|\?)/.test(entryHref) && !/^[a-z]+:/i.test(entryHref) ? pageUrl(entryHref, indexUrl) : "",
+                    pages: [] };
+        if (current.href) {
+          seen[current.href] = true;
+          current.inTab = inTabOf(current.href);
+        }
         return;
       }
+      // 見出しの中のリンクは段の入口で、見出しそのものがそのリンクになる (ページの行には並べない)
+      if (node.closest("h2, h3")) { return; }
       var href = node.getAttribute("href");
       if (!/\.html?(#|$|\?)/.test(href) || /^[a-z]+:/i.test(href)) { return; }
       var absolute = pageUrl(href, indexUrl);
       if (seen[absolute]) { return; }
       seen[absolute] = true;
-      var folder = indexUrl.replace(/[^/]*$/, "");
-      var inTab = absolute.indexOf(folder) === 0 && (nested || absolute.slice(folder.length).indexOf("/") === -1);
-      current.pages.push({ href: absolute, title: text(node), inTab: inTab });
+      current.pages.push({ href: absolute, title: text(node), inTab: inTabOf(absolute) });
     });
     groups.push(current);
     // ページの無い段は出さない。ただし h2 の段は、その下の h3 の段にページが在れば親の見出しとして残す
     return groups.filter(function (group, index) {
-      if (group.pages.length) { return true; }
+      if (group.pages.length || group.href) { return true; }
       if (group.level !== 2 || !group.caption) { return false; }
       for (var next = index + 1; next < groups.length && groups[next].level === 3; next += 1) {
         if (groups[next].pages.length) { return true; }
@@ -274,7 +293,23 @@
       var placed = here === indexUrl;
       groups.forEach(function (group) {
         var sub = group.level === 3 ? "tsb-sub" : "";
-        if (group.caption) { left.appendChild(element("h6", sub, group.caption)); }
+        if (group.caption) {
+          var head = element("h6", sub);
+          if (group.href) {
+            var entry = element("a", group.inTab ? "" : "tsb-out", group.caption);
+            entry.href = group.href;
+            head.appendChild(entry);
+          } else {
+            head.textContent = group.caption;
+          }
+          left.appendChild(head);
+          if (group.href && group.inTab) { order.push({ href: group.href, title: group.caption, inTab: true }); }
+          if (group.href === here && !placed) {
+            entry.className = "tsb-here";
+            left.appendChild(leftLocal.list);
+            placed = true;
+          }
+        }
         if (!group.pages.length) { return; }
         var list = element("ol", sub);
         group.pages.forEach(function (page) {
@@ -297,6 +332,43 @@
         left.appendChild(leftLocal.list);
       }
       addPager(order);
+      addCrumbs(groups);
+    }
+
+    /** ページの頭に「タブのトップ › h2 の段 › h3 の段 › このページ」を置く。トップページ自身には置かない。 */
+    function addCrumbs(groups) {
+      if (here === indexUrl) { return; }
+      var at = -1;
+      groups.forEach(function (group, i) {
+        if (at < 0 && (group.href === here || group.pages.some(function (page) { return page.href === here; }))) { at = i; }
+      });
+      var steps = [{ title: "タブのトップ", href: indexUrl }];
+      if (at >= 0) {
+        var group = groups[at];
+        if (group.level === 3) {
+          for (var i = at - 1; i >= 0; i -= 1) {
+            if (groups[i].level === 2) {
+              if (groups[i].caption) { steps.push({ title: groups[i].caption, href: groups[i].href }); }
+              break;
+            }
+          }
+        }
+        if (group.caption) { steps.push({ title: group.caption, href: group.href }); }
+      }
+      var nav = element("nav", "tsb-crumbs");
+      nav.setAttribute("aria-label", "このページの場所");
+      steps.forEach(function (step) {
+        if (step.href && step.href !== here) {
+          var link = element("a", "", step.title);
+          link.href = step.href;
+          nav.appendChild(link);
+        } else {
+          nav.appendChild(element("span", "", step.title));
+        }
+        nav.appendChild(element("span", "tsb-sep", "›"));
+      });
+      nav.appendChild(element("b", "", document.title || "このページ"));
+      collected.root.insertBefore(nav, collected.root.firstChild);
     }
 
     function addPager(order) {
