@@ -353,7 +353,8 @@
             }
           }
         }
-        if (group.caption) { steps.push({ title: group.caption, href: group.href }); }
+        // 段の入口そのものを開いている時は、その段を出さない (このページと同じ物が 2 回並ぶため)
+        if (group.caption && group.href !== here) { steps.push({ title: group.caption, href: group.href }); }
       }
       var nav = element("nav", "tsb-crumbs");
       nav.setAttribute("aria-label", "このページの場所");
