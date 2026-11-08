@@ -247,6 +247,13 @@ def pin_fast_mode(dirs: list[Path]) -> None:
             say(f"{path} を更新できません: {error}")
 
 
+def note_can_follow(handed: Path, folder: Path) -> bool:
+    """渡されたメモの置き場 (= `<階層>/pages/<id>/memo.md`) の階層が、 起動した階層 `folder` と同じか外側なら真。"""
+    if handed.parent.parent.name != "pages":
+        return False
+    return folder.resolve().is_relative_to(handed.parent.parent.parent.resolve())
+
+
 def place_note(folder: Path) -> None:
     """タブのメモ (= PWA の 📋) を、 階層の folder の `pages/<タブの id>/memo.md` に普通の file として置く。
 
@@ -254,11 +261,19 @@ def place_note(folder: Path) -> None:
     立った後はその `AGENT_TIER` の階層の folder の置き場を読み書きする。 ここで階層の側に file を置き、
     エージェントにはその path を渡す。 渡された置き場に先に file が在れば (= `tabs new` が子のメモを書いた時)、
     中身を連れて行く。 PWA の外の起動は何もしない。
+
+    連れて行くのは、 渡された置き場の階層が起動した階層と同じか外側の時だけ。 内側か横の階層の置き場が
+    渡されたら (= client が覚えた階層と、 発話から決まった階層が食い違った)、 移さず、 新しい file も作らず、
+    渡された置き場をそのまま使う。 移すと境界の中の物が外の階層へ運ばれ、 📋 (= client が覚えた置き場を読む)
+    からもメモが消える。
     """
     sid, given = os.environ.get("PWA_SID"), os.environ.get("PWA_NOTE")
     if not sid or not given:
         return
     handed, kept = Path(given), folder / "pages" / sid / "memo.md"
+    if handed != kept and not note_can_follow(handed, folder):
+        say(f"タブのメモの置き場 ({handed}) が起動した階層の外にあるので、 移さずにそのまま使います")
+        return
     kept.parent.mkdir(parents=True, exist_ok=True)
     if handed != kept and handed.is_file() and not handed.is_symlink() and not kept.exists():
         handed.rename(kept)

@@ -183,6 +183,17 @@ note_launch "${ROOT_NOTE}" --first-message-file "${T}/msg"
 check "normal は渡された置き場がそのまま正しい" has "${T}/out/env" "PWA_NOTE=${ROOT_NOTE}"
 check "normal の置き場に file を置く" [ -f "${ROOT_NOTE}" ]
 
+# 渡された置き場が起動した階層より内側 (= client が覚えた階層と、 発話から決まった階層が食い違った) なら、
+# 内側の物を外の階層へ運ばない
+setup
+mkdir -p "$(dirname "${TIER_NOTE}")"
+printf '階層のメモ\n' > "${TIER_NOTE}"
+printf 'normal' > "${T}/msg"
+note_launch "${TIER_NOTE}" --first-message-file "${T}/msg"
+check "内側の階層のメモは外の階層へ移さない" [ "$(cat "${TIER_NOTE}")" = "階層のメモ" ]
+check "食い違った時は起動した階層の側に file を作らない" [ ! -e "${ROOT_NOTE}" ]
+check "食い違った時は渡された置き場をそのまま渡す" has "${T}/out/env" "PWA_NOTE=${TIER_NOTE}"
+
 setup
 mkdir -p "${T}/home/.claude/projects/-agent"
 printf '%s\n' '{"type":"user","message":{"content":"Client"}}' > "${T}/home/.claude/projects/-agent/note-1.jsonl"
