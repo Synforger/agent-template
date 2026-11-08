@@ -3,7 +3,8 @@
 使い方: `python3 -I check-tab-links.py <タブの folder>`。抜けが 1 つでもあれば一覧を出して 1 で終わる。
 
 確かめる事:
-1. タブの folder の中の `*.html` (= 説明のページ。枝の folder の中も、`_archive/` は除く) が、全部トップページから
+1. タブの folder の中の `*.html` (= 説明のページ。枝の folder の中も。`_archive/`・`data/` の下と、組み立ての元
+   (`install_toc.py` と同じ判定で、`src/` の下と名前に template を含む物) は除く) が、全部トップページから
    リンクされている。横の目次の左の一覧はトップページのリンクだけを並べるので、枝の中のページもトップから直に辿る。
    トップに `data-toc-pages` の付いた要素が在れば、左の一覧はその中のリンクだけを並べるので、その中のリンクだけを数える
 2. トップページのリンクの先が、全部実在する (= `#` だけのリンクと `http` のリンクは除く)
@@ -11,6 +12,8 @@
 4. 1 のページが、全部横の目次の部品を、ページから見た path で読んでいる (直下なら `../_common/toc-sidebar.js`、
    1 段下の枝なら `../../_common/toc-sidebar.js`)
 5. 階層の `pages/_common/toc-sidebar.js` が在り、真値と同じ中身 (入れるのは隣の `install_toc.py`)
+6. 枝の folder を 1 つでも持つタブ (直下に `data/`・`src/` と、`_` か `.` で始まる物を除いた folder が在る) は、
+   直下にトップページ以外のページを置かない。置いた物は「枝の外のページ」として 1 本ずつ名指す
 
 小さな検査なので、読み書きと判定を 1 file に入れている (= 規則の「役割ごとに file」から外れる理由)。
 """
@@ -24,13 +27,15 @@ from urllib.parse import unquote
 
 # `python3 -I` では隣の file が import の道に乗らないので、自分の folder を足す
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from install_toc import COMPONENT_NAME, SCRIPT_TAG, SOURCE, pages_in  # noqa: E402
+from install_toc import COMPONENT_NAME, SCRIPT_TAG, SOURCE, is_build_source, pages_in  # noqa: E402
 
 HREF_PATTERN = re.compile(r'href="([^"]+)"')
 # HTML のコメントの中 (雛形の書き方の例など) はリンクにも読み込みにも数えない
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 MEMO_PATH_PATTERN = re.compile(r"`(~/[^`]+?\.(?:html|md|pdf|pptx|docx|xlsx|png|svg))`")
 SKIPPED_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
+# 枝の folder に数えない、タブの直下の folder (図の元のデータと、作り直す script)
+NOT_BRANCHES = ("data", "src")
 # 横の目次 (toc-sidebar.js の PAGES_MARK) と同じ印
 PAGES_MARK = "data-toc-pages"
 
@@ -90,6 +95,17 @@ def _target_of(index_path: Path, href: str) -> Path | None:
     return (index_path.parent / unquote(href.split("#", 1)[0])).resolve()
 
 
+def is_explainer_source(tab_dir: Path, page: Path) -> bool:
+    """説明のページでなく、図の元のデータか組み立ての元か (`data/` の下、`src/` の下、名前に template を含む物)。"""
+    return "data" in page.relative_to(tab_dir).parts[:-1] or is_build_source(page)
+
+
+def branches_of(tab_dir: Path) -> list[str]:
+    """タブの直下の枝の folder の名前 (`data/`・`src/` と、`_` か `.` で始まる物を除く)。"""
+    return sorted(d.name for d in tab_dir.iterdir()
+                  if d.is_dir() and d.name not in NOT_BRANCHES and not d.name.startswith(("_", ".")))
+
+
 def check(tab_dir: Path) -> list[str]:
     """抜けを 1 行ずつの文で返す (= 無ければ空の並び)。"""
     # `.` で渡されても階層の `_common/` を 1 つ上に辿れるように、絶対の path にしてから見る
@@ -99,7 +115,7 @@ def check(tab_dir: Path) -> list[str]:
         return [f"トップページが無い: {index_path}"]
     targets, listed, missing = linked_targets(index_path)
     problems = [f"リンクの先が無い: {href}" for href in missing]
-    pages = pages_in(tab_dir)
+    pages = [page for page in pages_in(tab_dir) if not is_explainer_source(tab_dir, page)]
     for page in pages:
         if page.resolve() != index_path.resolve() and page.resolve() not in listed:
             where = f"`{PAGES_MARK}` の範囲" if listed is not targets else "トップページ"
@@ -112,6 +128,10 @@ def check(tab_dir: Path) -> list[str]:
                 continue
             if target not in targets:
                 problems.append(f"メモにだけ書かれ、トップページから辿れない: {written}")
+    if branches_of(tab_dir):
+        for page in sorted(tab_dir.glob("*.html")):
+            if page.name != index_path.name:
+                problems.append(f"枝の外のページ: {page.name} (枝の folder を持つタブは、ページを全部枝の中に置く)")
     component = tab_dir.parent / "_common" / COMPONENT_NAME
     for page in pages:
         expected_src = os.path.relpath(component, page.parent)
