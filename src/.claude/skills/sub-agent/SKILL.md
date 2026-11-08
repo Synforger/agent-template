@@ -1,7 +1,7 @@
 ---
 title: 体の使い方 (sub-agent と子のタブを起動して受け取る手順)
 description: Agent / Workflow tool と子のタブを起動する時に必要なもの一式 (本文の型・git の許可範囲・配り方・受け取り)
-updated: "2026-10-26"
+updated: "2026-11-04"
 when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当 session 既読なら skip 可) / sub-agent や子のタブの成果を統括で受け取る直前
 ---
 
@@ -11,7 +11,7 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 
 体を起動してよいか (操作者の許可が要るか) は、そのエージェントの `rules/always.md` が決める。体は統括の延長で、`CLAUDE.md` と常時 load の file (`CLAUDE.md` の開始時の手順が並べる物) の判断軸を踏襲させる。
 
-**体の model は用途を問わず書く**。読むだけの体・レビューの体も同じ。省くと統括の model を継ぎ、小さい仕事に大きい model の費用が掛かるからだ。既定は小さい model (`sonnet`)。Agent の道具は、hook `subagent_model_gate.py` を入れた派生なら model を省いた起動が止まる。Workflow の道具は script の `agent()` ごとに書く。fork は統括の model でしか立たないので使わない。
+**体の model は用途を問わず書く**。読むだけの体・レビューの体も同じ。省くと統括の model を継ぎ、小さい仕事に大きい model の費用が掛かるからだ。既定は小さい model (`sonnet`)。設計の穴を出させる議論の読み手のように、より小さい `haiku` で足りる仕事は `haiku` で立ててよい。Agent の道具は、hook `subagent_model_gate.py` を入れた派生なら model を省いた起動が止まる。Workflow の道具は script の `agent()` ごとに書く。fork は統括の model でしか立たないので使わない。
 
 ## 体に何をさせるか (事故の根治はここ)
 
@@ -24,10 +24,13 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 - **削除を伴う task は `git show <commit>:<path>` の扱いを明示する**。読むのは良いが**書き戻せば手書き復元と同じ**で緑でも成果ゼロ。判定方法も渡す。例えば生成器を消して回し直して同じものが出るかを見る
 - **重い検証は「統括に測らせる」と報告に書かせる**。体に待たせない。詳しくは下記 § 並列で出す時
 
-## prompt テンプレ (`<...>` を埋めてそのまま渡す)
+## prompt テンプレ
+
+統括が埋めるのは、§ 全体像・§ あなたのスコープ・§ 自分の scope の path・§ 守る規則 の `<...>` だけにする。ほかの行は 1 字も変えずに渡す。復唱と報告の `<...>` は体が埋め、文中の `<base>` は § 全体像の base を指す名前として残す。
+  - Why: 雛形の文はこのエージェントの remote に在るので、番人の照合では背景の文として落ちる。文の途中を埋めたり縮めたりした行は remote に無い並びになり、境界の中に残る同じ書き換えの写しと当たって止まる (2026-11-04、スライドのタブの `tabs new` が書き出しと見出しで止まった)
 
 ````
-あなたは <エージェント名> の sub-agent です。<エージェント名> の文化 (リポジトリの `CLAUDE.md` と、その開始時の手順が並べる常時 load の file) を継ぎます。動いていた状態を尊重し、scope を縮めず、腑に落ちる前に実装せず、2 回続けて失敗したら root cause を探す側に切り替えます。
+あなたはこのリポジトリのエージェントの sub-agent です。その文化 (リポジトリの `CLAUDE.md` と、その開始時の手順が並べる常時 load の file) を継ぎます。動いていた状態を尊重し、scope を縮めず、腑に落ちる前に実装せず、2 回続けて失敗したら root cause を探す側に切り替えます。
 
 # 役割と scope の復唱 (着手前に必須)
 
@@ -58,7 +61,8 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 
 # 全体像
 
-<plan の path、base branch と tip、並列の状況、前の段の PR など>
+- base = <base branch の名前>
+- <plan の path、base の tip、並列の状況、前の段の PR など>
 
 # あなたのスコープ
 
@@ -71,7 +75,8 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 
 # 守る規則 (本文に写さず、path と版で渡す。着手前に読む)
 
-- コードの書き方 = `.claude/skills/code-writing/SKILL.md` 版 <N>。完了報告の出力のまとめに、実装した版を書く
+- コードの書き方 = `.claude/skills/code-writing/SKILL.md`。完了報告の出力のまとめに、実装した版を書く
+  - 版 = <N>
 
 # 完了の条件
 
@@ -200,7 +205,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る。着手の前に、§ prompt テンプレと同じ 3 行の復唱を出す
 - 子は journal の代わりにタブのメモの `## 引き継ぎ` に続きを書く。締めの skill `session-end` は親の物
 - エージェント自身の file を直す仕事でも、親と同じ checkout の主 branch には commit しない。渡された worktree と branch の中で commit までを行う
-- 操作者がこのタブで直に打った発話は、普通の操作者の発話として扱う。GO の判定は `rules/always.md` が持つ
+- 操作者がこのタブで直に打った発話は、普通の操作者の発話として扱う。頼みの扱いは `rules/always.md` が持つ
 
 
 ## 中央 merge の責務

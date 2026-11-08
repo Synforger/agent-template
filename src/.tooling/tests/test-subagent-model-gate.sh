@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-subagent-model-gate.sh - subagent_model_gate.py lets a subagent start only on Sonnet.
+# test-subagent-model-gate.sh - subagent_model_gate.py lets a subagent start only on Sonnet or a smaller model (Haiku).
 # Feeds made-up Agent tool calls and checks where the hook denies and where it stays silent. One FAIL line per miss.
 set -u
 HOOK="$(cd "$(dirname "$0")/.." && pwd)/hooks/subagent_model_gate.py"
@@ -19,6 +19,8 @@ expect() {
 
 expect "sonnet passes" pass "$(run Agent '{"prompt":"x","model":"sonnet"}')"
 expect "sonnet with a type passes" pass "$(run Agent '{"prompt":"x","model":"sonnet","subagent_type":"Explore"}')"
+expect "haiku (smaller) passes" pass "$(run Agent '{"prompt":"x","model":"haiku"}')"
+expect "fable is refused" deny "$(run Agent '{"prompt":"x","model":"fable"}')"
 expect "no model is the parent's" deny "$(run Agent '{"prompt":"x"}')"
 expect "opus is refused" deny "$(run Agent '{"prompt":"x","model":"opus"}')"
 expect "a type's own model is not written: refused" deny "$(run Agent '{"prompt":"x","subagent_type":"Plan"}')"
