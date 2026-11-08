@@ -24,13 +24,14 @@ jobs:
         with:
           fetch-depth: 0   # the docs gate resolves references against history
       - name: Install go-task
-        # The release download can answer 504 for minutes at a time; try again before failing the gate
+        # The release download can answer 504 for minutes at a time; try it again, then fall back to the
+        # snap package (an install route the go-task docs list, served from outside GitHub releases)
         run: |
-          for attempt in 1 2 3 4 5; do
+          for attempt in 1 2 3; do
             sudo sh -c "$(curl --fail --silent --show-error --location --retry 3 https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin && break
-            [ "$attempt" -eq 5 ] && exit 1
             sleep $((attempt * 15))
           done
+          command -v task >/dev/null || sudo snap install task --classic
           task --version
       - name: Run the local gate suite
         run: task ci
