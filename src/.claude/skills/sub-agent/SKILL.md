@@ -157,11 +157,10 @@ commit までで止まる。**PR と merge は統括**。
 - **名指しだけでは踏まれる**。合法な代替を**表で隣に置く**。例えば「退避しない、 commit する」「差分は `git diff` / `git show`」「scratch で壊すなら worktree の外」が当たる
   - Why: 名指し禁止を読んだうえで 4 体が踏み、全員が自己申告した。代替を置いた後は報告が出ていない
 
-## 並列 fleet を中央で受け取る時の 3 手
+## 並列 fleet を中央で受け取る時の 2 手
 
 - **共有表 (adapter の登録先など) は必ず衝突する。** 解消は**「両方を残す」の一手**に決め打つ
 - **rebase は source の mtime を進めるので成果物の鮮度 gate が落ちる。** merge 前にその binding の build を 1 回踏む
-- **`task lint | tail` の後の `$?` は tail の値。** exit code は単独で取る
 
 ## 子のタブ (session をまたいで回る体)
 
