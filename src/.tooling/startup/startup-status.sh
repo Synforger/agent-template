@@ -304,6 +304,13 @@ step_children() {
     fi
 }
 
+step_pages_orphans() {
+    # 起動した階層の pages/ に残った、生きているタブの物でない folder (= 閉じたタブのページを誰も拾わずに残さないため)
+    if [ -f .tooling/startup/pages_orphans.py ]; then
+        python3 .tooling/startup/pages_orphans.py
+    fi
+}
+
 step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
@@ -319,12 +326,13 @@ step_guard_deploy     > "$TMPD/8d-deploy"   &
 step_clone_deploys    > "$TMPD/8e-clones"   &
 step_platform_check   > "$TMPD/8g-platform" &
 step_children         > "$TMPD/8f-children" &
+step_pages_orphans    > "$TMPD/8h-pages"    &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
 cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
-    "$TMPD/8g-platform" "$TMPD/8f-children"
+    "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -379,3 +387,6 @@ echo "    wanted change into the truth, then run .tooling/distribute/sync-claude
 echo "  - children 完了 / 詰まり >= 1 -> a child tab this tab opened has reported: read its report, take the result in"
 echo "    (merge / remove its worktree), then 'tabs close <id>', and say it in the briefing. 作業中 children keep"
 echo "    running on their own (= 'tabs children' lists them); the steps are skill sub-agent § 子のタブ"
+echo "  - pages_orphans >= 1 -> folders under this tier's pages/ belong to no live tab (中身あり = it holds pages or"
+echo "    data, 雛形だけ = only the client's top page and memo): say it in the briefing and settle every one in this"
+echo "    session by the rules of pages/_README.md and skill explainer-pages (UNKNOWN -> say the check did not run)"

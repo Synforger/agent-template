@@ -51,6 +51,17 @@
 # 階層を何段でも同じ手順で数える部品 (= 起動・docs-check・台帳・容量の検査が import か呼び出しで使う。 無いと読み込みで落ちる)
 .tooling/lib/tier_paths.py
 
+# 締めで操作者の言葉を見本の節へ積む道具 (= skill session-end Step 2 が流す extract-operator-words.py と、それが import する部品。
+# 手順だけ降りて道具が無いと、 Step 2 が存在しない script を指す)
+.tooling/session-end/extract-operator-words.py
+.tooling/lib/operator_words.py
+.tooling/lib/session_transcript.py
+.tooling/lib/session_scope.py
+.tooling/lib/client_openings.py
+
+# 起動の検査 pages_orphans (= startup-status.sh が呼ぶ。 階層の pages/ に残った、 生きているタブの物でない folder を出す)
+.tooling/startup/pages_orphans.py
+
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
 
@@ -85,6 +96,8 @@
 .tooling/tests/test-skill-gate.sh
 .tooling/tests/test-subagent-model-gate.sh
 .tooling/tests/test-bypass-prompt-gate.sh
+.tooling/tests/test-extract-operator-words.sh
+.tooling/tests/test-pages-orphans.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
