@@ -59,6 +59,9 @@
 .tooling/lib/session_scope.py
 .tooling/lib/client_openings.py
 
+# 検査が通るのを待ってから merge する道具 (= skill base-sync が、 型へ上げた PR をこれで merge させる。 無いと手順が存在しない script を指す)
+.tooling/work/pr-land.sh
+
 # 起動の検査 pages_orphans (= startup-status.sh が呼ぶ。 階層の pages/ に残った、 生きているタブの物でない folder を出す)
 .tooling/startup/pages_orphans.py
 
@@ -82,6 +85,7 @@
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
 .tooling/tests/test-deployed-clones.sh
 .tooling/tests/test-claude-launch.sh
+.tooling/tests/test-pr-land.sh
 .tooling/tests/test-guard-update.sh
 .tooling/tests/test-platform-check.sh
 .tooling/tests/test-build-rule-registry.sh
