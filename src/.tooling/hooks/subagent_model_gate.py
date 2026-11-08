@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Stop a subagent started on any model but Sonnet (a PreToolUse hook on the Agent tool).
+"""Stop a subagent started on a model larger than Sonnet (a PreToolUse hook on the Agent tool).
 
 The Agent tool hands a subagent the parent's model when `model` is left out, so a subagent started
-without one runs on the parent's (Opus). A call is denied unless `model` is `sonnet`; a fork is denied
-too, since a fork always runs on the parent's model whatever `model` says. The reason names the fix.
+without one runs on the parent's (Opus). A call is denied unless `model` is `sonnet` or the smaller
+`haiku` (a reader asked for holes in a design can be small); a fork is denied too, since a fork always
+runs on the parent's model whatever `model` says. The reason names the fix.
 
 The Workflow tool sets a model per agent() call inside its script, which this hook does not read: the
 rule for it is in the sub-agent skill. An unreadable payload passes silently (fail-open).
@@ -14,19 +15,20 @@ import sys
 
 SUBAGENT_TOOLS = {"Agent", "Task"}
 ALLOWED_MODEL = "sonnet"
+SMALLER_MODELS = {"haiku"}
 FORK = "fork"
 
 
 def refusal(tool_input: dict) -> str | None:
-    """Why the call is refused, or None when it starts a subagent on the allowed model."""
+    """Why the call is refused, or None when it starts a subagent on Sonnet or a smaller model."""
     if tool_input.get("subagent_type") == FORK:
         return (f"subagent-model-gate: a fork always runs on the parent's model. Start a fresh subagent "
                 f"with model: \"{ALLOWED_MODEL}\" instead (skill sub-agent)")
     model = tool_input.get("model")
-    if model != ALLOWED_MODEL:
+    if model != ALLOWED_MODEL and model not in SMALLER_MODELS:
         given = f"model: \"{model}\"" if model else "no model, which hands it the parent's"
         return (f"subagent-model-gate: a subagent runs on {ALLOWED_MODEL} (this call gives {given}). "
-                f"Write model: \"{ALLOWED_MODEL}\" (skill sub-agent)")
+                f"Write model: \"{ALLOWED_MODEL}\", or \"haiku\" for a smaller one (skill sub-agent)")
     return None
 
 
