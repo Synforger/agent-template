@@ -17,14 +17,17 @@ capacity: 3KB
 ## 置き場と載り方
 
 - `<階層>/.claude/skills/<name>/SKILL.md`。その階層でだけ効くものはその階層に置く
-- 一覧 (`description` + `when_to_use`) はハーネスが出す。親は起動時から、下の階層は**その階層の file を初めて読んだ時**から載り、session の終わりまで残る。サブプロを読むと親プロも載る
-- 起動手順の `_README.md` の Read で採用階層の分が載るので、索引は持たない
-- **gitignored な階層の skill はハーネスが探さない**。`respectGitignore: false` と再起動でも同じだった (2026-09-26 実測)。その階層の `_README.md § 起動時の追加読み` に `python3 .tooling/lib/skill-listing.py --list <階層>` を置き、出力を一覧の代わりに読む。欠けると docs-check step 10 が FAIL する
+- 一覧 (`description` + `when_to_use`) はハーネスが出す。親は起動時から、下の階層は**その階層の file を初めて読んだ時**から載り、session の終わりまで残る。サブプロを読むと親プロも載る。索引は持たない
+- **gitignored な階層の skill はハーネスが探さない**。その階層の `_README.md § 起動時の追加読み` に `python3 .tooling/lib/skill-listing.py --list <階層>` を置き、出力を一覧の代わりに読む。欠けると docs-check step 10 が FAIL する
+
+## 持ち主
+
+**直すのは持ち主のタブで、ほかのタブは持ち主へ `tabs send` で渡す**。型から降りる skill の持ち主は型 (直したら `base-sync` で上げる)、ほかは frontmatter の `owner`。
 
 ## 命名
 
 - folder 名は skill 名で、kebab-case、読者の語で付ける
-- **`_` で始まる folder は作らない**。`_template/SKILL.md` も skill として拾われるため。skills 直下の file と `_archive/` の中は拾われない (2026-09-26 実測)
+- **`_` で始まる folder は作らない**。`_template/SKILL.md` も skill として拾われるため。skills 直下の file と `_archive/` の中は拾われない
 
 ## frontmatter
 

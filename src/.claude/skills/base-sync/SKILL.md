@@ -17,6 +17,8 @@ when_to_use: 型から取り込む・型へ上げる直前 / 型に file を足�
   - Why: 手 cp は synced-paths 契約と履歴を素通りし、drift の出所が追えなくなる
   - **例外は sync 機構自身の 2 file** (`sync-from-base.sh` / `promote-to-base.sh`)。`.synced-paths.txt` の対象外で自分を運べないため、型の checkout からの手 cp が唯一の更新経路になる。これは bootstrap 問題で、init 時にのみ配布される
   - How to apply: 手 cp したら commit message に型の版 (tag or sha) を明記する。履歴が追えなくなる Why への最小の埋め合わせである
+- **上げた PR は、型の worktree の中で `.tooling/work/pr-land.sh <番号> --squash` で merge する**。直に `gh pr merge --delete-branch` を打つと、worktree で開いている branch は消えずに残り、消せなかった知らせは 1 行のエラーだけで流れる
+  - Why: 2026-11-06 に型へ上げた PR 5 本の branch が remote に残った。消せなかったエラーの行を、出力の絞り込みで自分で隠していた
 - 昇格時の匿名化 (操作者固有記述の除去) は promote 前に派生側 file で済ませる。型側で直すと次の promote で戻るためだ
 - **中身が派生ごとに違う file は `!` 除外へ置く**。索引 / 機構の表 / allow-list が当たる。列挙したままにすると、昇格のたびに他の派生へ他人の実 file 名が流れる
 - **型に payload file を足したら `.synced-paths.txt` に列挙か `!` 除外宣言のどちらかを必ず書く**。制御 file 自身は sync 対象外なので、忘れると「型は出荷しているのに派生に降りない」が無検出で成立する
