@@ -176,7 +176,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 
 1. worktree を切る。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
    - Why: 環境の無い worktree を渡すと子がそれぞれ別の python で環境を作り、統括が重ねた準備で `python` と `pip` が別の版を指して、全体の試験を 2 回流し直した。主の checkout の環境で流すと、試験が主の checkout の code を読むので代わりにならない
-2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる
+2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる。**親の指示や別の子の着地を待たせる子には、待つ前に `tabs report stuck` で何を待つかを報告するよう書く**
 3. `tabs new "<題>" <本文の file>`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
 
 ### 見る
@@ -203,6 +203,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 - **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る。着手の前に、§ prompt テンプレと同じ 3 行の復唱を出す
 - 子は journal の代わりにタブのメモの `## 引き継ぎ` に続きを書く。締めの skill `session-end` は親の物
+- **親の指示や別の子の着地を待つ時は、待つ前に `tabs report stuck <file>` で何を待つかを書く**。メモが作業中のまま入力待ちで止まると、client の見張りが報告なしで止まった子として親に知らせる (2026-11-09、待つ子 1 本で親に 5 回届いた)
 - エージェント自身の file を直す仕事でも、親と同じ checkout の主 branch には commit しない。渡された worktree と branch の中で commit までを行う
 - 操作者がこのタブで直に打った発話は、普通の操作者の発話として扱う。頼みの扱いは `rules/always.md` が持つ
 
