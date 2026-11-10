@@ -1,7 +1,7 @@
 ---
 title: 体の使い方 (sub-agent と子のタブを起動して受け取る手順)
 description: Agent / Workflow tool と子のタブを起動する時に必要なもの一式 (本文の型・git の許可範囲・配り方・受け取り)
-updated: "2026-11-04"
+updated: "2026-11-10"
 when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当 session 既読なら skip 可) / sub-agent や子のタブの成果を統括で受け取る直前
 ---
 
@@ -169,12 +169,12 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 - 体の決まりはこの skill の上の節と同じ。渡す本文は § prompt テンプレ、git は commit まで、worktree は統括が切る、PR と merge は統括、中央で受け取る時の 7 点が当たる
 - **子は親と同じ階層に立つ**。立てる命令が親の階層を渡す。本文の検査は「子は親と同じ境界を読む」前提で通るので、違う階層の子には親だけが読んだ物が通ってしまう
 - **子の model は client の起動設定が決める**。既定は小さい model で、親は大きい model のまま
-- **同時に持てる子の数には client の上限がある** (設定 `child_sessions_max`)。子は同じ口座の使用量を分け合う
+- **子の数は仕事の分け方で決め、数の上限は置かない**。持ち場の重ならない仕事ごとに 1 体を立て、いちばん早く閉じる形に広げる。報告なしで止まった子は、client の見張りが親へ `<child-stopped>` で知らせる。子は同じ口座の使用量を分け合う
 - **子は自分の worktree と branch で作業する**。「同時作業 branch 1 本」の例外は子の分だけ。エージェント自身の file を直す子にも worktree を切って渡す。親と同じ checkout の主 branch に 2 本が同時に書かないようにするためだ
 
 ### 立てる
 
-1. worktree を切る。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
+1. worktree を切る。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**子が書く file を持つ repo で切る**: 階層の folder が自前の `.git` を持つ別の repo なら (`git -C <書く file の folder> rev-parse --show-toplevel` で確かめる)、エージェントの根ではなくその repo で切る。根で切ると、書く先が worktree に入らない (2026-11-08、会社の階層の file を書く子に根の worktree を渡し、子が会社の階層の主 branch に直に commit した)。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
    - Why: 環境の無い worktree を渡すと子がそれぞれ別の python で環境を作り、統括が重ねた準備で `python` と `pip` が別の版を指して、全体の試験を 2 回流し直した。主の checkout の環境で流すと、試験が主の checkout の code を読むので代わりにならない
 2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる。**親の指示や別の子の着地を待たせる子には、待つ前に `tabs report stuck` で何を待つかを報告するよう書く**
 3. `tabs new "<題>" <本文の file>`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
@@ -203,6 +203,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 - **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る。着手の前に、§ prompt テンプレと同じ 3 行の復唱を出す
 - 子は journal の代わりにタブのメモの `## 引き継ぎ` に続きを書く。締めの skill `session-end` は親の物
+- **`tabs report` に渡す報告の file と、build や試験の log は、階層の `_scratch/<自分のタブの id>/` に書く**。`pages/<自分のタブの id>/` に置けるのは、操作者に見せる説明のページとタブのメモだけ (`pages/_README.md`)。そこに置いた md は docs-check が frontmatter の無い file として赤にする (2026-11-09、子 2 本が報告の md と log をページの folder に置いた)
 - **親の指示や別の子の着地を待つ時は、待つ前に `tabs report stuck <file>` で何を待つかを書く**。メモが作業中のまま入力待ちで止まると、client の見張りが報告なしで止まった子として親に知らせる (2026-11-09、待つ子 1 本で親に 5 回届いた)
 - エージェント自身の file を直す仕事でも、親と同じ checkout の主 branch には commit しない。渡された worktree と branch の中で commit までを行う
 - 操作者がこのタブで直に打った発話は、普通の操作者の発話として扱う。頼みの扱いは `rules/always.md` が持つ
