@@ -421,7 +421,9 @@ check "返らない pull は上限で諦める" [ $(( $(date +%s) - started )) -
 check "諦めても claude を起動する" [ -s "${T}/out/args" ]
 check "諦めた事を起動の画面に 1 行出す" grep -q '諦めます' "${T}/out/stderr"
 check "諦めた pull は作業の木を動かさない" [ "$(tgit -C "${T}/agent" rev-parse HEAD)" = "${before}" ]
-check "諦めた pull の ssh を残さない" bash -c "! pgrep -f '${T}/hang-ssh' > /dev/null"
+# 型を [h] で書くのは、 確かめる側の命令行に同じ文字列が載って pgrep が自分の親を拾わないため (= Linux の bash で起きる)
+no_hang_ssh() { ! pgrep -f "${T}/[h]ang-ssh" > /dev/null; }
+check "諦めた pull の ssh を残さない" no_hang_ssh
 
 pull_setup
 printf 'x' > "${T}/msg"
