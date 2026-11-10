@@ -408,6 +408,21 @@ touch "${T}/home/.claude/projects/-agent/pull-1.jsonl"
 launch --resume pull-1
 check "再開もエージェントを pull する" [ "$(tgit -C "${T}/agent" log -1 --format=%s)" = "from the other machine" ]
 
+# 網が返らない (= ssh が github.com から返らない) 時は、 上限で pull を諦めて起動を続ける
+pull_setup
+printf '#!/bin/sh\nsleep 30\n' > "${T}/hang-ssh"
+chmod +x "${T}/hang-ssh"
+tgit -C "${T}/agent" remote set-url origin "ssh://hang.invalid/agent.git"
+before="$(tgit -C "${T}/agent" rev-parse HEAD)"
+printf 'おはよう' > "${T}/msg"
+started=$(date +%s)
+GIT_SSH_COMMAND="${T}/hang-ssh" AGENT_PULL_TIMEOUT=1 launch --first-message-file "${T}/msg"
+check "返らない pull は上限で諦める" [ $(( $(date +%s) - started )) -lt 10 ]
+check "諦めても claude を起動する" [ -s "${T}/out/args" ]
+check "諦めた事を起動の画面に 1 行出す" grep -q '諦めます' "${T}/out/stderr"
+check "諦めた pull は作業の木を動かさない" [ "$(tgit -C "${T}/agent" rev-parse HEAD)" = "${before}" ]
+check "諦めた pull の ssh を残さない" bash -c "! pgrep -f '${T}/hang-ssh' > /dev/null"
+
 pull_setup
 printf 'x' > "${T}/msg"
 launch --child --first-message-file "${T}/msg"

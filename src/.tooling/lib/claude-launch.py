@@ -44,6 +44,9 @@ MODEL = "opus"
 CHILD_MODEL = "sonnet"
 EFFORT = "high"
 FAST_MODE = False
+#: 起動の前の pull が網を待つ上限の秒。 普段の fetch は 1 秒前後で、 返らない ssh を待つと Claude が立たない。
+#: 試験は環境変数で縮める
+PULL_TIMEOUT_SECONDS = float(os.environ.get("AGENT_PULL_TIMEOUT", "20"))
 
 #: 呼び手の道具が自分のために立てた Python の環境の変数 (= client の backend が自分の環境で動き、 立てるタブへ
 #: そのまま受け継がせる)。 残すと、 タブで別の repo の uv を打った時に、 その道具の動いている環境が作り直される
@@ -203,12 +206,30 @@ def first_message(config_dir: Path, session: str) -> str:
 
 
 def pull_agent() -> None:
-    """エージェントを pull する。 止まっても起動は続ける (= 1 行で言う)。"""
+    """エージェントを pull する。 止まっても起動は続ける (= 1 行で言う)。
+
+    網を待つ fetch と手元だけの rebase に分け、 fetch にだけ時間の上限を付ける。 github.com への ssh が
+    返らないと、 上限が無ければ Claude が立たないまま待ち続ける。 時間切れは ssh を含む process の組ごと止め、
+    rebase はしない (= 途中で切っても作業の木は前のまま)。
+    """
+    import signal  # noqa: PLC0415
     import subprocess  # noqa: PLC0415
-    pull = subprocess.run(["git", "-C", str(AGENT), "pull", "--rebase", "--autostash", "--quiet"],
-                          capture_output=True, text=True)
-    if pull.returncode != 0:
-        say(f"{NAME} の pull が止まりました (= 起動は続けます): {(pull.stderr.strip().splitlines() or ['?'])[-1]}")
+    fetch = subprocess.Popen(["git", "-C", str(AGENT), "fetch", "--quiet"], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        _, error = fetch.communicate(timeout=PULL_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        os.killpg(fetch.pid, signal.SIGKILL)
+        fetch.wait()
+        say(f"{NAME} の pull が {PULL_TIMEOUT_SECONDS:g} 秒で返らないので諦めます (= 起動は続けます。 取り込みは次の起動か session の中で)")
+        return
+    if fetch.returncode != 0:
+        say(f"{NAME} の pull が止まりました (= 起動は続けます): {(error.strip().splitlines() or ['?'])[-1]}")
+        return
+    rebase = subprocess.run(["git", "-C", str(AGENT), "rebase", "--autostash", "--quiet", "@{upstream}"],
+                            capture_output=True, text=True, check=False)
+    if rebase.returncode != 0:
+        say(f"{NAME} の pull が止まりました (= 起動は続けます): {(rebase.stderr.strip().splitlines() or ['?'])[-1]}")
 
 
 def account_dir() -> Path:
