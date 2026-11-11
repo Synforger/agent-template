@@ -49,8 +49,12 @@ def assistant(ts, blocks):
 user("2026-11-05T01:00:00Z", "この図は白い箱でいい")
 assistant("2026-11-05T01:01:00Z", [
     {"type": "text", "text": "作りました `~/agent/pages/ses_1/flow.html` を開いてください。 参考 https://example.org/ref/doc.html と pages/ses_1/notes.md"},
-    {"type": "tool_use", "name": "Write", "input": {"file_path": "/agent/pages/ses_1/deck/slide-3.pptx", "content": "x"}},
-    {"type": "tool_use", "name": "Bash", "input": {"command": "cp /agent/out/chart.png /agent/pages/ses_1/chart.png; ls /agent/pages/*.html /agent/pages/$f.html"}},
+    {"type": "tool_use", "name": "Write", "input": {"file_path": f"{cwd}/pages/ses_1/deck/slide-3.pptx", "content": "x"}},
+    {"type": "tool_use", "name": "Bash", "input": {"command": f"cp {cwd}/out/chart.png {cwd}/pages/ses_1/chart.png; ls {cwd}/pages/*.html {cwd}/pages/$f.html"}},
+])
+# 起点の違う相対の書き方 (= 根・階層の pages/・タブの folder・その 1 つ上) と、 どこにも無い path
+assistant("2026-11-05T01:01:30Z", [
+    {"type": "text", "text": "pages/ses_1/rel-tier.html と ses_1/rel-pages.html と 説明/rel-tab.html と ../index.html、 消えた gone/missing.html と /nowhere/x.png"},
 ])
 user("2026-11-05T01:02:00Z", [{"type": "tool_result", "tool_use_id": "t1", "content": "/agent/pages/ses_1/tool-result-only.html"}])
 user("2026-11-05T01:03:00Z", "Message from another session, relayed by the client (the operator did not type this):\n<agent-message>x</agent-message>")
@@ -96,8 +100,14 @@ session_file "${HOMEP}/-p/sess-sub.jsonl" "サブの発話" "2026-11-05T03:10:00
 session_file "${HOMEP}/-p/sess-mixed.jsonl" "二つの階層を通った発話" "2026-11-05T03:20:00Z" "${AGENT}/projects/P" "${AGENT}/projects/Q"
 session_file "${HOMEP}/-p/sess-away.jsonl" "エージェントの外の発話" "2026-11-05T03:30:00Z" "/somewhere/else"
 
-run() { # <引数...> (= 作り物の repo と作り物の HOME で、 session sess-a として走らせる)
-    (cd "${AGENT}" && HOME="${T}/home" CLAUDE_CODE_SESSION_ID="${SID:-sess-a}" CLAUDE_CONFIG_DIR="${CONFIG:-}" \
+# 作った物の実物 (= 拾う時に、 在る file に当たる path だけを絶対の path にして残す)
+mkdir -p "${T}/home/agent/pages/ses_1" "${AGENT}/pages/ses_1/deck" "${AGENT}/pages/ses_1/説明" "${AGENT}/out"
+touch "${T}/home/agent/pages/ses_1/flow.html" "${AGENT}/pages/ses_1/deck/slide-3.pptx" "${AGENT}/out/chart.png" \
+    "${AGENT}/pages/ses_1/chart.png" "${AGENT}/pages/ses_1/rel-tier.html" "${AGENT}/pages/ses_1/rel-pages.html" \
+    "${AGENT}/pages/ses_1/説明/rel-tab.html" "${AGENT}/pages/index.html"
+
+run() { # <引数...> (= 作り物の repo と作り物の HOME で、 タブ ses_1 の session sess-a として走らせる)
+    (cd "${AGENT}" && HOME="${T}/home" PWA_SID=ses_1 CLAUDE_CODE_SESSION_ID="${SID:-sess-a}" CLAUDE_CONFIG_DIR="${CONFIG:-}" \
         python3 .tooling/session-end/extract-operator-words.py "$@")
 }
 rows_of() { python3 -c 'import json,sys; print(len([l for l in open(sys.argv[1]) if l.strip()]))' "$1"; }
@@ -115,8 +125,11 @@ check "only the two utterances the operator typed are kept (reply rows, relays, 
 check "the first utterance keeps its words" [ "$(field "${OUT}" 0 'r["text"]')" = "この図は白い箱でいい" ]
 check "a queued utterance (typed mid-turn) is kept" [ "$(field "${OUT}" 1 'r["text"]')" = "表に名前が無いとわからない" ]
 check "the first utterance has no artifact before it" [ "$(field "${OUT}" 0 'r["artifacts"]')" = "[]" ]
-check "the artifacts between the two utterances are the paths in the reply text and the tool inputs, in order" \
-    [ "$(field "${OUT}" 1 'r["artifacts"]')" = "['~/agent/pages/ses_1/flow.html', '/agent/pages/ses_1/deck/slide-3.pptx', '/agent/out/chart.png', '/agent/pages/ses_1/chart.png']" ]
+check "the artifacts between the two utterances are the paths in the reply text and the tool inputs, in order, as absolute paths" \
+    [ "$(field "${OUT}" 1 'r["artifacts"][:4]')" = "['${T}/home/agent/pages/ses_1/flow.html', '${AGENT}/pages/ses_1/deck/slide-3.pptx', '${AGENT}/out/chart.png', '${AGENT}/pages/ses_1/chart.png']" ]
+check "a relative path is solved from the root, the tier's pages/, the tab's folder and the one above it" \
+    [ "$(field "${OUT}" 1 'r["artifacts"][4:]')" = "['${AGENT}/pages/ses_1/rel-tier.html', '${AGENT}/pages/ses_1/rel-pages.html', '${AGENT}/pages/ses_1/説明/rel-tab.html', '${AGENT}/pages/index.html']" ]
+check "a path that meets no file from any start is dropped" bash -c '! grep -q "missing.html\|nowhere" "$1"' _ "${OUT}"
 check "a tool result's path, a URL, a non-artifact path and a shell wildcard or variable are not artifacts" \
     bash -c '! grep -q "tool-result-only\|example.org\|notes.md\|\*\.html\|\$f" "$1"' _ "${OUT}"
 check "each row names its session, tier and time" \
@@ -197,6 +210,7 @@ check "the other account is not read" grep -q "別の口座の発話" "${ALL_WOR
 # --- PowerPoint の直しの取り込みの記録 (資料の folder の .pptx-agent-maker/reviews.jsonl) ---
 DECK="${AGENT}/decks/w1"
 mkdir -p "${DECK}/.pptx-agent-maker"
+touch "${DECK}/w1.pptx"
 python3 - "${HOMEP}/-p/sess-r.jsonl" "${AGENT}" "${DECK}" <<'PY'
 import json, sys
 file, cwd, deck = sys.argv[1:]
