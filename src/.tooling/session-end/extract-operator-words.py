@@ -21,6 +21,8 @@
 境界の外の session は読まない。
 
 1 行 1 発話 `{"ts", "session", "tier", "text", "artifacts": [...]}`。 同じ session と ts の行は 2 度書かない。
+`artifacts` は指す file の絶対の path で、 チャットに出た書き方の起点 (= 作業 folder・階層・`pages/`・タブの folder) から解き、
+どの起点からも在る file に当たらない path は落とす (`artifact_resolver`)。
 今の session では、この session の発話に添えたスライドの file の folder の `.pptx-agent-maker/reviews.jsonl`
 (資料の道具が PowerPoint の直しを取り込んだ記録) のうち、この session が始まった後の行も、`"source": "review"` を付けて並べる。
 操作者の発話の判定は `lib/operator_words.py`。
@@ -68,6 +70,37 @@ def tier_of(journal_dir: Path, root: Path) -> str:
     return relative.as_posix() if relative.parts else NORMAL_TIER
 
 
+def _up_to(folder: Path, root: Path) -> list[Path]:
+    """folder と、 その上の段をエージェントの根まで (= 根の外の folder は自分だけ)。"""
+    if not folder.is_relative_to(root):
+        return [folder]
+    return [folder, *[parent for parent in folder.parents if parent.is_relative_to(root)]]
+
+
+def artifact_resolver(root: Path, tier: str) -> Callable[[str, str | None], str | None]:
+    """作った物の path を、 指す file の絶対の path に解く関数。 どの起点からも在る file に当たらなければ None。
+
+    チャットに出た path の起点は書き方ごとに違う (= エージェントの根・上の階層・その階層・階層の `pages/`・タブの
+    folder・その 1 つ上)。 拾う時なら作業 folder と階層の folder が分かるので、 ここで解く。 起点は、 その行の作業
+    folder と上の段、 階層の folder と `pages/` とタブの folder (= `pages/<PWA_SID>`)、 階層の上の段 (= どれも根まで)。"""
+    tier_folder = root if tier == NORMAL_TIER else root / tier
+    tab_id = os.environ.get("PWA_SID")
+    fixed = [tier_folder, tier_folder / "pages", *([tier_folder / "pages" / tab_id] if tab_id else []), *_up_to(tier_folder, root)]
+
+    def resolve(path: str, cwd: str | None) -> str | None:
+        written = Path(path).expanduser()
+        if written.is_absolute():
+            return str(written) if written.is_file() else None
+        bases = [*(_up_to(Path(cwd), root) if cwd else []), *fixed]
+        for base in dict.fromkeys(bases):
+            candidate = Path(os.path.normpath(base / written))
+            if candidate.is_file():
+                return str(candidate)
+        return None
+
+    return resolve
+
+
 def next_number(day_folder: Path) -> int:
     """その日の journal (.md) の最大の番号 + 1。"""
     numbers = [int(match.group(1)) for path in day_folder.glob("session-*.md") if (match := SESSION_FILE.match(path.name))]
@@ -100,7 +133,7 @@ def transcript_entries(arguments: argparse.Namespace, root: Path, tier: str) -> 
         transcripts = [path]
     for transcript in transcripts:
         with transcript.open(encoding="utf-8", errors="replace") as handle:
-            yield from operator_words(parse_rows(handle), transcript.stem, tier, client_openings())
+            yield from operator_words(parse_rows(handle), transcript.stem, tier, client_openings(), artifact_resolver(root, tier))
 
 
 _OPENINGS: tuple[str, ...] | None = None
@@ -137,7 +170,7 @@ def review_log_entries(arguments: argparse.Namespace, root: Path, tier: str) -> 
     since = first_time(rows)
     if since is None:
         return
-    for folder in deck_folders(operator_words(rows, path.stem, tier, client_openings()), root, Path.home()):
+    for folder in deck_folders(operator_words(rows, path.stem, tier, client_openings(), artifact_resolver(root, tier)), root, Path.home()):
         log = folder / REVIEW_LOG
         if log.is_file():
             with log.open(encoding="utf-8", errors="replace") as handle:

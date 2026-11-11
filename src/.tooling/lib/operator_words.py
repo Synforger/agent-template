@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -107,15 +107,22 @@ def artifact_paths(row: dict) -> list[str]:
 
 
 def operator_words(rows: Iterable[dict], session: str, tier: str,
-                   client_openings: tuple[str, ...] = ()) -> Iterator[dict]:
+                   client_openings: tuple[str, ...] = (),
+                   resolve: Callable[[str, str | None], str | None] | None = None) -> Iterator[dict]:
     """1 session の行から、 操作者の発話ごとに `{ts, session, tier, text, artifacts}` を出す。
 
-    `artifacts` は直前の操作者の発話からこの発話までに出た作った物の path で、 最後の `MAX_ARTIFACTS` 件。"""
+    `artifacts` は直前の操作者の発話からこの発話までに出た作った物の path で、 最後の `MAX_ARTIFACTS` 件。
+    `resolve` は path とその行の作業 folder から、 指す file の絶対の path を返す (= 解けなければ None で、 その path は落とす)。
+    渡さなければ、 書かれたままの path を出す。"""
     since_last: list[str] = []
     for row in rows:
         text = utterance_text(row, client_openings)
         if text is None:
-            for path in artifact_paths(row):
+            found = artifact_paths(row)
+            if resolve is not None:
+                cwd = row.get("cwd") if isinstance(row.get("cwd"), str) else None
+                found = [resolved for resolved in (resolve(path, cwd) for path in found) if resolved is not None]
+            for path in found:
                 if path in since_last:
                     since_last.remove(path)
                 since_last.append(path)
