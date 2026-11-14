@@ -69,6 +69,19 @@ tab does not wait for the operator; recommended with "defaultMode": "bypassPermi
     ]
   }
 
+Add to "hooks" > "PreToolUse" (in a public repo whose pull requests run `task ci` on Actions, refuses a
+full `task ci` run locally, so the same suite does not run twice; recommended):
+
+  {
+    "matcher": "Bash",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "f=\"<agent-repo-root>/.tooling/hooks/ci_duplicate_guard.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\""
+      }
+    ]
+  }
+
 🚨 SessionEnd hook は設置しない (= 2026-06-29 廃止):
     旧運用で SessionEnd hook 経由で extract-artifact-index.sh を自動発火していたが、
     終了プロトコル発動外の軽い対話 (= CC 自然 exit) で空打ち jsonl が量産される構造欠陥のため廃止。
