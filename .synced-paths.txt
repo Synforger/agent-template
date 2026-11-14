@@ -22,6 +22,7 @@
 .tooling/hooks/skill_reads.py
 !.tooling/hooks/skill-triggers.toml   # どの操作でどの skill を読ませるかは派生ごと (= 型の表は雛形)
 .tooling/hooks/subagent_model_gate.py
+.tooling/hooks/ci_duplicate_guard.py
 .tooling/hooks/bypass_prompt_gate.py
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
@@ -99,6 +100,7 @@
 .tooling/tests/test-artifact-index-number.sh
 .tooling/tests/test-skill-gate.sh
 .tooling/tests/test-subagent-model-gate.sh
+.tooling/tests/test-ci-duplicate-guard.sh
 .tooling/tests/test-bypass-prompt-gate.sh
 .tooling/tests/test-extract-operator-words.sh
 .tooling/tests/test-pages-orphans.sh
