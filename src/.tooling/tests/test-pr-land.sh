@@ -47,6 +47,8 @@ case "$1 $2" in
         echo "${line}" ;;
     "pr merge") [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
     "pr view") cat "${S}/state" ;;
+    "repo view") [ -f "${S}/visibility" ] && cat "${S}/visibility" ;;
+    "api repos/{owner}/{repo}/actions/workflows") [ -f "${S}/workflows" ] && cat "${S}/workflows" ;;
 esac
 GH
 chmod +x "${WORK}/gh"
@@ -69,13 +71,31 @@ PENDING='[{"bucket":"pending","name":"gates"}]'
 scene late yes '[]' '[]' "${PENDING}" "${PASS}"
 out="$(land 7)"; code=$?
 check "検査が後から登録されても、 通るまで待ってから merge する (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [ "$(merged)" = 1 ]; echo $?)"
-check "merge の前に検査を 4 回見ている" "$([ "$(sed -n '1,4p' "${FAKE_GH}/calls" | grep -c '^pr checks')" = 4 ] && [ "$(sed -n '5p' "${FAKE_GH}/calls" | grep -c '^pr merge 7 --squash --delete-branch')" = 1 ]; echo $?)"
+check "merge の前に検査を 4 回見ている" "$([ "$(sed '/^pr merge/,$d' "${FAKE_GH}/calls" | grep -c '^pr checks')" = 4 ] && [ "$(grep -m1 '^pr merge' "${FAKE_GH}/calls")" = 'pr merge 7 --squash --delete-branch' ]; echo $?)"
 check "着地した PR と commit を言う" "$([[ "${out}" == *"#7 merged into main (${MERGE:0:7})"* ]]; echo $?)"
 
 # --- 検査が 1 つも登録されないまま: merge しない ---
 scene never yes '[]'
 out="$(TIMEOUT=2 land 7)"; code=$?
 check "検査が 1 つも無いままなら merge しない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"no check was ever reported"* ]]; echo $?)"
+
+# --- workflow の無い private の repo: 待たずに merge する (= 手元の全体の試験が検査) ---
+scene private-none yes '[]'
+echo PRIVATE > "${FAKE_GH}/visibility"; echo 0 > "${FAKE_GH}/workflows"
+out="$(TIMEOUT=2 land 7)"; code=$?
+check "workflow の無い private の repo は待たずに merge する (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [ "$(merged)" = 1 ] && [ "$(grep -c '^pr checks' "${FAKE_GH}/calls")" = 0 ] && [[ "${out}" == *"private repo with no workflow"* ]]; echo $?)"
+
+# --- workflow の無い公開の repo: merge しない (= 公開の repo は Actions で判定する) ---
+scene public-none yes '[]'
+echo PUBLIC > "${FAKE_GH}/visibility"; echo 0 > "${FAKE_GH}/workflows"
+out="$(TIMEOUT=2 land 7)"; code=$?
+check "workflow の無い公開の repo は merge しない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"public repo with no workflow"* ]]; echo $?)"
+
+# --- workflow の在る private の repo: 今までどおり検査を待つ ---
+scene private-with yes '[]' "${PASS}"
+echo PRIVATE > "${FAKE_GH}/visibility"; echo 2 > "${FAKE_GH}/workflows"
+out="$(land 7)"; code=$?
+check "workflow の在る private の repo は検査を待ってから merge する (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [ "$(merged)" = 1 ] && [ "$(grep -c '^pr checks' "${FAKE_GH}/calls")" = 2 ]; echo $?)"
 
 # --- 検査が終わらない: merge しない ---
 scene slow yes "${PENDING}"
