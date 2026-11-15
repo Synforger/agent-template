@@ -43,9 +43,12 @@ Step 0〜3 を全部、この順で踏む。発動の判断 (断定形の終了�
 
 ## Step 3 (直列、必須)
 
-**触った repo ごとに commit する**。親の repo から gitignore された階層の folder が自分の repo を持つ時 (folder 直下に `.git` があり、remote なしでこの PC の中だけの履歴を持つ) は、その階層の file を `git -C <階層> add -A && git commit` で先に閉じる。その repo は pull / push しない。remote が無いため。親の repo は、階層の外の file (親の `rules/` / `.claude/skills/` / `.tooling/` / `profile/` 等) を触った時だけ、下の連続実行で締める。
+**触った repo ごとに commit する**。親の repo から gitignore された階層の folder が自分の repo を持つ時 (folder 直下に `.git` があり、remote なしでこの PC の中だけの履歴を持つ) は、自分の階層の folder に絞って先に閉じる: `git -C <repo> add -A -- <自分の階層の folder> && git -C <repo> commit -m <message> -- <自分の階層の folder>`。下に子の階層を持つ階層のタブは、子の階層の folder を `':(exclude)<子の階層の folder>'` で外して同じ形で打つ。その repo は pull / push しない。remote が無いため。親の repo は、階層の外の file (親の `rules/` / `.claude/skills/` / `.tooling/` / `profile/` 等) を触った時だけ、下の連続実行で締める。
 
-`git add -A && git commit` → `git pull --rebase --autostash` → `git push` **必ず連続実行**で締める。push の直前に再 pull するのは、session 中に他 PC が push して fast-forward できなくなった分を吸収するため。push が失敗したら、pull → rebase → push のリトライを 1 サイクル、エージェント自前で行う。2 度目も失敗して conflict が残ったら、操作者へ報告して手動解決する。
+- **add と commit には、どちらの repo でも自分が書いた path を名指す**。1 本の repo を複数の階層のタブが共有し、それぞれが書きかけを持つ。path を付けない `add -A` は repo 全体の未 commit を拾い、`--` の無い commit は別のタブが stage した物も載せる
+  - Why: 締めの commit が、同じ repo を使う別の階層のタブが commit せずに置いていた書きかけ 3 本を拾った。1 本は人の顔が写った画像だった (2026-11-15)
+
+`git add -A -- <自分が書いた path>... && git commit -m <message> -- <自分が書いた path>...` → `git pull --rebase --autostash` → `git push` **必ず連続実行**で締める。名指すのは、この会話が Write / Edit / 命令で書いた file と folder で、自分の階層の journal を含む。push の直前に再 pull するのは、session 中に他 PC が push して fast-forward できなくなった分を吸収するため。push が失敗したら、pull → rebase → push のリトライを 1 サイクル、エージェント自前で行う。2 度目も失敗して conflict が残ったら、操作者へ報告して手動解決する。
 
 複数の PC で同じエージェントを clone している場合、**同期点は開始時の pull とこの Step 3 の 2 つ**。同時起動は避ける。共通基盤 (`profile/` / `rules/` / `.claude/skills/` / `CLAUDE.md` / `.tooling/`) を別 PC が同時に編集していると rebase が止まるので、その時は操作者へ報告。新しい PC の立ち上げは `.claude/skills/base-sync/SKILL.md` が持つ。
 
