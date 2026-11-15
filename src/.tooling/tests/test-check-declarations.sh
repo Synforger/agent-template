@@ -120,5 +120,112 @@ expect "まだ追っていない file は、 commit の前から出る" '^layout
 rm "${R}/new.txt"; mkdir -p "${R}/cache"; printf 'x\n' > "${R}/cache/a.bin"
 expect "git が無視する folder も、 何が溜まるかの宣言が無ければ出る" '^layout: undeclared cache/ '
 
+# 型が配る 2 枚 (= layout.base.txt・contracts.base.txt) と、 派生の 2 枚を足して読む
+# 型だけの木: 派生の 2 枚を持たない。 型の 2 枚は自分の名前を宣言し、 派生の 2 枚は無くてよい名前として宣言する
+base_build() {
+    build
+    rm -f "${R}/.tooling/layout.txt" "${R}/.tooling/contracts.txt"
+    cat > "${R}/.tooling/layout.base.txt" <<'TXT'
+# base
+. : README.md .tooling/ tiers/
+.tooling : layout.base.txt contracts.base.txt ?layout.txt ?contracts.txt _output/** work/ tests/
+.tooling/work : *.sh
+.tooling/tests : test-*.sh
+tiers : */
+tiers/* : _README.md notes/**
+TXT
+    printf '%s\n' '# base' 'work/tool.sh | tests/test-tool.sh | 道具の約束' > "${R}/.tooling/contracts.base.txt"
+}
+# 派生の 2 枚を足す (= 型の 2 枚に無い物だけ)
+own_files() {
+    printf '%s\n' '. : own/' 'own : *.txt' > "${R}/.tooling/layout.txt"
+    mkdir -p "${R}/own"; printf 'x\n' > "${R}/own/a.txt"
+    printf '%s\n' '# own' > "${R}/.tooling/contracts.txt"
+}
+
+base_build; expect "型の 2 枚だけで、 派生の 2 枚が無くても緑" ""
+base_build; own_files; expect "型の 2 枚に派生の 2 枚を足しても緑 (= 派生は自分の物だけを書く)" ""
+base_build; printf 'x\n' > "${R}/stray.txt"
+expect "型だけの木でも、 宣言に無い file は赤" '^layout: undeclared stray\.txt '
+base_build; rm "${R}/.tooling/contracts.base.txt"
+expect "約束の 2 枚が両方無ければ、 無いと出る" '^contracts: \.tooling/contracts\.txt not found'
+
+# 二重の真値: 同じ宣言が型と派生の両方に在れば、 両方の file と行を名指して赤
+base_build; own_files; printf '%s\n' 'tiers : */' >> "${R}/.tooling/layout.txt"
+expect "置き場の同じ名前が型と派生に在れば、 二重として両方の行を名指す" '^layout: duplicate tiers : \*/ .*\[layout\.base\.txt:[0-9]+, layout\.txt:[0-9]+\]$'
+base_build; own_files; printf '%s\n' 'work/tool.sh | tests/test-tool.sh | 道具の約束' >> "${R}/.tooling/contracts.txt"
+expect "約束の同じ行が型と派生に在れば、 二重として両方の行を名指す" '^contracts: duplicate work/tool\.sh .*\[contracts\.base\.txt:[0-9]+, contracts\.txt:[0-9]+\]$'
+base_build; printf '%s\n' 'work/tool.sh | tests/test-tool.sh | ABC   def' >> "${R}/.tooling/contracts.base.txt"
+own_files; printf '%s\n' 'work/tool.sh | tests/test-tool.sh | ＡＢＣ def' >> "${R}/.tooling/contracts.txt"
+expect "約束の文の空白と全角半角の差は二重として数える" '^contracts: duplicate work/tool\.sh '
+base_build; own_files; printf '%s\n' 'work/tool.sh | tests/test-tool.sh | 別の約束' >> "${R}/.tooling/contracts.txt"
+expect "同じ道具に派生が別の約束を足すのは二重でない" ""
+base_build; own_files; printf '%s\n' '.tooling/work : *.sh' >> "${R}/.tooling/layout.txt"
+expect "行の頭に ./ や末尾の / が違っても同じ folder の同じ名前は二重" '^layout: duplicate \.tooling/work : \*\.sh '
+
+# 外す口: 派生は型の行を理由つきで外せる
+base_build; rm -rf "${R}/tiers/a/notes"; printf '%s\n' '!tiers/* : notes/**  # these tiers keep no notes' > "${R}/.tooling/layout.txt"
+expect "置き場の型の名前を理由つきで外せる" ""
+base_build; printf '%s\n' '!tiers/* : notes/**  # these tiers keep no notes' > "${R}/.tooling/layout.txt"
+expect "外した名前の物が在れば、 宣言に無いと出る" '^layout: undeclared tiers/a/notes/ '
+base_build; rm -rf "${R}/tiers/a/notes"; printf '%s\n' '!tiers/* : notes/**' > "${R}/.tooling/layout.txt"
+expect "理由の無い外す行 (置き場) は赤" '^layout: drop without a reason tiers/\* : notes/\*\* .*\[layout\.txt:1\]$'
+base_build; printf '%s\n' '!tiers/* : nothing/**  # no such name' > "${R}/.tooling/layout.txt"
+expect "型に無い名前を外す行 (置き場) は赤" '^layout: nothing to drop tiers/\* : nothing/\*\* .*\[layout\.txt:1\]$'
+base_build; printf '%s\n' '!tiers/* : notes/**  # in the wrong file' >> "${R}/.tooling/layout.base.txt"
+expect "型の file に書いた外す行は赤" '^layout: drop line in a base file tiers/\* .*\[layout\.base\.txt:[0-9]+\]$'
+base_build; rm "${R}/.tooling/work/tool.sh" "${R}/.tooling/tests/test-tool.sh"; printf '%s\n' '!work/tool.sh  # this agent keeps no tool' > "${R}/.tooling/contracts.txt"
+expect "約束の型の行を理由つきで外せる" ""
+base_build; rm "${R}/.tooling/work/tool.sh" "${R}/.tooling/tests/test-tool.sh"; printf '%s\n' '!work/tool.sh' > "${R}/.tooling/contracts.txt"
+expect "理由の無い外す行 (約束) は赤" '^contracts: drop without a reason work/tool\.sh .*\[contracts\.txt:1\]$'
+base_build; printf '%s\n' '!work/none.sh  # not a base row' > "${R}/.tooling/contracts.txt"
+expect "型に無い対象を外す行 (約束) は赤" '^contracts: nothing to drop work/none\.sh .*\[contracts\.txt:1\]$'
+
+# 名指し: 宣言から来た赤は、 型と派生のどちらの file の何行目かを出す
+base_build; swap "${R}/.tooling/layout.base.txt" '. : README.md' '. : README.md GONE.md'
+expect "型の宣言に実物が無ければ、 型の file の行を名指す" '^layout: nothing matches GONE\.md in the line of \. .*\[layout\.base\.txt:[0-9]+\]$'
+base_build; own_files; printf '%s\n' '. : GONE.md' >> "${R}/.tooling/layout.txt"
+expect "派生の宣言に実物が無ければ、 派生の file の行を名指す" '^layout: nothing matches GONE\.md in the line of \. .*\[layout\.txt:[0-9]+\]$'
+base_build; printf '%s\n' 'work/absent.sh | - | 無い道具の約束' >> "${R}/.tooling/contracts.base.txt"
+expect "型の約束の行が指す道具が無ければ、 型の file の行を名指す" '^contracts: missing \.tooling/work/absent\.sh .*\[contracts\.base\.txt:[0-9]+\]$'
+base_build; own_files; printf '%s\n' 'work/absent.sh | - | 無い道具の約束' >> "${R}/.tooling/contracts.txt"
+expect "派生の約束の行が指す道具が無ければ、 派生の file の行を名指す" '^contracts: missing \.tooling/work/absent\.sh .*\[contracts\.txt:[0-9]+\]$'
+base_build; mkdir -p "${R}/tiers/b/sub"; printf '%s\n' 'tiers/* : sub/' > "${R}/.tooling/layout.txt"
+expect "folder の行が無い名前は、 その名前を書いた行を名指す" '^layout: no line for tiers/b/sub/ .*\[layout\.txt:1\]$'
+
+# 同じ folder の行で、 名前の形が重なっても偽の赤にしない
+base_build; printf 'x\n' > "${R}/.tooling/work/other.sh"; printf '%s\n' '.tooling/work : other.sh' > "${R}/.tooling/layout.txt"
+printf '%s\n' 'work/other.sh | - | 別の道具の約束' > "${R}/.tooling/contracts.txt"
+expect "型の *.sh に当たる名前を派生が足しても、 当たる実物は在る (= 偽の赤にしない)" ""
+
+# 約束の `?`: 持たない派生もある道具の行 (= 機械全体の hook)
+base_build; printf '%s\n' '?work/optional.sh | tests/test-optional.sh | 持たない派生もある道具の約束' >> "${R}/.tooling/contracts.base.txt"
+expect "? の行は、 道具もテストも無い派生では見ない" ""
+base_build; printf '%s\n' '?work/optional.sh | tests/test-optional.sh | 持たない派生もある道具の約束' >> "${R}/.tooling/contracts.base.txt"
+printf 'x\n' > "${R}/.tooling/work/optional.sh"
+expect "? の行は、 道具が在って試験が無ければ普通の行として見る" '^contracts: missing test \.tooling/tests/test-optional\.sh '
+base_build; printf '%s\n' '?work/optional.sh | tests/test-optional.sh | 持たない派生もある道具の約束' >> "${R}/.tooling/contracts.base.txt"
+printf 'x\n' > "${R}/.tooling/work/optional.sh"; printf 'x\n' > "${R}/.tooling/tests/test-optional.sh"
+expect "? の行は、 道具もテストも在る派生では普通の行として見る" ""
+base_build; printf '%s\n' '?work/optional.sh | tests/test-optional.sh | 持たない派生もある道具の約束' >> "${R}/.tooling/contracts.base.txt"
+printf 'x\n' > "${R}/.tooling/tests/test-optional.sh"
+expect "? の行は、 試験だけ在って道具が無ければ道具が無いと出る" '^contracts: missing \.tooling/work/optional\.sh '
+
+# 型の checkout の中だけ: init で作った新しい派生が、 派生の 2 枚を何も書かずに緑 (= 型の宣言が init の実物を全部覆う)。
+# init の入口は型の checkout にだけ在るので、 派生に降りたこの試験では回さない
+TEMPLATE_ROOT="$(cd "$(dirname "${SRC}")/../../.." && pwd)"
+INIT="${TEMPLATE_ROOT}/.tooling/init-new-agent.sh"
+if [ -f "${INIT}" ]; then
+    R="${T}/fresh"; rm -rf "${R}"
+    if GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid \
+        bash "${INIT}" "${R}" > "${T}/init.log" 2>&1; then
+        expect "init で作った新しい派生は、 派生の 2 枚を書かずに緑 (= 型の 2 枚が init の実物を全部覆う)" ""
+    else
+        fail=$((fail + 1)); printf 'FAIL: init-new-agent.sh が失敗した: %s\n' "$(tail -3 "${T}/init.log" | tr '\n' ' ')"
+    fi
+else
+    echo "(skip: init で作った派生の検査は型の checkout でだけ回す)"
+fi
+
 echo "check-declarations: ${pass} ok, ${fail} FAIL"
 [ "${fail}" -eq 0 ]

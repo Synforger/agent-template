@@ -1,0 +1,55 @@
+# 型が配る物の置き場の宣言 (= どの folder の直下に何を置いてよいか、 の真値のうち、 型が配る分)
+#
+# 型が配り、 派生は書かない (= `.synced-paths.txt` に載っていて、 取り込みのたびに上書きされる)。
+# 派生だけの物の置き場は、 派生の `.tooling/layout.txt` に書く (= 同じ folder の行を、 そちらに足してよい)。
+# 検査は 2 枚を足して読み、 同じ folder の同じ名前が両方に在れば赤にする。
+# 型の名前を派生で持たない時は、 派生の file に `!<folder> : <名前>  # <理由>` と書く。
+#
+# 検査 = .tooling/docs-check/check-declarations.py (= 宣言に無い物は赤、 当たる実物の無い宣言も赤)
+# 書式 = <folder> : <直下に置いてよい名前> ...
+#   名前は 1 段ぶんの fnmatch。 `x/` = その名前の folder (= 自分の行が要る)。
+#   `x/**` = その名前の folder と、 その下の全部 (= 中は宣言しない)
+#   `?x`   = 機械によっては無い物 (= git が運ばない、 または派生が持たない。 無くても消し忘れに数えない)
+
+# --- 根 ---
+. : CLAUDE.md vision.md .gitignore .synced-paths.txt ?LICENSE .claude/ .githooks/ .tooling/ journal/ pages/ plans/ profile/ projects/ research/ rules/
+pages : _README.md ?index.html _template-tab/** _common/** ?*/**
+
+# --- 常時読み込みと、 場面で読む手順 ---
+profile : _README.md _template.md profile.md
+rules : _README.md always.md registry.jsonl ?_archive/**
+.claude : skills/ ?worktrees/** ?.cc-writes/**
+.claude/skills : _README.md _template.md ?_archive/** */
+.claude/skills/* : SKILL.md
+.claude/skills/explainer-pages : ?scripts/** ?samples.md
+
+# --- 記録・計画・調査 ---
+journal : _README.md _template.md ?_archive/** [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+journal/* : session-[0-9][0-9].md session-[0-9][0-9]-rule-hits.jsonl session-[0-9][0-9]-auto-index.jsonl session-[0-9][0-9]-operator-words.jsonl session-[0-9][0-9]-friction.jsonl
+plans : _README.md _template.md ?_archive/** *.md
+research : _README.md _template.md ?_archive/** *.md */**
+
+# --- 階層の入れ子 (= project と subproject は同じ形で、 subproject は何段でも続く。 説明の真値は projects/_README.md § 標準構造) ---
+# folder の側の `**` は 1 段以上のどんな段にも当たる (= `projects/**/rules` は project にも、 どの深さの subproject にも当たる)
+projects : _README.md ?_archive/** _template-project/** */
+projects/* : _README.md vision.md ?.gitignore ?.claude/ rules/ plans/** research/** journal/** subprojects/ ?pages/** ?_scratch/**
+projects/**/subprojects : _README.md ?_archive/** */
+projects/**/subprojects/* : _README.md vision.md ?.gitignore ?.claude/ rules/ plans/** research/** journal/** ?subprojects/ ?pages/** ?_scratch/**
+projects/**/.claude : skills/
+projects/**/.claude/skills : ?_archive/** */
+projects/**/.claude/skills/* : SKILL.md
+projects/**/rules : always.md ?registry.jsonl ?hits-since.json ?_archive/**
+
+# --- 道具 ---
+.githooks : pre-commit
+.tooling : _README.md claude-launch.sh layout.base.txt contracts.base.txt ?layout.txt ?contracts.txt ?_archive/** _output/** commit/ distribute/ docs-check/ hooks/ lib/ rules/ session-end/ startup/ tests/ work/
+.tooling/commit : *.sh *.py
+.tooling/distribute : *.sh
+.tooling/docs-check : *.sh *.py ?local-excludes.txt
+.tooling/hooks : *.sh *.py skill-triggers.toml
+.tooling/lib : *.py guard-place.sh
+.tooling/rules : *.py
+.tooling/session-end : *.sh *.py
+.tooling/startup : *.sh *.py ?pc-labels.txt ?pc-labels.example.txt ?deployed-clones.txt ?deployed-clones.example.txt duplicates-allowlist.txt
+.tooling/tests : test-*.sh
+.tooling/work : *.sh *.py

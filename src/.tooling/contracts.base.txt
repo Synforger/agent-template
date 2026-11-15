@@ -1,0 +1,98 @@
+# 型が配る約束の表 (= 型が配る道具が外に対して守る事 1 行 ↔ それを試すテスト 1 本、 の真値)
+#
+# 型が配り、 派生は書かない (= `.synced-paths.txt` に載っていて、 取り込みのたびに上書きされる)。
+# 派生だけの道具の約束は、 派生の `.tooling/contracts.txt` に書く。 検査は 2 枚を足して読み、 同じ行が両方に在れば赤にする。
+# 型の行を派生で持たない時は、 派生の file に `!<対象>  # <理由>` と書く。
+#
+# 検査 = .tooling/docs-check/check-declarations.py
+#   - `.tooling/` の道具は、 どれも 2 枚のどちらかの表に 1 行以上載っている (= 何を守る物か言えない道具を置かない)
+#   - `tests/` のテストは、 どれも表の行に載っている (= 約束に紐付かないテストを置かない)
+#   - 行が指す道具とテストは実在する
+# 書式 = <対象の道具> | <守るテスト。 無ければ -> | <約束 1 文>   (= path は .tooling/ から)
+#   対象の頭の `?` = 機械全体の hook (= 型の `.synced-paths.txt` の `# @machine-wide` の物)。 対象もテストも無い派生ではその行を見ない
+#
+# テストを足してよいのは 2 つの時だけ:
+#   1. 約束の行を足した時 (= その行のテストとして)
+#   2. 実際に踏んだ不具合を再現する 1 件を、 その約束を守っている既存のテストへ足す時
+# 約束は外から見える物で書く (= 出力 / 止める・通すの判定 / 書かれる file の形。 中の関数の振る舞いは約束にしない)。
+# `-` の行は「守られていない約束」 で、 検査が数で出す。 足す前に、 同じ対象の行が既に何を守っているかをここで読む。
+
+
+# --- 起動 ---
+claude-launch.sh                       | tests/test-claude-launch.sh        | 起動の入口は、 階層と口座を決める本体へそのまま渡す
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | 最初の発話から階層と口座が決まり、 決めた model と effort で起動する
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | サブプロジェクトの下にさらにサブプロジェクトが続く時も、 発話の名前と封筒の階層で何段でも同じ手順で決まり、 段ごとの skill の folder を渡す
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | 自動の入れ替えで起動し直された時と、 client が階層ごとに立てたタブ (= `<tab-open>`) は、 封筒が運ぶ階層で起動する
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | `--child` の起動は子のタブとして、 最初の発話の `<child-start>` の階層で起動し、 エージェントを pull しない。 `--child` の無い起動は子の印を受け継がない
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの folder は起動の file の置き場で決まり (= 受け継いだ `AGENT_ROOT` では決めない)、 `AGENT_ROOT` で session に渡る
+startup/startup-status.sh              | -                                  | 起動の検査を束ねて 1 ブロックで出し、 末尾に反応の指針を出す
+startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | 常時読み込みか skill の一覧が溢れたら赤になる
+startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | サブプロジェクトが何段続いても、 どの段の常時読み込みと skill の一覧が溢れても、 その階層の名前で赤になる
+startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | commit の検査 (`--commit`) は、 git に載る階層が溢れたら止め、 git に載らない階層だけが溢れた時は `WARN <階層>:` を出して通す (= 別のタブの commit を止めない)。 引数なしの起動の検査は載らない階層でも赤にする
+docs-check/docs-check.sh               | tests/test-static-capacity.sh      | 容量の段は、 git に載る・載らないを分けずに溢れた階層ごとに FAIL を 1 行出す
+startup/capacity-candidates.py         | -                                  | 容量を超えた階層の節を、 大きさと発火の実績つきで並べる
+startup/check-launch-pins.py           | tests/test-launch-pins.sh          | 起動の経路に版の名指しや effort の上書きが在れば赤になる
+startup/check-deployed-clones.sh       | tests/test-deployed-clones.sh      | 配備元の clone が遅れていれば「遅れている」 と出て、 取り込むと緑に戻る
+startup/check_platform.py              | tests/test-platform-check.sh       | 器の点検が問題を名指せば数と 1 件 1 行が出て (= `template drift:` は数えない)、 点検が終わらない / 集計の行を出さない時は UNKNOWN、 器の無い機械では何も出さない
+startup/audit-known.sh                 | tests/test-audit-known.sh          | `status` は監査の記録の置き場を番人に訊いて判定へ渡し、 ほかの命令 (= 退役した台帳の口) は使い方を出して 2 で止まる
+startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査の FINDINGS の repo は、 その境界を読めるタブにだけ出し (= 境界の外の repo は境界を読まないタブ)、 番人に読める境界を訊けない時は全部を出す
+startup/pages_orphans.py               | tests/test-pages-orphans.sh        | 起動した階層の pages/ の下で、生きているタブ (別の機械のタブも) の id でない folder を、中身ありと雛形だけに分けて出し、`_` 始まりは数えず、タブの一覧が読めない時は UNKNOWN
+startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査を読み上げる係のタブは、 サブプロジェクトの何段目に居ても係として働く
+startup/audit_findings.py              | tests/test-audit-known.sh          | 終わりの行の無い記録は clean と読まず INCOMPLETE と出して、 終わった一番新しい記録で判定し、 境界の無い記録と読み解けない記録は判定せずに黙らせない
+startup/detect-duplicates.py           | -                                  | rule file の節どうしの重なりを組で出す
+startup/detect-stale-rules.sh          | -                                  | 7 日更新の無い rule file を、 サブプロジェクトが何段続いても数える
+
+# --- 終了 ---
+session-end/extract-artifact-index.sh  | tests/test-guard-may-write.sh      | その session が触った file と commit を、 書ける階層の journal にだけ書く
+session-end/extract-artifact-index.sh  | tests/test-artifact-index-number.sh | 索引の file は、 渡された番号 (= --nn) で、 渡されなければその日の journal の次の番号で書き、 誤った番号では書かずに止まる
+session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 操作者が打った発話 (= 作業中に打って積まれた分も) だけを、 直前に出た作った物の path つきで journal の隣の番号つきの file に書く。 別のタブからの連絡・封筒・通知・道具の返りは書かず、 2 度流しても行が増えない
+session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 渡した番号 (= 無ければ次の番号) の file に書き、 誤った番号と journal でない folder は書かずに止まる。 読むのは自分の session の記録 1 本だけで、 別の記録を名指す口は無い。 `--all-sessions` は走らせた口座の記録のうち、 その階層の持ち物の session だけを、 渡した file へ書く
+session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 作った物の path は、 作業 folder と上の段・階層の folder・その `pages/`・タブの folder を起点に在る file の絶対の path に解いて書き、 どの起点からも在る file に当たらない path は落とす
+lib/operator_words.py                  | tests/test-extract-operator-words.sh | 操作者の発話と、 作った物の path (= URL・変数・ワイルドカードを除く) を、 会話の記録の行から取り出す
+session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 今の session で触った資料の folder の、資料の道具の取り込みの記録 (`.pptx-agent-maker/reviews.jsonl`) のうち、session が始まった後の行を、取り込み方・資料・頁・文言の前後と、前後の版の path つきで並べる
+lib/session_transcript.py              | tests/test-extract-operator-words.sh | 今の session の記録は session id で引き、 口座の全記録は渡された口座の物だけを返す
+lib/session_scope.py                   | tests/test-extract-operator-words.sh | 過去の session は、 通った階層がその階層と上の段だけで、 親以外はその階層に入った物だけを、 その階層の持ち物と判定する
+
+# --- 文書の検査 ---
+docs-check/docs-check.sh               | -                                  | 文書の検査の全段を回し、 FAIL が 1 件でも在れば exit 1。 必須の file と folder の欠けと置き場の宣言は、 サブプロジェクトが何段続いても見る
+docs-check/docs-scan.py                | -                                  | frontmatter・容量・索引・切れた参照・雛形の埋め残しを 1 回の走査で出す。 下の階層の文書は、 親プロから途中の各段まで宣言した repo の file 名を引ける
+docs-check/journal-integrity.py        | -                                  | journal の file 名・frontmatter・階層の違反を出す
+docs-check/check-rule-references.py    | -                                  | ルールが指す repo 内の path が無ければ 1 行ずつ出す。 サブプロジェクトが何段続いても対象にする
+docs-check/check-rule-hits.py          | -                                  | 発火記録を書き漏らした session を 1 行ずつ出す。 サブプロジェクトが何段続いても対象にする
+docs-check/check-vision-shape.py       | -                                  | 現在地の必須の節の欠けと段落の超過を出す
+docs-check/check-positive-form.py      | -                                  | 常時読み込みと skill の主文が否定形なら 1 行ずつ出す。 サブプロジェクトが何段続いても対象にする
+docs-check/check-equals-asides.py      | -                                  | 常時読み込みと skill に `(= …)` の言い足しが残っていれば 1 file 1 行で出す。 サブプロジェクトが何段続いても対象にする
+docs-check/check-rewrite-keeps.py      | -                                  | 書き直した file の code・引用・日付・URL・発言者が前の版と 1 つでも違えば差を出して exit 1 で止まり、見出しの文だけを直した file は `--update-registry` で台帳の行を新しい見出しへ引き継ぐ。 台帳は file が属する一番深い階層の物を使う
+docs-check/check-declarations.py       | tests/test-check-declarations.sh   | 型の宣言 (`layout.base.txt`・`contracts.base.txt`) と派生の宣言 (`layout.txt`・`contracts.txt`) を足して読み、 宣言に無い file・表に無い道具とテスト・実物の無い宣言・型と派生の二重の宣言を、 宣言のどの file の何行目かと一緒に 1 行ずつ出す。 派生は型の行を理由つきで外せ、 持たない派生もある道具の行 (`?`) は無い派生では見ない
+
+# --- ルールの台帳 ---
+rules/build-rule-registry.py           | tests/test-build-rule-registry.sh  | ID の頭の文字は階層の深さで決まり (= 親 R・project P・1 段目の subproject S・それより深い段は S2・S3 …)、 番号は変わらない
+rules/rule-hits-summary.py             | tests/test-rule-hits-summary.sh    | 発火記録が、 どの書き方でも、 頭の文字が指す台帳のルールに寄る
+rules/rule-hits-summary.py             | tests/test-rule-hits-summary.sh    | サブプロジェクトの下の段の ID (= 頭の字 S2 …) も、 その階層の台帳のルールに寄る
+lib/skill-listing.py                   | -                                  | 階層ごとの skill の一覧と、 その大きさを出す
+lib/guard-may-write.py                 | tests/test-guard-may-write.sh      | 階層へ書く script が、 書く前に番人へ訊いて、 拒まれたら書かない
+lib/guard-place.sh                     | tests/test-guard-place.sh          | エージェントの道具が読む番人の置き場 (= 設定・禁止語の一覧・印・監査の記録) は、 配備した番人の部品が答える置き場と同じ
+lib/md_fences.py                       | tests/test-build-rule-registry.sh  | code block は開いた印と同じ字で同じ本数以上の行だけで閉じ、 4 本の backtick の block の中の ``` の行や見出しを外の物として読まない
+lib/tier_paths.py                      | -                                  | 階層の列挙は、 サブプロジェクトが何段続いても親から子の順に全部出し (= `_` と `.` 始まりは数えない)、 ルール ID の頭の字は段の数で決まる (= 1 段目までは変えない)
+
+# --- commit と hook ---
+commit/precommit-conflict-check.sh     | -                                  | commit する rule file が既存の rule と重なれば、 止めずに警告する
+commit/setup-hooks.sh                  | -                                  | hook の導入を何度回しても同じ状態になる
+lib/client_openings.py                 | -                                  | client が打つ発話の 1 行目は番人の口 (= `order.py --openings`) から取り、 番人が何も返さない間は `orders.txt` の `>` 行を読む
+lib/client_openings.py                 | tests/test-extract-operator-words.sh | 締めで操作者の言葉を拾う時も同じ表で、 client が打った発話 (= 別のタブの連絡・client の知らせ・入れ替え・立てたタブ) を除く。 表を取れなければ stderr に 1 行出す
+?hooks/ci_duplicate_guard.py           | tests/test-ci-duplicate-guard.sh   | 公開の repo (= `task ci` を呼ぶ workflow があり、 gh が PUBLIC と答える) で `task ci` を打つ Bash の呼び出しだけを、 Actions が流すという理由で止め、 private の repo・別の task・文字として含むだけの命令・読めない時は通す
+?hooks/commit_paths_guard.py           | tests/test-commit-paths-guard.sh   | エージェントの checkout (= `AGENT_ROOT` と hook を持つエージェントの根) で、 `--` の後に path の無い `git commit` と `-a` / `--all` の commit だけを止め、 複数行の message・`-C`・前の段の `cd` も読み、 別の repo・自分の .git を持つ階層・文字として含むだけの命令・読めない時は通す
+?hooks/skill_gate.py                   | tests/test-skill-gate.sh           | 表の操作に当たり、 その session (= サブエージェントは自分) の会話の記録に読んだ跡の無い skill がある時だけ、 道具を 1 回止めて (= 発話と起動は 1 行の注意で) 全部まとめて名指し、 読んだ後・当たらない操作・表が無い時は黙る
+?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | 表の条件 (= 道具・path・命令・作業の folder・体の種類・発話・環境・code の file) が全部当たる行の skill を返す
+?hooks/skill_reads.py                  | tests/test-skill-gate.sh           | 会話の記録から、 skill を呼んだ跡か SKILL.md を読んだ跡を名前ごとに拾う
+?hooks/subagent_model_gate.py          | tests/test-subagent-model-gate.sh  | Agent の道具で立てる体は model が sonnet か、 それより小さい haiku の時だけ通り、 書いていない (= 親の model を継ぐ)・他の model・fork は止まって直し方を返す
+?hooks/bypass_prompt_gate.py           | tests/test-bypass-prompt-gate.sh   | 全部通すモードで Claude Code が Bash の確認を出しかけた時だけ、 窓を出さずに断って書き直し方を返し (= rm には消す先の書き方)、 ほかのモード・ほかの道具・読めない入力では黙る
+
+# --- 配る ---
+distribute/sync-from-base.sh           | -                                  | 同期の一覧に在る file だけを、 基盤の最新で上書きする
+distribute/promote-to-base.sh          | -                                  | 同期の一覧に在る file だけを、 基盤の branch へ書き戻す
+distribute/guard-update.sh             | -                                  | エージェントの pull・番人の入れ替え・設定の配布を 1 本で行う
+distribute/guard-update.sh             | tests/test-guard-update.sh         | 追う branch の無い repo では pull を飛ばしてそう名乗り、 番人の導入まで進む。 pull が止まれば導入へ進まずに止まる。 1 回断られた fetch は打ち直して通る
+
+# --- 作業中に手で呼ぶ ---
+work/pr-land.sh                        | tests/test-pr-land.sh              | 検査が通るまで merge せず、 merge されるまで tag を打たない
