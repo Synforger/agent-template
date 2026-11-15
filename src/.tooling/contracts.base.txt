@@ -37,6 +37,12 @@ startup/check_platform.py              | tests/test-platform-check.sh       | �
 startup/audit-known.sh                 | tests/test-audit-known.sh          | `status` は監査の記録の置き場を番人に訊いて判定へ渡し、 ほかの命令 (= 退役した台帳の口) は使い方を出して 2 で止まる
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査の FINDINGS の repo は、 その境界を読めるタブにだけ出し (= 境界の外の repo は境界を読まないタブ)、 番人に読める境界を訊けない時は全部を出す
 startup/pages_orphans.py               | tests/test-pages-orphans.sh        | 起動した階層の pages/ の下で、生きているタブ (別の機械のタブも) の id でない folder を、中身ありと雛形だけに分けて出し、`_` 始まりは数えず、タブの一覧が読めない時は UNKNOWN
+startup/route_by_owner.py            | tests/test-startup-owners.sh       | 起動の検査の警告は、 持ち主の階層のタブにだけ今の行で出て、 ほかの階層の分は `others: <行の名前> <件数> (owner <階層>)` の 1 行にまとまり、 健全な行と持ち主の無い行はそのまま出る。 読めない階層の名前は `(別の境界)` と伏せ、 番人に訊けない時は normal 以外を伏せる
+startup/owner_routing.py             | tests/test-startup-owners.sh       | docs-check の FAIL は本文の path を含む一番深い階層 (= 実在しない階層は近い親、 path が無ければ normal) に振られ、 `FAIL: 0` と読める形で自分の階層の分だけを数え直す。 溢れた階層は名前で振られ、 自分の階層の削減候補だけが出る
+startup/owner_table.py               | tests/test-startup-owners.sh       | 持ち主が normal の行は、 この表の定数だけで決まる (道具ごとの持ち主は deployed-clones.txt の 4 列目)
+startup/tool_actions.py              | tests/test-startup-owners.sh       | 配備している道具の repo ごとに、 develop の最新の commit と開いている PR の Actions の結果を 1 行 (`ok` / `RED develop` / `RED PR #N` / `UNKNOWN`) にし、 gh が動かない・20 秒を超えた時は UNKNOWN、 宣言の file が無ければ何も出さない
+startup/actions_verdict.py           | tests/test-startup-owners.sh       | 同じ commit で流し直した run は新しい方が決め、 失敗・時間切れ・error が赤で、 取り消し・走行中・skip は赤にしない。 run の無い develop は、 その commit を作った PR の検査で見る
+startup/pending_approvals.py         | tests/test-startup-owners.sh       | 自分の `.git` を持つ階層のうち、 番人の `detect_repo_kind` が名乗りの検査をかける種類と答えた物だけを `pending_approval: guard.scope <階層>` と名指し、 当たる物が無ければ `pending_approval: none`
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査を読み上げる係のタブは、 サブプロジェクトの何段目に居ても係として働く
 startup/audit_findings.py              | tests/test-audit-known.sh          | 終わりの行の無い記録は clean と読まず INCOMPLETE と出して、 終わった一番新しい記録で判定し、 境界の無い記録と読み解けない記録は判定せずに黙らせない
 startup/detect-duplicates.py           | -                                  | rule file の節どうしの重なりを組で出す

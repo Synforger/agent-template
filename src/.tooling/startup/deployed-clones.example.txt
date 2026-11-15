@@ -1,7 +1,8 @@
 # この機械が、 手元の clone から配備している repo (= 名前 → clone の場所 → 追う branch)
 # 用途: startup-status.sh が check-deployed-clones.sh を呼び、 clone ごとに「origin のその branch より
 #       遅れているか」 を 1 行で出す (= clone_deploy(<名前>): ok / BEHIND <n> / UNKNOWN)
-# 形式: <名前> <clone の場所> <追う branch> (空白区切り、 # 始まりはコメント)
+# 形式: <名前> <clone の場所> <追う branch> [<持ち主の階層>] (空白区切り、 # 始まりはコメント)
+# 4 列目は、 その道具の Actions の赤 (= tool_actions) を直す階層。 書かない道具は normal が持つ
 #   - 名前       出力の行に出る呼び名 (= 空白を含めない)
 #   - clone の場所  `~` で始めてよい (= 空白を含めない)
 #   - 追う branch  配備が追っている branch (= origin/<branch> と比べる)

@@ -72,6 +72,12 @@
 
 # 起動の検査 pages_orphans (= startup-status.sh が呼ぶ。 階層の pages/ に残った、 生きているタブの物でない folder を出す)
 .tooling/startup/pages_orphans.py
+.tooling/startup/route_by_owner.py
+.tooling/startup/owner_routing.py
+.tooling/startup/owner_table.py
+.tooling/startup/tool_actions.py
+.tooling/startup/actions_verdict.py
+.tooling/startup/pending_approvals.py
 
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
@@ -115,6 +121,7 @@
 .tooling/tests/test-bypass-prompt-gate.sh   # @machine-wide bypass_prompt_gate の試験
 .tooling/tests/test-extract-operator-words.sh
 .tooling/tests/test-pages-orphans.sh
+.tooling/tests/test-startup-owners.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
