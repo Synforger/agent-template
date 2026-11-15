@@ -9,7 +9,9 @@ file の中身を読むのは 1 回だけで足りるので、 ここで全部�
 同じ走査から作れるので、 shell 側で find を複数回起こさない。
 
 入出力:
-    docs-scan.py [--local-excludes <file>]
+    docs-scan.py [--local-excludes <file>] [--root <dir>]
+    --root は歩く木の根 (= 既定はこの file の置き場から 3 段上の repo の根)。 別の repo の commit の検査が、
+    その repo の木にこの判定をそのまま当てる時に渡す。 部品 (.tooling/lib) は常にこの file の置き場から読む。
     stdout に `<step>\t<level>\t<message>` を 1 行ずつ (= level は fail / warn / pass)。
     pass 行の message は件数 (= shell 側で加算する)。
 
@@ -23,9 +25,10 @@ import re
 import subprocess
 import sys
 
-# .tooling/lib/ から 3 段上が repo root
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(ROOT, ".tooling", "lib"))
+# .tooling/docs-check/ から 2 段上が repo root (= 部品の置き場。 歩く木の根は main で --root に替えられる)
+TOOL_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = TOOL_ROOT
+sys.path.insert(0, os.path.join(TOOL_ROOT, ".tooling", "lib"))
 from tier_paths import tier_prefix  # noqa: E402
 
 # dead link 判定で「外部 repo の root 慣習 file」 として見逃す名前
@@ -134,7 +137,13 @@ def collect(local_excludes):
 
 
 def main():
+    global ROOT
     args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
+    if "--root" in args:
+        ROOT = os.path.abspath(args["--root"])
+        if not os.path.isdir(ROOT):
+            print(f"docs-scan: --root {ROOT} is not a folder", file=sys.stderr)
+            return 2
 
     os.chdir(ROOT)
 
@@ -310,4 +319,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
