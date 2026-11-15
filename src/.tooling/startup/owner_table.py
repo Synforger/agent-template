@@ -19,6 +19,7 @@ NORMAL_ROWS: dict[str, str] = {
     "guard_deploy": r"^guard_deploy: (ok|\(skipped)",
     "clone_deploy": r"^clone_deploy\([^)]*\): ok",
     "platform_check": r"^platform_check: clean",
+    "peer": r"^peer\([^)]*\): ok",
 }
 
 # `tool_actions(<道具>)` の行が健全な時の印。 持ち主は下の表で決める
