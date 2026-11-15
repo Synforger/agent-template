@@ -1,7 +1,9 @@
 #!/bin/bash
 # .tooling/distribute/sync-from-base.sh の test。 作り物の base と派生を組み、 base の列挙が派生に何も書かなくても
 # 全部降りる事、 base が後から足した path も降りる事、 理由つきの `!` は外れて理由が並ぶ事、 理由の無い `!` は
-# 名指して何も写さずに止まる事、 base の `!` は降ろさない事を確かめる。
+# 名指して何も写さずに止まる事、 base の `!` は降ろさない事を確かめる。 base が git の repo の時は、 前の取り込みの
+# 版を記録し、 その後に派生だけが変えた file を名指して止まる事、 最後の docs-check が赤なら commit の案内を出さない
+# 事も確かめる。
 #
 #   bash .tooling/local-ci/test-sync-from-base.sh   (= `task ci` が呼ぶ)
 set -uo pipefail
@@ -33,6 +35,9 @@ setup() {
     cp "${SYNC}" "${AGENT}/.tooling/distribute/"
     git -C "${AGENT}" init -q
 }
+
+# 出力に <文字列> が無い
+lacks() { ! grep -qF -- "$1" "${T}/out"; }
 
 sync() { BASE_REPO_PATH="${BASE}" bash "${AGENT}/.tooling/distribute/sync-from-base.sh" > "${T}/out" 2>&1; }
 
@@ -109,6 +114,123 @@ printf '%s\n' ".tooling/startup/status.sh" > "${AGENT}/.synced-paths.txt"
 sync
 check "宣言を持たない base からは派生の列挙を写す" [ "$(cat "${AGENT}/.tooling/startup/status.sh" 2>/dev/null)" = "status v2" ]
 check "宣言を持たない base からは派生が列挙しない path を写さない" [ ! -e "${AGENT}/.tooling/lib/helper.sh" ]
+
+# --- base が git の repo: 前の取り込みの版を記録し、 派生だけの変更で止まる -----------------------
+GIT_ID=(-c user.name=test -c user.email=noreply@github.com -c commit.gpgsign=false)
+
+base_commit() { git "${GIT_ID[@]}" -C "${BASE}" add -A && git "${GIT_ID[@]}" -C "${BASE}" commit -qm "$1"; }
+
+# 単体の file 2 本と、 folder ごと配る skill 1 本を持つ git の base
+setup_git() {
+    setup
+    mkdir -p "${BASE}/src/.claude/skills/demo"
+    echo "demo v1" > "${BASE}/src/.claude/skills/demo/SKILL.md"
+    echo ".claude/skills/demo/" >> "${BASE}/.synced-paths.txt"
+    git -C "${BASE}" init -q
+    base_commit "base v1"
+    printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+}
+
+recorded_sha() { sed -n 's/^# synced from base: \([0-9a-f]\{40\}\)$/\1/p' "${AGENT}/.synced-paths.txt"; }
+
+setup_git
+sync
+check "git の base からの最初の取り込みは通る" [ $? -eq 0 ]
+check "最初の取り込みは記録が無いと言う" grep -qF "has no record of the last sync" "${T}/out"
+check "取り込んだ base の版を記録する" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+check "記録の行は 1 本だけ" [ "$(grep -c '^# synced from base: ' "${AGENT}/.synced-paths.txt")" -eq 1 ]
+check "folder の path も写す" [ "$(cat "${AGENT}/.claude/skills/demo/SKILL.md" 2>/dev/null)" = "demo v1" ]
+check "commit の案内は写した path の一覧を渡す" grep -qF "git add -A --pathspec-from-file=.git/sync-from-base.pathspec" "${T}/out"
+check "写した path の一覧に記録と写した path が並ぶ" [ "$(head -2 "${AGENT}/.git/sync-from-base.pathspec" 2>/dev/null | tr '\n' ' ')" = ".synced-paths.txt .tooling/startup/status.sh " ]
+
+# base だけが変えた: 止まらず、 記録が進む
+echo "status v3" > "${BASE}/src/.tooling/startup/status.sh"
+base_commit "base v3"
+sync
+check "base だけが変えた時は通る" [ $? -eq 0 ]
+check "base の新しい版が降りる" [ "$(cat "${AGENT}/.tooling/startup/status.sh")" = "status v3" ]
+check "記録が今の base の版へ進む" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+check "記録の行は進めても 1 本だけ" [ "$(grep -c '^# synced from base: ' "${AGENT}/.synced-paths.txt")" -eq 1 ]
+
+# 派生だけが変えた: 名指して何も写さずに止まる
+setup_git
+sync
+echo "helper changed in the agent" > "${AGENT}/.tooling/lib/helper.sh"
+echo "status v4" > "${BASE}/src/.tooling/startup/status.sh"
+base_commit "base v4"
+before="$(recorded_sha)"
+sync
+check "派生だけが変えた file があると止まる" [ $? -ne 0 ]
+check "派生だけが変えた file を名指す" grep -qE "changed here +\.tooling/lib/helper\.sh" "${T}/out"
+check "止まった時は base の新しい版も写さない" [ "$(cat "${AGENT}/.tooling/startup/status.sh")" = "status v2" ]
+check "止まった時は派生の直しを残す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh")" = "helper changed in the agent" ]
+check "止まった時は記録を進めない" [ "$(recorded_sha)" = "${before}" ]
+
+# SYNC_OVERWRITE=1 は名指した上で上書きする
+SYNC_OVERWRITE=1 BASE_REPO_PATH="${BASE}" bash "${AGENT}/.tooling/distribute/sync-from-base.sh" > "${T}/out" 2>&1
+check "SYNC_OVERWRITE=1 は通る" [ $? -eq 0 ]
+check "SYNC_OVERWRITE=1 も上書きする file を名指す" grep -qE "changed here +\.tooling/lib/helper\.sh" "${T}/out"
+check "SYNC_OVERWRITE=1 は base の版で上書きする" [ "$(cat "${AGENT}/.tooling/lib/helper.sh")" = "helper v2" ]
+
+# 両方が変えた
+setup_git
+sync
+echo "helper changed in the agent" > "${AGENT}/.tooling/lib/helper.sh"
+echo "helper v5" > "${BASE}/src/.tooling/lib/helper.sh"
+base_commit "base v5"
+sync
+check "両方が変えた file があると止まる" [ $? -ne 0 ]
+check "両方が変えた file を名指す" grep -qE "changed here and in the base +\.tooling/lib/helper\.sh" "${T}/out"
+
+# folder の中に派生が足した file (= rsync --delete で消える物) と、 派生が消した file
+setup_git
+printf '%s\n' "*.pyc" > "${AGENT}/.gitignore"
+sync
+echo "agent note" > "${AGENT}/.claude/skills/demo/notes.md"
+echo "ignored" > "${AGENT}/.claude/skills/demo/cache.pyc"
+rm "${AGENT}/.tooling/startup/status.sh"
+sync
+check "派生が足した・消した file があると止まる" [ $? -ne 0 ]
+check "folder の中に派生が足した file を名指す" grep -qE "added here +\.claude/skills/demo/notes\.md" "${T}/out"
+check "派生が消した file を名指す" grep -qE "deleted here +\.tooling/startup/status\.sh" "${T}/out"
+check "git が無視する file は名指さない" lacks "cache.pyc"
+
+# 記録の版が base から消えた (= 履歴の書き換え): 見分けられないと言って進む
+setup_git
+sync
+grep -v '^# synced from base: ' "${AGENT}/.synced-paths.txt" > "${T}/sp"
+cat "${T}/sp" > "${AGENT}/.synced-paths.txt"
+echo "# synced from base: 0123456789abcdef0123456789abcdef01234567" >> "${AGENT}/.synced-paths.txt"
+echo "helper changed in the agent" > "${AGENT}/.tooling/lib/helper.sh"
+sync
+check "記録の版が base に無い時は進む" [ $? -eq 0 ]
+check "記録の版が base に無いと言う" grep -qF "no longer has the last synced version" "${T}/out"
+check "記録を今の版で書き直す" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+
+# base に commit していない変更がある時は記録しない
+setup_git
+sync
+before="$(recorded_sha)"
+echo "status uncommitted" > "${BASE}/src/.tooling/startup/status.sh"
+sync
+check "base に commit していない変更があっても写す" [ "$(cat "${AGENT}/.tooling/startup/status.sh")" = "status uncommitted" ]
+check "base に commit していない変更がある時は記録を進めない" [ "$(recorded_sha)" = "${before}" ]
+
+# --- 最後の docs-check -------------------------------------------------------------
+setup
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+mkdir -p "${AGENT}/.tooling/docs-check"
+printf '%s\n' 'printf "\033[31m  FAIL: layout: demo is not declared\033[0m\n"' 'echo "FAIL: 1"' 'exit 1' > "${AGENT}/.tooling/docs-check/docs-check.sh"
+sync
+check "docs-check が赤なら exit 1" [ $? -ne 0 ]
+check "docs-check の FAIL の行を色なしで出す" grep -qxF "  FAIL: layout: demo is not declared" "${T}/out"
+check "docs-check が赤なら commit の案内を出さない" lacks "git add -A"
+check "docs-check が赤でも取り込みは済んでいる" [ "$(cat "${AGENT}/.tooling/startup/status.sh" 2>/dev/null)" = "status v2" ]
+
+printf '%s\n' 'exit 0' > "${AGENT}/.tooling/docs-check/docs-check.sh"
+sync
+check "docs-check が緑なら通る" [ $? -eq 0 ]
+check "docs-check が緑なら commit の案内を出す" grep -qF "git add -A --pathspec-from-file=" "${T}/out"
 
 echo "test-sync-from-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]
