@@ -240,5 +240,11 @@ has_pending 'none is shown as it is' normal '^pending_approval: none$'
 START="${TOOLING}/startup/startup-status.sh"
 if grep -q 'tool_actions.py' "${START}" && grep -q 'pending_approvals.py' "${START}" && grep -q 'route_by_owner.py' "${START}"; then ok; else bad 'startup-status.sh calls tool_actions.py, pending_approvals.py and route_by_owner.py' "$(grep -n 'route_by\|tool_actions' "${START}" | head -3)"; fi
 
+# 段が書く出力の file は、 全部が振り分けか末尾の表示に渡る (= 段を足して渡し忘れると、 その行が画面に出ない)
+written="$(grep -oE '> "[$]TMPD/[0-9a-z-]+"' "${START}" | sed -E 's#.*TMPD/([^"]+)"#\1#' | sort -u)"
+shown="$(grep -vE '> "[$]TMPD/' "${START}" | grep -oE '"[$]TMPD/[0-9a-z-]+"' | sed -E 's#.*TMPD/([^"]+)"#\1#' | sort -u)"
+missing="$(comm -23 <(printf '%s\n' "${written}") <(printf '%s\n' "${shown}"))"
+if [ -n "${written}" ] && [ -z "${missing}" ]; then ok; else bad 'every step output file of startup-status.sh is shown' "not shown: ${missing}"; fi
+
 printf 'startup-owners: %d passed, %d failed\n' "${pass}" "${fail}"
 [ "${fail}" -eq 0 ]
