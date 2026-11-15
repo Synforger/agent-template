@@ -320,6 +320,14 @@ step_tool_actions() {
     fi
 }
 
+# 6i. 別の機械に繋がっているか (= client の見張りの記録を読むだけ。 判定は peer_health.py)。 届かなかった連絡は
+#     送り主にしか見えず、 相手の機械が落ちていても誰も気づかなかった (= 2 日)
+step_peer_health() {
+    if [ -f .tooling/startup/peer_health.py ]; then
+        python3 .tooling/startup/peer_health.py
+    fi
+}
+
 # 6h. 番人が名乗りの検査をかけ、 締めの commit で初めて止まる階層 (= 判定は pending_approvals.py、 種類は番人に訊く)。
 #     持ち主はその階層で、 route_by_owner.py がその階層のタブにだけ出す
 step_pending_approvals() {
@@ -329,6 +337,7 @@ step_pending_approvals() {
 }
 
 step_remote_sync      > "$TMPD/0-remote"     &
+step_peer_health      > "$TMPD/8j-peers"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
 step_duplicates       > "$TMPD/2-dup"        &
@@ -402,6 +411,9 @@ echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> 
 echo "  - tool_actions RED develop / RED PR #N -> the Actions of that tool repo failed on its develop (= the commit that"
 echo "    was merged last: its own runs, or the checks of the PR that made it) or on an open PR: say it in the briefing"
 echo "    and hand it to the tab that owns the tool (UNKNOWN -> say the Actions state was not checked, with the reason)"
+echo "  - peer(<name>) DOWN / WAITING -> the other machine has not answered the client's patrol (DOWN: 30 minutes or"
+echo "    more): say it in the briefing with how long and how many messages wait; the operator wakes that machine"
+echo "    (UNKNOWN -> the client's patrol has not written for 15 minutes: hand it to the client tab)"
 echo "  - pending_approval -> the guard checks this tier's own repo for names, so the closing commit will stop: run"
 echo "    'git config guard.scope corpus' in that tier's folder; if the guard asks for the operator's yes, ask in the briefing"
 echo "  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in"
