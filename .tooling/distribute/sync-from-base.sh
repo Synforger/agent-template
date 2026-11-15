@@ -90,6 +90,11 @@ exclusions() {
     done < "$1"
 }
 
+# 印 `# @machine-wide` の付いた列挙の行の path (= 口座の設定が 1 本の写しを呼ぶ hook とその試験)
+machine_wide() {
+    awk '/^[[:space:]]*[^[:space:]#!]/ && /#[[:space:]]*@machine-wide/ { sub(/#.*/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print }' "$1"
+}
+
 own_listed="$(declarations "$SYNCED_PATHS_FILE" | grep -v '^!' || true)"
 own_excluded="$(exclusions "$SYNCED_PATHS_FILE")"
 excluded_paths="$(printf '%s\n' "$own_excluded" | cut -f1)"
@@ -101,6 +106,16 @@ if [ -f "$BASE_SYNCED_PATHS_FILE" ]; then
     unexplained=""
     while IFS=$'\t' read -r p reason; do
         [ -n "$p" ] || continue
+        if [ "$p" = "@machine-wide" ]; then
+            # 印の付いた物を、 この派生では 1 行でまとめて外す (= 理由は必須)
+            if [ -z "$reason" ]; then
+                unexplained="$unexplained    !@machine-wide"$'\n'
+            else
+                excluded_paths="$excluded_paths"$'\n'"$(machine_wide "$BASE_SYNCED_PATHS_FILE")"
+                kept_out="$kept_out    @machine-wide  # $reason"$'\n'
+            fi
+            continue
+        fi
         printf '%s\n' "$base_listed" | grep -xF -- "$p" > /dev/null || continue
         if [ -z "$reason" ]; then
             unexplained="$unexplained    !$p"$'\n'

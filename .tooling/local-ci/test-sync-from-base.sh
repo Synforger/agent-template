@@ -107,6 +107,36 @@ printf '%s\n' "!.tooling/lib/helper.sh   # this agent keeps its own" "# trailing
 sync
 check "最後の行が注釈の宣言でも通る" [ $? -eq 0 ]
 
+# --- 機械全体の印 `# @machine-wide`: 印つきの path を `!@machine-wide` の 1 行で外す ---------------------
+mark_base() {
+    setup
+    mkdir -p "${BASE}/src/.tooling/hooks"
+    echo "gate v2" > "${BASE}/src/.tooling/hooks/gate.py"
+    echo "gate test v2" > "${BASE}/src/.tooling/hooks/test-gate.sh"
+    printf '%s\n' ".tooling/hooks/gate.py   # @machine-wide the account settings call one copy" \
+        ".tooling/hooks/test-gate.sh   # @machine-wide" >> "${BASE}/.synced-paths.txt"
+}
+
+mark_base
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+sync
+check "印つきの path も、 何も書かない派生には降りる" [ "$(cat "${AGENT}/.tooling/hooks/gate.py" 2>/dev/null)" = "gate v2" ]
+
+mark_base
+printf '%s\n' "!@machine-wide  # this machine's hooks come from another agent" > "${AGENT}/.synced-paths.txt"
+sync
+check "!@machine-wide に理由があれば通る" [ $? -eq 0 ]
+check "!@machine-wide で印つきの path を全部外す" [ ! -e "${AGENT}/.tooling/hooks/gate.py" ] && [ ! -e "${AGENT}/.tooling/hooks/test-gate.sh" ]
+check "!@machine-wide でも印の無い path は写す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh" 2>/dev/null)" = "helper v2" ]
+check "!@machine-wide を理由つきで並べる" grep -qxF "    @machine-wide  # this machine's hooks come from another agent" "${T}/out"
+
+mark_base
+printf '%s\n' "!@machine-wide" > "${AGENT}/.synced-paths.txt"
+sync
+check "理由の無い !@machine-wide は止まる" [ $? -ne 0 ]
+check "理由の無い !@machine-wide を名指す" grep -qxF "    !@machine-wide" "${T}/out"
+check "理由の無い !@machine-wide では何も写さない" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
+
 # --- 宣言を持たない古い base -------------------------------------------------------
 setup
 rm "${BASE}/.synced-paths.txt"

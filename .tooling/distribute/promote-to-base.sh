@@ -127,6 +127,10 @@ if [ -f "$BASE_DIR/.synced-paths.txt" ]; then
 else
     candidates="$own_listed"
 fi
+# `!@machine-wide` は、 型の列挙の行で `# @machine-wide` の印の付いた path を全部外す (= sync-from-base.sh と同じ集合)
+if printf '%s\n' "$excluded_paths" | grep -xF -- "@machine-wide" > /dev/null && [ -f "$BASE_DIR/.synced-paths.txt" ]; then
+    excluded_paths="$excluded_paths"$'\n'"$(awk '/^[[:space:]]*[^[:space:]#!]/ && /#[[:space:]]*@machine-wide/ { sub(/#.*/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print }' "$BASE_DIR/.synced-paths.txt")"
+fi
 all_sync_paths=()
 while IFS= read -r p; do
     [ -n "$p" ] || continue
