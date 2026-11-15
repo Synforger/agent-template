@@ -27,7 +27,7 @@ when_to_use: 型から取り込む・型へ上げる直前 / 型に file を足�
 - **何を降ろすかは型の宣言が決め、派生の `.synced-paths.txt` には例外だけを書く**。取り込みは、型が列挙する path と派生が足した path を、派生が `!` で外した物を除いて写す。型が後から足した file は、派生が何も書かなくても次の取り込みで降りる
   - **型が列挙する path を外す時は、`!<path>  # <理由>` で理由を書く**。理由の無い `!` 行は、`sync-from-base.sh` が名指して何も写さずに止まる。外している物は取り込みのたびに理由つきで並ぶ
   - Why: 理由の要らない `!` で共通の skill を黙って外した派生があり、その skill が持つ決まりがその派生にだけ無いまま動いた
-- **取り込みが「files changed in this agent since the last sync」で止まったら、名指された file ごとに行き先を決める**。取り込みは前に写した型の版を `.synced-paths.txt` の `# synced from base:` の行に記録し、その後に派生だけが変えた・消した・足した file があると、何も写さずに止まる。他でも使う直しなら `promote-to-base.sh --file <path>` で型へ上げ、この派生だけの物なら `!<path>  # <理由>` で外し、要らない直しなら `SYNC_OVERWRITE=1` で取り込み直す。型も同じ file を変えていれば、手で合わせてから上げる
+- **取り込みが「files changed in this agent since the last sync」で止まったら、名指された file ごとに行き先を決める**。取り込みは前に写した型の版を `.synced-paths.txt` の `# synced from base:` の行に記録し、その後に派生だけが変えた・消した・足した file があると、何も写さずに止まる。記録が無い初めての取り込みでは、型の履歴に一度も無かった版を持つ file で止まる。他でも使う直しなら `promote-to-base.sh --file <path>` で型へ上げ、この派生だけの物なら `!<path>  # <理由>` で外し、要らない直しなら `SYNC_OVERWRITE=1` で取り込み直す。型も同じ file を変えていれば、手で合わせてから上げる
   - Why: 取り込みが、派生の方が新しかった skill 2 本を型の古い版で上書きした。commit の前の差分で気づいたが、見落とせば派生の直しが黙って消えていた
 - **取り込みの最後の docs-check が赤なら、直してから commit する**。取り込みは赤の時に commit の案内を出さない。案内の命令は写した path だけを名指すので、同じ repo の別の作業を拾わない
 - **型の取り込みも昇格も、既定は型の `develop`**。型の新しい物は develop に入り、main は release の時だけ進む
