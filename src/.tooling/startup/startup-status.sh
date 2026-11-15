@@ -328,6 +328,14 @@ step_peer_health() {
     fi
 }
 
+# 6j. 番人の照合の外にある repo (= 番人の doctor が書く一覧を読むだけ。 割り方は unchecked_repos.py)。
+#     持ち主は振り分けず、 どのタブも自分の読める境界の分の path と、 ほかの数を見る
+step_unchecked_repos() {
+    if [ -f .tooling/startup/unchecked_repos.py ]; then
+        python3 .tooling/startup/unchecked_repos.py
+    fi
+}
+
 # 6h. 番人が名乗りの検査をかけ、 締めの commit で初めて止まる階層 (= 判定は pending_approvals.py、 種類は番人に訊く)。
 #     持ち主はその階層で、 route_by_owner.py がその階層のタブにだけ出す
 step_pending_approvals() {
@@ -338,6 +346,7 @@ step_pending_approvals() {
 
 step_remote_sync      > "$TMPD/0-remote"     &
 step_peer_health      > "$TMPD/8j-peers"     &
+step_unchecked_repos  > "$TMPD/6c-unchecked" &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
 step_duplicates       > "$TMPD/2-dup"        &
@@ -411,6 +420,9 @@ echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> 
 echo "  - tool_actions RED develop / RED PR #N -> the Actions of that tool repo failed on its develop (= the commit that"
 echo "    was merged last: its own runs, or the checks of the PR that made it) or on an open PR: say it in the briefing"
 echo "    and hand it to the tab that owns the tool (UNKNOWN -> say the Actions state was not checked, with the reason)"
+echo "  - unchecked_repos N -> repos the guard's matching does not reach: say it in the briefing with the repos shown"
+echo "    (only the areas this tab reads). The tab that reads an area fixes its repos (guard.scope, or moving the repo),"
+echo "    normal takes the '-' and '_exempt' rows; repos of areas this tab does not read are counted only, not chased"
 echo "  - peer(<name>) DOWN / WAITING -> the other machine has not answered the client's patrol (DOWN: 30 minutes or"
 echo "    more): say it in the briefing with how long and how many messages wait; the operator wakes that machine"
 echo "    (UNKNOWN -> the client's patrol has not written for 15 minutes: hand it to the client tab)"
