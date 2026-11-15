@@ -10,6 +10,7 @@ W="$(mktemp -d)"
 trap 'rm -rf "${W}"' EXIT
 export SKILL_GATE_TEMPORARY_ROOTS="/scratch-root"  # 作業場は /var/folders の下なので、 一時の置き場を別にする
 export SKILL_GATE_TABLE="${W}/table.toml"
+export AGENT_ROOT="${ROOT}"  # 起動役が渡す、 この session のエージェントの根
 pass=0
 fail=0
 
@@ -185,6 +186,17 @@ print(" ".join(r["name"] for r in rows if not skill_file(r, ROOT, PLATFORM).is_f
 PY
 )"
 check "本物の表の skill が全部在る (無い: ${real_missing})" [ -z "${real_missing}" ]
+
+# 機械全体の設定がこの hook を呼ぶので、 別のエージェントの session (= 起動役が別の根を渡す) も来る
+OTHER="${W}/other-agent"
+mkdir -p "${OTHER}/.tooling/hooks"
+other_hook() { printf '{"transcript_path":"%s",%s}' "$1" "$2" | env -u SKILL_GATE_TABLE AGENT_ROOT="${OTHER}" AGENT_PLATFORM_ROOT="${W}/platform" python3 "${HOOKS}/skill_gate.py"; }
+check "表の無い別のエージェントの session では、 この agent の skill を名指さない" silent "$(other_hook "${NONE}" "$(tool Bash '{"command":"tabs send x body.md"}')")"
+printf '[[skill]]\nname = "own-skill"\n[[skill.when]]\ntools = ["Bash"]\ncommand = %s\n' "'\\btabs\\s+send\\b'" > "${OTHER}/.tooling/hooks/skill-triggers.toml"
+out="$(other_hook "${NONE}" "$(tool Bash '{"command":"tabs send x body.md"}')")"
+check "別のエージェントの session は、 そのエージェントの表で止める" names "${out}" own-skill
+check "別のエージェントの skill は、 そのエージェントの folder で案内する" bash -c 'grep -q "$2/.claude/skills/own-skill/SKILL.md" <<< "$1"' _ "${out}" "${OTHER}"
+check "別のエージェントの session に、 この agent の表の skill を名指さない" bash -c '! grep -q "\`messages\`" <<< "$1"' _ "${out}"
 
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

@@ -341,7 +341,7 @@ echo ""
 cat "$TMPD/9-anon"
 
 echo "action policy:"
-echo "  - remote_sync BEHIND -> run 'git pull --rebase --autostash' and re-read every startup file before briefing"
+echo "  - remote_sync BEHIND -> run 'git fetch && git rebase --autostash @{u}' and re-read every startup file before briefing"
 echo "    (UNKNOWN -> say so in the briefing; do not claim the state is current)"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
 echo "  - docs-check FAIL >= 1 -> must fix within the same session"
