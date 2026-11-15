@@ -47,7 +47,8 @@ when_to_use: 型から取り込む・型へ上げる直前 / 型に file を足�
 6. **その機械を真値へ登録する**: `.tooling/startup/pc-labels.txt` に `<LocalHostName> <label>` を 1 行足す。これが起動時の `PC:` 行の出どころになる。書き方は `pc-labels.example.txt` にある。機械ごとに違う path (家の folder 名など) は、設定を配る真値の中のその機械の欄に 1 行足してから配る
 7. **shell の設定に器の根と起動の alias を足す**: `export AGENT_PLATFORM_ROOT=$HOME/agent-platform` と、エージェントを起動する alias。git の外なので機械ごとに手作業で行う。画面の配信を既定と別の port で起動する機械は、同じ file に port の環境変数も足す
 8. **番人を配備する**: git を触る機械は必須である。導入も更新も `.tooling/distribute/guard-update.sh` の 1 本で行う。番人の置き場は器の根の下にあり、一覧は番人の README にある。番人の設定は機械ごとに操作者が置く。repo に載せない物で、エージェントは中身を提案するところまで行う。設定の中身は、境界の一覧・境界の中で資料を持たない folder・公開の文とコードの folder・形で決まる識別子の正規表現・送ってよい言い回し・送り先ごとの扱い。書式は番人の README にある
-   - 番人の対象外にする repo は `git config guard.scope exempt` を設定する。私物の記録の木は明示の exempt が要る
+   - エージェントの folder (`<器の根>/agents/<名前>/`) の中の repo は、`guard.scope` を書かない。番人が置き場から `corpus` と判定し、資料の写しの照合だけをかける。体の repo も階層の記録の repo も同じ
+   - 資料の写しの照合も外したい私物の記録だけ `git config guard.scope exempt` を書き、その理由を番人の設定 `config/guard/audit/unchecked-kept.txt` に `<path>  # <理由>` で 1 行書く。書かないと、番人の点検 (`doctor --machine`) に照合の外の repo として出続ける
 9. **動作確認**: エージェントを起動して 1 発話し、起動の手順が最後まで通ること。起動の点検の `guard_deploy` と `clone_deploy` が `ok`
 
 - 前の置き場で動いている機械は、新しく建てずに `platform cutover` で器へ切り替える。戻すのは `platform rollback` で、使い方は `platform --help` に出る
