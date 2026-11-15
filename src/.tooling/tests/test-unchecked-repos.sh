@@ -35,6 +35,9 @@ check "読まない境界の path は出さず、 数だけ" bash -c '! grep -q 
 out="$(run area-a)"
 check "読める境界の path は出す" bash -c 'grep -q "repo: /w/area-a/repo1 (area area-a; guard.scope exempt)" <<< "$1" && ! grep -q "area-b" <<< "$1" && grep -q "^  1 more in areas" <<< "$1"' _ "${out}"
 out="$(AREA_GUARD_HOOK="${W}/no-such.py" run area-a)"
+printf 'kept\t-\t/w/free/kept1\towner keeps it outside\n' >> "${UNCHECKED_REPOS_FILE}"
+out="$(run)"
+check "持ち主がわざと外に置いた kept の行は数えず、 出さない" bash -c 'grep -q "^unchecked_repos: 4 repo" <<< "$1" && ! grep -q kept1 <<< "$1"' _ "${out}"
 check "番人に訊けない時は、 境界の行を全部数だけにする" bash -c '! grep -q "area-a\|area-b" <<< "$1" && grep -q "^  2 more in areas" <<< "$1"' _ "${out}"
 
 echo "test-unchecked-repos: ${pass} passed, ${fail} failed"
