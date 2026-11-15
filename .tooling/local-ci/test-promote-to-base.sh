@@ -1,7 +1,8 @@
 #!/bin/bash
 # .tooling/distribute/promote-to-base.sh の test。 作り物の base (= 手元の git repo) と派生を組み、 base が列挙して
 # 派生が書いていない path の変更を書き戻す事、 派生が `!` で外した path と派生だけの file は書き戻さない事、
-# `--file` で外した path を指すと断る事を確かめる。
+# `--file` で外した path を指すと断る事を確かめる。 手元の base の clone が在る時は、 その clone から worktree を
+# 切り、 clone に当てた git の名前で commit して push する事も確かめる。
 #
 #   bash .tooling/local-ci/test-promote-to-base.sh   (= `task ci` が呼ぶ)
 set -uo pipefail
@@ -106,6 +107,61 @@ check "宣言を持たない base へは派生の列挙を書き戻す" \
     [ "$(git -C "${BASE}" show feature/test:src/.tooling/startup/status.sh 2>/dev/null)" = "status v2" ]
 check "宣言を持たない base へは派生が列挙しない path を書き戻さない" \
     [ "$(git -C "${BASE}" show feature/test:src/.tooling/lib/helper.sh 2>/dev/null)" = "helper v1" ]
+
+# --- 手元の base の clone から worktree を切って上げる ------------------------------------
+# origin (= bare) と、 器の tools/agent-template に当たる clone を組む。 名前は clone に当てる
+# (= 器では ~/.gitconfig の includeIf が tools/ の下にだけ当てる物の代わり)
+setup_clone() {
+    setup
+    rm -rf "${T}/origin.git" "${T}/tools"
+    git clone -q --bare "${BASE}" "${T}/origin.git"
+    mkdir -p "${T}/tools"
+    git clone -q -b develop "${T}/origin.git" "${T}/tools/agent-template"
+    git -C "${T}/tools/agent-template" config user.name "tool account"
+    git -C "${T}/tools/agent-template" config user.email noreply@github.com
+    printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+}
+WT="${T}/tools/agent-template.worktrees/feature/test"
+no_branch() { ! git -C "$1" show-ref --verify -q "refs/heads/$2"; }
+# commit する試験は BASE_CLONE で clone を指す (= AGENT_PLATFORM_ROOT を作り物の根にすると、 commit の時に番人が
+# その根で自分の設定を探す)。 既定 (= <AGENT_PLATFORM_ROOT>/tools/agent-template) は commit しない試験で見る
+promote_clone() { BASE_CLONE="${T}/tools/agent-template" FEATURE_BRANCH=feature/test bash "${AGENT}/.tooling/distribute/promote-to-base.sh" "$@" > "${T}/out" 2>&1; }
+promote_by_root() { AGENT_PLATFORM_ROOT="${T}" FEATURE_BRANCH=feature/test bash "${AGENT}/.tooling/distribute/promote-to-base.sh" "$@" > "${T}/out" 2>&1; }
+
+setup_clone
+promote_clone "chore: promote"
+check "手元の clone からの昇格は通る" [ $? -eq 0 ]
+check "worktree を clone の隣の .worktrees/<branch> に切る" [ -d "${WT}" ]
+check "worktree の branch を origin へ push する" \
+    [ "$(git -C "${T}/origin.git" show feature/test:src/.tooling/startup/status.sh 2>/dev/null)" = "status v2" ]
+check "clone に当てた名前で commit する" [ "$(git -C "${WT}" log -1 --format=%an)" = "tool account" ]
+check "PR の案内は worktree の中で打つ形" grep -qF "cd ${WT} && gh pr create --base develop" "${T}/out"
+check "worktree は PR まで残すと言う" grep -qF "base worktree left at ${WT}" "${T}/out"
+
+# 2 回目は同じ worktree に積む
+echo "helper again" > "${AGENT}/.tooling/lib/helper.sh"
+promote_clone "chore: promote again"
+check "同じ branch の 2 回目も通る" [ $? -eq 0 ]
+check "2 回目は同じ worktree を使う" grep -qF "reuse base worktree: ${WT}" "${T}/out"
+check "2 回目の commit も push する" \
+    [ "$(git -C "${T}/origin.git" show feature/test:src/.tooling/lib/helper.sh 2>/dev/null)" = "helper again" ]
+
+# 変更が無ければ、 切った worktree と branch を片付ける
+setup_clone
+cp "${BASE}/src/.tooling/startup/status.sh" "${AGENT}/.tooling/startup/status.sh"
+cp "${BASE}/src/.tooling/lib/helper.sh" "${AGENT}/.tooling/lib/helper.sh"
+promote_by_root "chore: promote"
+check "変更が無い時も通る" [ $? -eq 0 ]
+check "BASE_CLONE が無ければ <AGENT_PLATFORM_ROOT>/tools/agent-template から切る" grep -qF "base worktree from ${T}/tools/agent-template " "${T}/out"
+check "変更が無い時は切った worktree を消す" [ ! -d "${WT}" ]
+check "変更が無い時は切った branch を消す" no_branch "${T}/tools/agent-template" feature/test
+
+# BASE_REPO_PATH は手元の clone より先に効く (= 開発時の口)
+setup_clone
+AGENT_PLATFORM_ROOT="${T}" BASE_REPO_PATH="${BASE}" FEATURE_BRANCH=feature/test \
+    bash "${AGENT}/.tooling/distribute/promote-to-base.sh" "chore: promote" > "${T}/out" 2>&1
+check "BASE_REPO_PATH は手元の clone より先に効く" grep -qF "using local base: ${BASE}" "${T}/out"
+check "BASE_REPO_PATH の時は worktree を切らない" [ ! -d "${WT}" ]
 
 echo "test-promote-to-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

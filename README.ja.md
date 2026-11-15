@@ -113,6 +113,8 @@ cd ~/path/to/<your-agent>
 
 base の `develop` から feature branch を切って push、 PR 経由で merge。 書き戻すのは sync が写す path と同じ集合で、 その外の派生固有 file は弾かれる。
 
+機械に base の clone があれば (`BASE_CLONE`、 既定は `$AGENT_PLATFORM_ROOT/tools/agent-template`)、 そこから `<clone>.worktrees/<feature branch>` に worktree を切って上げる。 その folder に当てた git の設定 (= 道具に当てる commit の名前の `includeIf "gitdir:..."` など) が、 そのまま効く。 worktree は、 その中から PR を merge するまで残す。 clone が無い機械では一時の folder へ clone し、 そこには folder に当てた設定が効かない。
+
 ### 競合解決
 
 - promote する前に**必ず先に sync-from-base.sh を実行** (= 競合を派生側で解決)
