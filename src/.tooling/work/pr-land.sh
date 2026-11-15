@@ -11,7 +11,10 @@
 #   - merge されていないのに tag を打った。 merge が衝突で止まっても、 続けて打った tag は古い main に付く
 #
 # やること:
-#   1. 検査が 1 つ以上登録され、 全部が終わるまで待つ。 1 つでも落ちていれば止まる (= merge しない)
+#   1. 検査が 1 つ以上登録され、 全部が終わるまで待つ。 1 つでも落ちていれば止まる (= merge しない)。
+#      ただし private の repo で workflow が 1 本も無い時は待たない (= 決まりでは、 private の repo は手元の全体の
+#      試験が検査で、 それを流してから打つ)。 公開の repo は Actions の結果で判定するので、 workflow が無ければ止まる。
+#      公開・非公開と workflow の数が gh から読めない時は、 今までどおり待つ
 #   2. merge して、 PR の状態が MERGED になったのを読んで確かめる。 なっていなければ止まる。
 #      元の branch が remote に残っていれば消す (= `gh pr merge --delete-branch` は、 その branch が別の
 #      作業場所で開かれている時や repo の設定によって、 何も言わずに残すことがある)
@@ -50,8 +53,15 @@ gh_() { "${GH[@]}" "$@" 2>/dev/null; }
 stop() { echo "pr-land: stopped — $1" >&2; exit 1; }
 
 # 1. 検査: 1 つ以上在って、 全部終わるまで待つ
+visibility="$(gh_ repo view --json visibility -q .visibility)"
+workflows="$(gh_ api 'repos/{owner}/{repo}/actions/workflows' -q .total_count)"
+if [ "${workflows}" = "0" ] && [ "${visibility}" = "PRIVATE" ]; then
+    echo "pr-land: #${pr} is in a private repo with no workflow; its check is the local whole test run, so nothing is awaited"
+elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PUBLIC" ]; then
+    stop "#${pr} is in a public repo with no workflow; a public repo is judged by its Actions (not merged)"
+fi
 waited=0
-while :; do
+while [ "${workflows}" != "0" ] || [ "${visibility}" != "PRIVATE" ]; do
     verdict="$(gh_ pr checks "${pr}" --json name,bucket | python3 -c '
 import json, sys
 try:
