@@ -101,6 +101,11 @@ when_to_use: Agent tool / Workflow tool / 子のタブを起動する直前 (当
 他 = <他の体にも出るか。自分以外の成果物を 1 つ見て判定する>
 ```
 
+# 操作者の画面と手
+
+- 操作者の画面に出る物 (許可の画面・試験の窓・通知) は、統括の返事を受けてから出す
+- 操作者に押す・答える・打つを頼む前に、画面に何が出るか (窓の名前・押す場所) を先に確かめて、統括への報告に書く
+
 # 完了報告の形
 
 ```
@@ -174,7 +179,7 @@ Agent tool の体は親の会話の中でしか動けず、自動の入れ替え
 
 ### 立てる
 
-1. worktree を切る。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**子が書く file を持つ repo で切る**: 階層の folder が自前の `.git` を持つ別の repo なら (`git -C <書く file の folder> rev-parse --show-toplevel` で確かめる)、エージェントの根ではなくその repo で切る。根で切ると、書く先が worktree に入らない (2026-11-08、会社の階層の file を書く子に根の worktree を渡し、子が会社の階層の主 branch に直に commit した)。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
+1. `git fetch origin <base>` の後に worktree を切る (base の今の先端から切る。古い木から切った子が持ち場の外の file の今を読み違えた、2026-11-15)。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**子が書く file を持つ repo で切る**: 階層の folder が自前の `.git` を持つ別の repo なら (`git -C <書く file の folder> rev-parse --show-toplevel` で確かめる)、エージェントの根ではなくその repo で切る。根で切ると、書く先が worktree に入らない (2026-11-08、会社の階層の file を書く子に根の worktree を渡し、子が会社の階層の主 branch に直に commit した)。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
    - Why: 環境の無い worktree を渡すと子がそれぞれ別の python で環境を作り、統括が重ねた準備で `python` と `pip` が別の版を指して、全体の試験を 2 回流し直した。主の checkout の環境で流すと、試験が主の checkout の code を読むので代わりにならない
 2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる。**親の指示や別の子の着地を待たせる子には、待つ前に `tabs report stuck` で何を待つかを報告するよう書く**
 3. `tabs new "<題>" <本文の file>`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
