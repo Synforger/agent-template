@@ -5,6 +5,7 @@
 (週次の監査の回と `doctor.sh --machine --save` の時)、 置き場は番人の監査の記録の folder (`guard_places.py audit-logs`)
 の `unchecked-repos.txt`。 形は 1 行目が `# written <UTC の時刻> by doctor.sh --machine`、 続いて 1 本 1 行の
 `outside<TAB><境界の名前><TAB><repo><TAB><理由>`。 境界の名前は、 境界の外なら `-`、 除外の folder なら `_exempt`。
+`kept<TAB>…` の行は持ち主がわざと外に置くと決めた repo で、 直す物ではないので数えず、 出さない。
 
 repo の path は境界の folder の名前を含むので、 path を出すのはこのタブが読める境界の行と `-`・`_exempt` の行だけで、
 ほかは数だけにする (= 番人の doctor が画面に出す時と同じ割り方)。 読める境界は入口の番人に訊く (`audit_findings.load_reach`)。
