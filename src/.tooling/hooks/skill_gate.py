@@ -10,6 +10,10 @@ body, so a skill is never loaded twice by this hook. The instruction names each 
 `.claude/skills/<name>/SKILL.md`, or the `file` the table gives (a plugin's skill). A Read of that very file
 never stops for that skill: it is the read the gate asks for.
 
+The settings of every account on the machine name this one copy of the hook, so a session of another agent reaches
+it too. The agent is the one its launcher names in `AGENT_ROOT`, and its own table and skills are used: a session
+of another agent never hears about this agent's skills, and an agent without a table hears nothing.
+
 An unreadable payload, table or transcript passes silently (fail-open).
 Called from the agent's Claude Code settings (PreToolUse, UserPromptSubmit, SessionStart).
 Test: .tooling/tests/test-skill-gate.sh
@@ -24,8 +28,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from skill_reads import READING_TOOLS, first_bytes, load_table, read_skills, transcript_of  # noqa: E402
 from skill_triggers import is_code, skill_file, skills_for, target_path  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
-TABLE = Path(os.environ.get("SKILL_GATE_TABLE", str(Path(__file__).resolve().parent / "skill-triggers.toml")))
+ROOT = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
+TABLE = Path(os.environ.get("SKILL_GATE_TABLE") or ROOT / ".tooling/hooks/skill-triggers.toml")
 PLATFORM = Path(os.environ.get("AGENT_PLATFORM_ROOT") or Path.home() / "agent-platform")
 # Folders, without the trailing slash. The test's own work folder sits under /var/folders, so it narrows this list.
 TEMPORARY_ROOTS = tuple(os.environ.get("SKILL_GATE_TEMPORARY_ROOTS",
