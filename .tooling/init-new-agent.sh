@@ -118,7 +118,11 @@ fi
 # 人の宿題に回さない。 雛形 dir 配下の `{{YYYY-MM-DD}}` は雛形のまま残す)
 TODAY="$(date +%F)"
 for _f in CLAUDE.md vision.md profile/profile.md; do
-    [ -f "$AGENT_DIR/$_f" ] && sed -i '' "s/{{YYYY-MM-DD}}/${TODAY}/g" "$AGENT_DIR/$_f"
+    # sed -i は macOS と Linux で引数の形が違うので、 一時 file へ書いて置き換える
+    if [ -f "$AGENT_DIR/$_f" ]; then
+        sed "s/{{YYYY-MM-DD}}/${TODAY}/g" "$AGENT_DIR/$_f" > "$AGENT_DIR/$_f.tmp"
+        mv "$AGENT_DIR/$_f.tmp" "$AGENT_DIR/$_f"
+    fi
 done
 
 # pc-labels.example.txt は派生に降ろさない (= 各派生で必要なら手動 cp)
