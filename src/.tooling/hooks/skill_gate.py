@@ -37,6 +37,16 @@ TEMPORARY_ROOTS = tuple(os.environ.get("SKILL_GATE_TEMPORARY_ROOTS",
 CONTEXT_EVENTS = {"UserPromptSubmit", "SessionStart"}
 
 
+def own_prompt(prompt: str) -> str:
+    """The prompt the session's own operator gave, or nothing when it is a note another tab sent.
+
+    The client relays a note as an opening line followed by an `<agent-message …>` envelope. Words inside another
+    tab's note say what that tab is doing, not what this session is about to do, so they call for no skill.
+    """
+    lines = prompt.split("\n", 2)
+    return "" if len(lines) > 1 and lines[1].startswith("<agent-message") else prompt
+
+
 def event_of(payload: dict) -> dict:
     """The facts of the payload the table's conditions look at."""
     tool_input = payload.get("tool_input") or {}
@@ -49,7 +59,7 @@ def event_of(payload: dict) -> dict:
         "command": tool_input.get("command") or "",
         "cwd": payload.get("cwd") or "",
         "subagent": tool_input.get("subagent_type") or "general-purpose",
-        "prompt": payload.get("prompt") or "",
+        "prompt": own_prompt(payload.get("prompt") or ""),
         "env": dict(os.environ),
         "root": str(ROOT),
         "is_code": is_code(path_text, first_bytes(path_text), content, TEMPORARY_ROOTS),
