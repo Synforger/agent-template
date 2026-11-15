@@ -23,14 +23,15 @@ set -euo pipefail
 #   3. base が列挙する path を、 理由 (= `!<path>  # <理由>`) の無い `!` で外していれば、 その行を名指して
 #      何も写さずに止まる (= 共通の物を黙って外したままにしない)。 外している物は毎回、 理由つきで並べて出す
 #   4. 前の取り込みの base の版 (= 派生の .synced-paths.txt の `# synced from base: <sha>` の行) と比べ、
-#      その後に派生だけが変えた・足した・消した file があれば、 名指して何も写さずに止まる
+#      その後に派生だけが変えた・足した・消した file があれば、 名指して何も写さずに止まる。 記録が無い時
+#      (= 初めての取り込み・記録の版が base から消えた時) は、 base の履歴のどこにも無い版を持つ file で止まる
 #      (= 上書きで派生の直しが黙って消えるのを止める。 base へ上げるか、 `!` で外すか、 SYNC_OVERWRITE=1 で捨てる)
 #   5. base/src/<path> → 派生/<path> に上書きし、 今の base の版を `# synced from base:` の行に書く
 #   6. 派生の docs-check を流し、 FAIL があれば commit の案内を出さずに exit 1
 #   7. 写した path を名指す commit の案内を出す (= 同じ repo の別の作業の stage を拾わない。 一覧は .git の中の file)
 #
 # base が .synced-paths.txt を持たない時は、 派生の列挙だけを写す。
-# base が git の repo でない時 (= 開発時の BASE_REPO_PATH) は、 4 の比べと 5 の版の記録をしない
+# base が git の repo でない時 (= 開発時の BASE_REPO_PATH) は、 4 の見分けと 5 の版の記録をしない
 #
 # この file は sync 自身を運べないので (= init で一度だけ届く)、 判定も shell の中に置く
 # (= 別の file に出すと、 その file を運ぶ口が無い)
@@ -150,18 +151,27 @@ base_is_git=0
 if git -C "$BASE_DIR" rev-parse --git-dir > /dev/null 2>&1; then base_is_git=1; fi
 recorded="$(sed -n "s/^${RECORD_PREFIX}\([0-9a-f]\{40\}\)\$/\1/p" "$SYNCED_PATHS_FILE" | head -1)"
 
-if [ "$base_is_git" -eq 1 ] && [ -z "$recorded" ]; then
-    echo "note: $SYNCED_PATHS_FILE has no record of the last sync, so changes made only in this agent cannot be told apart this time. This sync writes the record."
-elif [ "$base_is_git" -eq 1 ] && ! git -C "$BASE_DIR" cat-file -e "${recorded}^{commit}" 2> /dev/null; then
-    echo "note: the base no longer has the last synced version ${recorded:0:7}, so changes made only in this agent cannot be told apart this time. This sync writes a new record."
+if [ "$base_is_git" -eq 1 ] && [ -n "$recorded" ] && ! git -C "$BASE_DIR" cat-file -e "${recorded}^{commit}" 2> /dev/null; then
+    echo "note: the base no longer has the last synced version ${recorded:0:7}; this sync judges by the base's history instead and writes a new record."
     recorded=""
 fi
 
-if [ "$base_is_git" -eq 1 ] && [ -n "$recorded" ]; then
-    git -C "$BASE_DIR" ls-tree -r --full-tree "$recorded" -- src/ \
-        | awk -F'\t' '{ split($1, meta, " "); sub(/^src\//, "", $2); print $2 "\t" meta[3] }' > "$WORK_DIR/recorded.tsv"
+if [ "$base_is_git" -eq 1 ]; then
+    if [ -n "$recorded" ]; then
+        # 前の取り込みの版の木
+        git -C "$BASE_DIR" ls-tree -r --full-tree "$recorded" -- src/ \
+            | awk -F'\t' '{ split($1, meta, " "); sub(/^src\//, "", $2); print $2 "\t" meta[3] }' > "$WORK_DIR/recorded.tsv"
+        changed_since="changed in this agent since the last sync (base ${recorded:0:7})"
+    else
+        # 記録が無い時は、 base の履歴のどこかに在った版かで見る (= 在れば base の古い版を持っているだけ)
+        echo "note: $SYNCED_PATHS_FILE has no record of the last sync; a file is named when this agent holds a version the base never had. This sync writes the record."
+        : > "$WORK_DIR/recorded.tsv"
+        changed_since="this agent holds in a version the base never had (no record of the last sync yet)"
+    fi
     : > "$WORK_DIR/files.raw"
+    pathspecs=()
     for p in "${sync_paths[@]}"; do
+        pathspecs+=("src/$p")
         if [ -d "$BASE_DIR/src/$p" ] || [[ "$p" == */ ]]; then
             # folder は rsync --delete で丸ごと揃うので、 3 つの側の file を全部見る
             prefix="${p%/}/"
@@ -178,30 +188,46 @@ if [ "$base_is_git" -eq 1 ] && [ -n "$recorded" ]; then
     awk '!seen[$0]++' "$WORK_DIR/files.raw" > "$WORK_DIR/files"
     blob_hashes "$BASE_DIR/src" "$BASE_DIR" < "$WORK_DIR/files" > "$WORK_DIR/base.tsv"
     blob_hashes "$AGENT_DIR" "$AGENT_DIR" < "$WORK_DIR/files" > "$WORK_DIR/agent.tsv"
-    # 派生の版が base の今の版とも前の取り込みの版とも違う file だけを出す。
-    # base が前の取り込みから変えていなければ、 派生だけが変えた物
-    awk -F'\t' '
+    : > "$WORK_DIR/history.tsv"
+    if [ -z "$recorded" ]; then
+        # base の履歴が各 path に持たせた全部の blob (= 木だけを読むので、 blob:none の clone でも中身を取りに行かない)
+        git -C "$BASE_DIR" log --no-abbrev --raw --format= HEAD -- "${pathspecs[@]}" \
+            | awk -F'\t' '{ split($1, meta, " "); sub(/^src\//, "", $2)
+                            for (i = 3; i <= 4; i++) if (meta[i] !~ /^0+$/) print $2 "\t" meta[i] }' > "$WORK_DIR/history.tsv"
+    fi
+    # 記録が在る時: 派生の版が base の今の版とも前の取り込みの版とも違う file を出す
+    #   (= base が前の取り込みから変えていなければ、 派生だけが変えた物)。
+    # 記録が無い時: 派生の版が base の今の版と違い、 base の履歴のどこにも無い file を出す。
+    #   派生が消した file は、 写すと戻るだけなので出さない
+    awk -F'\t' -v has_record="$([ -n "$recorded" ] && echo 1 || echo 0)" '
         FILENAME == ARGV[1] { rec[$1] = $2; next }
         FILENAME == ARGV[2] { now[$1] = $2; next }
         FILENAME == ARGV[3] { here[$1] = $2; next }
+        FILENAME == ARGV[4] { had[$1 SUBSEP $2] = 1; known[$1] = 1; next }
         {
             f = $1
             r = (f in rec) ? rec[f] : "-"
             n = (f in now) ? now[f] : "-"
             d = (f in here) ? here[f] : "-"
-            if (d == n || d == r) next
-            if (r != n) kind = "changed here and in the base"
-            else if (d == "-") kind = "deleted here"
-            else if (r == "-") kind = "added here"
-            else kind = "changed here"
+            if (d == n) next
+            if (has_record) {
+                if (d == r) next
+                if (r != n) kind = "changed here and in the base"
+                else if (d == "-") kind = "deleted here"
+                else if (r == "-") kind = "added here"
+                else kind = "changed here"
+            } else {
+                if (d == "-" || ((f SUBSEP d) in had)) next
+                kind = (n != "-" || (f in known)) ? "changed here" : "added here"
+            }
             printf "    %-30s %s\n", kind, f
-        }' "$WORK_DIR/recorded.tsv" "$WORK_DIR/base.tsv" "$WORK_DIR/agent.tsv" "$WORK_DIR/files" > "$WORK_DIR/local-changes"
+        }' "$WORK_DIR/recorded.tsv" "$WORK_DIR/base.tsv" "$WORK_DIR/agent.tsv" "$WORK_DIR/history.tsv" "$WORK_DIR/files" > "$WORK_DIR/local-changes"
     if [ -s "$WORK_DIR/local-changes" ]; then
         if [ "${SYNC_OVERWRITE:-0}" = "1" ]; then
-            echo "==> SYNC_OVERWRITE=1: these changes made in this agent since the last sync (${recorded:0:7}) are replaced by the base:"
+            echo "==> SYNC_OVERWRITE=1: these files ${changed_since} are replaced by the base:"
             cat "$WORK_DIR/local-changes"
         else
-            echo "error: files changed in this agent since the last sync (base ${recorded:0:7}) — nothing was synced:" >&2
+            echo "error: files ${changed_since} — nothing was synced:" >&2
             cat "$WORK_DIR/local-changes" >&2
             echo "  For each: promote it to the base (promote-to-base.sh --file <path>; merge by hand first when the base changed it too)," >&2
             echo "  keep this agent's own copy with '!<path>  # <reason>' in .synced-paths.txt," >&2

@@ -2,7 +2,7 @@
 # .tooling/distribute/sync-from-base.sh の test。 作り物の base と派生を組み、 base の列挙が派生に何も書かなくても
 # 全部降りる事、 base が後から足した path も降りる事、 理由つきの `!` は外れて理由が並ぶ事、 理由の無い `!` は
 # 名指して何も写さずに止まる事、 base の `!` は降ろさない事を確かめる。 base が git の repo の時は、 前の取り込みの
-# 版を記録し、 その後に派生だけが変えた file を名指して止まる事、 最後の docs-check が赤なら commit の案内を出さない
+# 版を記録し、 その後に派生だけが変えた file を名指して止まる事、 記録が無い時は base の履歴に無い版で止まる事、 最後の docs-check が赤なら commit の案内を出さない
 # 事も確かめる。
 #
 #   bash .tooling/local-ci/test-sync-from-base.sh   (= `task ci` が呼ぶ)
@@ -195,17 +195,58 @@ check "folder の中に派生が足した file を名指す" grep -qE "added her
 check "派生が消した file を名指す" grep -qE "deleted here +\.tooling/startup/status\.sh" "${T}/out"
 check "git が無視する file は名指さない" lacks "cache.pyc"
 
-# 記録の版が base から消えた (= 履歴の書き換え): 見分けられないと言って進む
+# 記録の版が base から消えた (= 履歴の書き換え): base の履歴で見分ける
+drop_record() {
+    grep -v '^# synced from base: ' "${AGENT}/.synced-paths.txt" > "${T}/sp"
+    cat "${T}/sp" > "${AGENT}/.synced-paths.txt"
+}
 setup_git
 sync
-grep -v '^# synced from base: ' "${AGENT}/.synced-paths.txt" > "${T}/sp"
-cat "${T}/sp" > "${AGENT}/.synced-paths.txt"
+drop_record
+echo "# synced from base: 0123456789abcdef0123456789abcdef01234567" >> "${AGENT}/.synced-paths.txt"
+sync
+check "記録の版が base に無くても、 派生が変えていなければ進む" [ $? -eq 0 ]
+check "記録の版が base に無いと言う" grep -qF "no longer has the last synced version" "${T}/out"
+check "記録を今の版で書き直す" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+drop_record
 echo "# synced from base: 0123456789abcdef0123456789abcdef01234567" >> "${AGENT}/.synced-paths.txt"
 echo "helper changed in the agent" > "${AGENT}/.tooling/lib/helper.sh"
 sync
-check "記録の版が base に無い時は進む" [ $? -eq 0 ]
-check "記録の版が base に無いと言う" grep -qF "no longer has the last synced version" "${T}/out"
-check "記録を今の版で書き直す" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+check "記録の版が base に無い時も、 派生の直しで止まる" [ $? -ne 0 ]
+check "記録の版が base に無い時も、 派生の直しを名指す" grep -qE "changed here +\.tooling/lib/helper\.sh" "${T}/out"
+
+# --- 記録が無い (= 初めての取り込み): base の履歴に在った版かで見る -------------------------
+# base の古い版を持つだけの file は上書きしてよい
+setup_git
+printf '%s\n' "*.pyc" > "${AGENT}/.gitignore"
+sync
+drop_record
+echo "status v3" > "${BASE}/src/.tooling/startup/status.sh"
+base_commit "base v3"
+rm "${AGENT}/.tooling/lib/helper.sh"
+echo "ignored" > "${AGENT}/.claude/skills/demo/cache.pyc"
+sync
+check "記録が無くても、 base の古い版を持つだけなら通る" [ $? -eq 0 ]
+check "記録が無い時は、 履歴で見ると言う" grep -qF "has no record of the last sync" "${T}/out"
+check "記録が無い時も base の新しい版が降りる" [ "$(cat "${AGENT}/.tooling/startup/status.sh")" = "status v3" ]
+check "記録が無い時、 派生が消した file は写して戻す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh" 2>/dev/null)" = "helper v2" ]
+check "記録が無い時も、 git が無視する file は名指さない" lacks "cache.pyc"
+check "記録が無い取り込みの後は記録が在る" [ "$(recorded_sha)" = "$(git -C "${BASE}" rev-parse HEAD)" ]
+
+# base が持ったことの無い版は、 派生の直しとして止まる
+setup_git
+sync
+drop_record
+echo "helper changed in the agent" > "${AGENT}/.tooling/lib/helper.sh"
+echo "agent note" > "${AGENT}/.claude/skills/demo/notes.md"
+echo "status v3" > "${BASE}/src/.tooling/startup/status.sh"
+base_commit "base v3"
+sync
+check "記録が無い時、 base に無かった版を持つ file で止まる" [ $? -ne 0 ]
+check "記録が無い時、 base に無かった版を言う" grep -qF "a version the base never had" "${T}/out"
+check "記録が無い時、 派生が変えた file を名指す" grep -qE "changed here +\.tooling/lib/helper\.sh" "${T}/out"
+check "記録が無い時、 folder に派生が足した file を名指す" grep -qE "added here +\.claude/skills/demo/notes\.md" "${T}/out"
+check "記録が無い時も、 止まったら何も写さない" [ "$(cat "${AGENT}/.tooling/startup/status.sh")" = "status v2" ]
 
 # base に commit していない変更がある時は記録しない
 setup_git
