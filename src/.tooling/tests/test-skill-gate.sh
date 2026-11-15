@@ -136,6 +136,8 @@ check "体は自分の会話の記録で判定する" denies "$(hook "${SUB}" "$
 out="$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"今日はもう締めよう"')"
 check "発話で当たったら 1 行の注意を足す" grep -q '"additionalContext": "\[skill-gate\]' <<< "${out}"
 check "発話の注意は止めない" bash -c '! grep -q permissionDecision <<< "$1"' _ "${out}"
+check "別のタブの連絡の本文の語では鳴らさない" silent "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"Message from another session, relayed by the client (the operator did not type this):\n<agent-message from=\"x\" session=\"ses_x\">\n今日はもう締めよう\n</agent-message>"')"
+check "入れ替えの封筒の引き金では鳴らす" names "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"Automatic session rollover, sent by the client:\n<session-rollover phase=\"close\">\n</session-rollover>"')" session-end
 T="${W}/ended.jsonl"; record "${T}" "${SPOKE}" "$(loaded session-end)"
 check "読んだ後の発話は黙る" silent "$(hook "${T}" '"hook_event_name":"UserPromptSubmit","prompt":"締めよう"')"
 out="$(AGENT_CHILD=1 hook "${W}/no-such.jsonl" '"hook_event_name":"SessionStart","source":"startup"')"

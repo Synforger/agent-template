@@ -62,11 +62,12 @@ step_capacity() {
     fi
 }
 
-# 5. docs-check (= 最後の 1 行 summary)
+# 5. docs-check (= 1 行 summary + FAIL の行ごとの `  fail: <本文>`。 後者は route_by_owner.py が持ち主の階層へ振り分けて消す)
 step_docs_check() {
     if [ -x .tooling/docs-check/docs-check.sh ]; then
-        docs_summary=$(bash .tooling/docs-check/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g' | grep -E "^(PASS|WARN|FAIL):" | tr '\n' ' ')
-        echo "docs-check: $docs_summary"
+        docs_output=$(bash .tooling/docs-check/docs-check.sh 2>&1 | sed $'s/\033\[[0-9;]*m//g')
+        echo "docs-check: $(grep -E "^(PASS|WARN|FAIL):" <<< "$docs_output" | tr '\n' ' ')"
+        grep -E "^  FAIL: " <<< "$docs_output" | sed 's/^  FAIL: /  fail: /'
     else
         echo "docs-check: (script not found)"
     fi
@@ -311,6 +312,22 @@ step_pages_orphans() {
     fi
 }
 
+# 6g. 道具の repo の Actions (= develop の最新の commit と開いている PR の結果。 判定は tool_actions.py)。
+#     (= 赤のまま merge され続けても、 道具の repo の側には起動の画面へ言う物が無い)
+step_tool_actions() {
+    if [ -f .tooling/startup/tool_actions.py ]; then
+        python3 .tooling/startup/tool_actions.py
+    fi
+}
+
+# 6h. 番人が名乗りの検査をかけ、 締めの commit で初めて止まる階層 (= 判定は pending_approvals.py、 種類は番人に訊く)。
+#     持ち主はその階層で、 route_by_owner.py がその階層のタブにだけ出す
+step_pending_approvals() {
+    if [ -f .tooling/startup/pending_approvals.py ]; then
+        python3 .tooling/startup/pending_approvals.py --root "$ROOT"
+    fi
+}
+
 step_remote_sync      > "$TMPD/0-remote"     &
 step_stale_rules      > "$TMPD/1-stale"      &
 step_rule_hits        > "$TMPD/10-hits"      &
@@ -324,15 +341,19 @@ step_claude_settings  > "$TMPD/8-settings"   &
 step_launch_pins      > "$TMPD/8b-pins"     &
 step_guard_deploy     > "$TMPD/8d-deploy"   &
 step_clone_deploys    > "$TMPD/8e-clones"   &
+step_tool_actions     > "$TMPD/8e2-tools"   &
+step_pending_approvals > "$TMPD/8i-pending" &
 step_platform_check   > "$TMPD/8g-platform" &
 step_children         > "$TMPD/8f-children" &
 step_pages_orphans    > "$TMPD/8h-pages"    &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
-cat "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
+# 警告は持ち主の階層のタブにだけ今の行で出し、 ほかの階層の分は末尾の `others:` の行にまとめる (= route_by_owner.py)
+python3 .tooling/startup/route_by_owner.py --root "$ROOT" \
+    "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
-    "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages"
+    "$TMPD/8e2-tools" "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages" "$TMPD/8i-pending"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
@@ -344,7 +365,10 @@ echo "action policy:"
 echo "  - remote_sync BEHIND -> run 'git fetch && git rebase --autostash @{u}' and re-read every startup file before briefing"
 echo "    (UNKNOWN -> say so in the briefing; do not claim the state is current)"
 echo "  - stale_rules / dup_pairs: ignore at startup (the agent sweeps them in session-end Step 2)"
-echo "  - docs-check FAIL >= 1 -> must fix within the same session"
+echo "  - others: lines -> warnings whose owner is another tier (the name in 'owner', or '(別の境界)' when this tab"
+echo "    may not read it). Do not read them out and do not fix them: the owner's own startup fixes them"
+echo "  - docs-check FAIL >= 1 -> must fix within the same session (= only this tab's tier: the 'fail:' lines under it;"
+echo "    FAIL in other tiers is counted under others:)"
 echo "  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task."
 echo "    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this."
 echo "  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session"
@@ -375,6 +399,11 @@ echo "  - guard_deploy STALE -> this machine runs an older guard than origin/dev
 echo "    effect here yet): run it from this session and say it in the briefing (= a merged guard fix is the agent's to deploy):"
 case "$ROOT" in "$HOME"/*) _root_shown="~${ROOT#"$HOME"}" ;; *) _root_shown="$ROOT" ;; esac
 echo "    bash ${_root_shown}/.tooling/distribute/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)"
+echo "  - tool_actions RED develop / RED PR #N -> the Actions of that tool repo failed on its develop (= the commit that"
+echo "    was merged last: its own runs, or the checks of the PR that made it) or on an open PR: say it in the briefing"
+echo "    and hand it to the tab that owns the tool (UNKNOWN -> say the Actions state was not checked, with the reason)"
+echo "  - pending_approval -> the guard checks this tier's own repo for names, so the closing commit will stop: run"
+echo "    'git config guard.scope corpus' in that tier's folder; if the guard asks for the operator's yes, ask in the briefing"
 echo "  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in"
 echo "    the briefing and follow that repo's own deploy steps (the derived agent keeps them, e.g. in a skill)"
 echo "    (UNKNOWN -> say the deploy state of that repo was not checked)"

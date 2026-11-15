@@ -8,6 +8,8 @@
 - `_` で始まる folder (雛形・部品・退避) は数えない
 - 出すのは 1 行: `pages_orphans: <数> (中身あり <数>: <id>… / 雛形だけ <数>: <id>…)`。中身ありは、タブのトップ
   `index.html` とメモ `memo.md` の外に file を 1 つでも持つ folder。一覧が読めない時は `pages_orphans: UNKNOWN (<理由>)`
+- git に 1 file も載っていない folder (= この機械にしか無い物。別の機械へは渡らず、消さない限り残る) は、id の後ろに
+  `(<日数>日)` を付ける。日数は folder の中の一番新しい file の時刻から数える。git の様子が読めない時は、全部を載っていない物として扱う
 
 小さな検査なので、読み書きと判定を 1 file に入れている (規則の「役割ごとに file」から外れる理由)。
 """
@@ -18,6 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 TOP_PAGE = "index.html"
@@ -25,6 +28,8 @@ MEMO = "memo.md"
 SKIPPED_PREFIX = "_"
 NORMAL_TIER = "normal"
 TABS_TIMEOUT_S = 20
+GIT_TIMEOUT_S = 20
+SECONDS_PER_DAY = 86400
 
 
 def pages_folder(root: Path, tier: str) -> Path:
@@ -47,14 +52,34 @@ def has_content(folder: Path) -> bool:
     return any(p.is_file() and p.relative_to(folder).as_posix() not in (TOP_PAGE, MEMO) for p in folder.rglob("*"))
 
 
-def orphans(pages: Path, live_ids: set[str]) -> tuple[list[str], list[str]]:
-    """→ (中身ありの folder 名, 雛形だけの folder 名)。どちらも名前順。"""
+def tracked_folders(pages: Path) -> set[str]:
+    """`pages/` の直下の folder のうち、git に file が 1 つでも載っている物の名前。git が読めない時は空 (= 全部が載っていない扱い)。"""
+    try:
+        done = subprocess.run(["git", "-C", str(pages), "ls-files", "-z", "--", "."], capture_output=True, text=True,
+                              timeout=GIT_TIMEOUT_S, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    if done.returncode != 0:
+        return set()
+    return {path.split("/", 1)[0] for path in done.stdout.split("\0") if "/" in path}
+
+
+def idle_days(folder: Path, now_s: float) -> int:
+    """folder の中の一番新しい file の時刻から、今までに経った日数 (file が 1 つも無ければ folder 自身の時刻)。"""
+    newest_s = max((p.stat().st_mtime for p in folder.rglob("*") if p.is_file()), default=folder.stat().st_mtime)
+    return max(0, int((now_s - newest_s) // SECONDS_PER_DAY))
+
+
+def orphans(pages: Path, live_ids: set[str], now_s: float) -> tuple[list[str], list[str]]:
+    """→ (中身ありの folder 名, 雛形だけの folder 名)。どちらも名前順。git に載っていない folder の名前には `(<日数>日)` が付く。"""
+    tracked = tracked_folders(pages)
     with_content: list[str] = []
     template_only: list[str] = []
     for folder in sorted(p for p in pages.iterdir() if p.is_dir() and not p.name.startswith(SKIPPED_PREFIX)):
         if folder.name in live_ids:
             continue
-        (with_content if has_content(folder) else template_only).append(folder.name)
+        label = folder.name if folder.name in tracked else f"{folder.name}({idle_days(folder, now_s)}日)"
+        (with_content if has_content(folder) else template_only).append(label)
     return with_content, template_only
 
 
@@ -92,7 +117,7 @@ def main(argv: list[str]) -> int:
     if isinstance(live_ids, str):
         print(f"pages_orphans: UNKNOWN ({live_ids})")
         return 0
-    with_content, template_only = orphans(pages, live_ids)
+    with_content, template_only = orphans(pages, live_ids, time.time())
     count = len(with_content) + len(template_only)
     if not count:
         print("pages_orphans: 0")
