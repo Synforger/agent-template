@@ -118,6 +118,8 @@ cd ~/path/to/<your-agent>
 
 This cuts a feature branch from the base's `develop`, pushes it, and the change lands via a pull request. It writes back the same set of paths a sync copies; any other file is rejected.
 
+When the machine holds a clone of the base (`BASE_CLONE`, by default `$AGENT_PLATFORM_ROOT/tools/agent-template`), the promote works in a worktree cut from it at `<clone>.worktrees/<feature branch>`. Git settings that apply to that folder, such as the commit name a `includeIf "gitdir:..."` sets for tools, apply there as well. The worktree stays until the pull request is merged from inside it. Without such a clone, the promote clones the base into a temporary folder, where those folder-scoped settings do not apply.
+
 ### Conflict policy
 
 - **Always run `sync-from-base.sh` before promoting** (resolve conflicts on the derivation side).

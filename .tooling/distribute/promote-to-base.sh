@@ -17,13 +17,17 @@ set -euo pipefail
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記)
-#   BASE_REPO_PATH : ローカル base path (= clone をスキップ、 開発時用)
+#   BASE_REPO_PATH : ローカル base path (= clone をスキップ、 開発時用。 commit までで push しない)
+#   BASE_CLONE     : 手元の base の clone (default: <AGENT_PLATFORM_ROOT>/tools/agent-template)。 在れば、 そこから
+#                    <clone>.worktrees/<feature branch> を切って上げる
 #   BASE_BRANCH    : base branch (default: develop。 feature branch はここから切り、 PR もここへ向ける)
 #   FEATURE_BRANCH : 上げる feature branch 名 (default: feature/promote-<timestamp>)
 #
 # 動作:
 #   1. **先に sync-from-base.sh を実行することを推奨** (= 競合解決を派生で済ます)
-#   2. base を tmpdir に clone (or BASE_REPO_PATH を直参照)
+#   2. base を用意する。 BASE_REPO_PATH を直参照 > 手元の base の clone から worktree > tmpdir に clone の順。
+#      worktree は git の置き場が clone の下に在るので、 その folder に当てた git の名前と口座の設定
+#      (= `includeIf "gitdir:..."`) がそのまま効く。 tmpdir の clone には効かず、 エージェントの名前で commit する
 #   3. 書き戻す path を決める: base の .synced-paths.txt が列挙する path と派生が列挙する path を合わせ、
 #      派生が `!` で外した path を引く (= sync-from-base.sh が写す path と同じ集合)。 派生/<path> → base/src/<path>
 #      に書き戻す (= 派生独自 file (集合の外) は弾く、 --file 指定時は対象を絞る)
@@ -66,16 +70,36 @@ if [ ! -f "$SYNCED_PATHS_FILE" ]; then
     exit 1
 fi
 
-# base を確保
-KEEP_BASE=0
+# feature branch (= base の worktree を切る時にも使う)
+TS="$(git -C "$AGENT_DIR" rev-parse --short HEAD 2>/dev/null || echo init)"
+FEATURE_BRANCH="${FEATURE_BRANCH:-feature/promote-$TS}"
+
+# base を確保 (= MODE は path / worktree / clone)
+BASE_CLONE="${BASE_CLONE:-${AGENT_PLATFORM_ROOT:+$AGENT_PLATFORM_ROOT/tools/agent-template}}"
+MODE=clone
+MADE_WORKTREE=0
 if [ -n "${BASE_REPO_PATH:-}" ]; then
     BASE_DIR="$BASE_REPO_PATH"
-    KEEP_BASE=1
+    MODE=path
     if [ ! -d "$BASE_DIR" ]; then
         echo "error: BASE_REPO_PATH=$BASE_DIR does not exist" >&2
         exit 1
     fi
     echo "==> using local base: $BASE_DIR"
+elif [ -n "$BASE_CLONE" ] && git -C "$BASE_CLONE" rev-parse --git-dir > /dev/null 2>&1; then
+    MODE=worktree
+    BASE_DIR="$BASE_CLONE.worktrees/$FEATURE_BRANCH"
+    git -C "$BASE_CLONE" fetch -q origin "$BASE_BRANCH"
+    if [ -d "$BASE_DIR" ]; then
+        echo "==> reuse base worktree: $BASE_DIR"
+    elif git -C "$BASE_CLONE" show-ref --verify -q "refs/heads/$FEATURE_BRANCH"; then
+        git -C "$BASE_CLONE" worktree add -q "$BASE_DIR" "$FEATURE_BRANCH"
+        MADE_WORKTREE=1
+    else
+        git -C "$BASE_CLONE" worktree add -q -b "$FEATURE_BRANCH" "$BASE_DIR" "origin/$BASE_BRANCH"
+        MADE_WORKTREE=1
+    fi
+    echo "==> base worktree from $BASE_CLONE ($BASE_BRANCH) → $BASE_DIR"
 else
     TMP_DIR="$(mktemp -d)"
     BASE_DIR="$TMP_DIR/agent-template"
@@ -138,9 +162,6 @@ else
     sync_paths=("${all_sync_paths[@]}")
 fi
 
-# feature branch
-TS="$(git -C "$AGENT_DIR" rev-parse --short HEAD 2>/dev/null || echo init)"
-FEATURE_BRANCH="${FEATURE_BRANCH:-feature/promote-$TS}"
 cd "$BASE_DIR"
 # 同じ feature branch へ 2 回目以降を積めるようにする (= 1 回の昇格は複数の promote で
 # 構成されることがあり、 `-b` 固定だと 2 本目で落ちて手 cp への逃げ道を作ってしまう)
@@ -167,7 +188,12 @@ done
 if [ -z "$(git status --porcelain)" ]; then
     echo ""
     echo "✓ no changes to promote (base and derived are identical)"
-    [ "$KEEP_BASE" -eq 0 ] && rm -rf "$TMP_DIR"
+    if [ "$MODE" = clone ]; then rm -rf "$TMP_DIR"; fi
+    if [ "$MADE_WORKTREE" -eq 1 ]; then
+        cd "$BASE_CLONE"
+        git worktree remove "$BASE_DIR"
+        git branch -q -D "$FEATURE_BRANCH"
+    fi
     exit 0
 fi
 
@@ -180,7 +206,7 @@ echo "==> commit + push"
 git add -A
 git commit -m "$COMMIT_MSG" -q
 
-if [ "$KEEP_BASE" -eq 0 ]; then
+if [ "$MODE" != path ]; then
     git push -u origin "$FEATURE_BRANCH"
     echo ""
     echo "✓ pushed to $FEATURE_BRANCH on base remote"
@@ -192,8 +218,11 @@ if [ "$KEEP_BASE" -eq 0 ]; then
         echo "Open PR manually on the base repo."
     fi
     echo ""
-    echo "(base clone left at $BASE_DIR — remove after PR is merged)"
-    trap "" EXIT  # tmpdir を消さず PR まで残す
+    if [ "$MODE" = worktree ]; then
+        echo "(base worktree left at $BASE_DIR — merge the PR from inside it, then remove the worktree)"
+    else
+        echo "(base clone left at $BASE_DIR — remove after PR is merged)"
+    fi
 else
     echo ""
     echo "✓ committed on local base ($BASE_DIR) branch $FEATURE_BRANCH"

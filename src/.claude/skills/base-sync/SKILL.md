@@ -17,6 +17,8 @@ when_to_use: 型から取り込む・型へ上げる直前 / 型に file を足�
   - Why: 手 cp は synced-paths 契約と履歴を素通りし、drift の出所が追えなくなる
   - **例外は sync 機構自身の 2 file** (`sync-from-base.sh` / `promote-to-base.sh`)。`.synced-paths.txt` の対象外で自分を運べないため、型の checkout からの手 cp が唯一の更新経路になる。これは bootstrap 問題で、init 時にのみ配布される
   - How to apply: 手 cp したら commit message に型の版 (tag or sha) を明記する。履歴が追えなくなる Why への最小の埋め合わせである
+- **昇格は、器の型の clone (`<器の根>/tools/agent-template`) から worktree を切って上げる**。`promote-to-base.sh` は、その clone があれば `<clone>.worktrees/<branch>` を切り、そこで commit と push をして、PR の案内もその中で出す。器の外の一時の folder へ clone すると、道具の folder にだけ当てた commit の名前が効かず、番人の commit の検査が名前の食い違いで止める
+  - Why: 一時の folder へ clone する形で、昇格が 2 つのタブで続けて番人に止められた (2026-11-16)
 - **上げた PR は、型の worktree の中で、エージェントの `.tooling/work/pr-land.sh <番号> --squash` を打って merge する**。直に `gh pr merge --delete-branch` を打つと、worktree で開いている branch は消えずに残り、消せなかった知らせは 1 行のエラーだけで流れる
   - Why: 2026-11-06 に型へ上げた PR 5 本の branch が remote に残った。消せなかったエラーの行を、出力の絞り込みで自分で隠していた
 - **型の PR を作る・merge する `gh` と `pr-land.sh` は、`direnv exec <器の根>/tools …` を頭に付けて打つ**。型の口座の token は器の `tools/.envrc` が当てるが、エージェントの Bash は direnv を読まないので、付けないとエージェントの口座の token で打ち、PR の作成が権限で断られる (2026-11-15)
