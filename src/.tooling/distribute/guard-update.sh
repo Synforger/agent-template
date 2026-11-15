@@ -6,7 +6,7 @@
 #
 # 番人 (= guard-dispatcher) を直した後、 もう 1 台の PC で追いつく時、 起動時の点検が guard_deploy STALE を
 # 出した時に流す。 session の中からでも流せる。
-# 1. エージェントの repo を pull する (= 追う branch の無い repo は飛ばす)
+# 1. エージェントの repo を取り込む (= fetch の後に rebase。 追う branch の無い repo は飛ばす)
 # 2. 番人の clone を develop に揃えて導入し直す (= bootstrap。 番人は clone から直接動くので clone は develop に留める。
 #    手元に origin に無い commit / commit していない変更があれば止める。 作業中の変更は worktree で持つ)
 # 3. Claude Code の設定を全 config dir へ配る (= その script を持つ派生だけ。 templates/claude-settings.json が真値)
@@ -19,18 +19,34 @@ GUARD_CLONE="${GUARD_CLONE:-$(cd -P "$HOME/.git-hooks/scripts" 2>/dev/null && cd
 [ -n "${GUARD_CLONE}" ] || { echo "番人が導入されていません (= ~/.git-hooks/scripts が無い)。 番人の README の手順で導入してください"; exit 1; }
 LOG="${TMPDIR:-/tmp}/guard-update.log"
 : > "${LOG}"
+# GitHub は時々 fetch を publickey で断り、 打ち直すと通る。 網に出る fetch だけを打ち直し、 rebase は 1 回で止める
+# (= 衝突で止まった rebase を打ち直すと状態が壊れる)
+FETCH_TRIES="${GUARD_UPDATE_FETCH_TRIES:-5}"
+FETCH_WAIT_S="${GUARD_UPDATE_FETCH_WAIT_S:-3}"
 
-echo "== 1/3 エージェントの repo を pull"
+fetch_retry() { # <repo> [fetch の引数...]
+    local repo="$1" try
+    shift
+    for try in $(seq 1 "${FETCH_TRIES}"); do
+        git -C "${repo}" fetch -q "$@" 2>> "${LOG}" && return 0
+        [ "${try}" -lt "${FETCH_TRIES}" ] && sleep "${FETCH_WAIT_S}"
+    done
+    echo "   fetch が ${FETCH_TRIES} 回とも落ちました (= ${LOG} の末尾を見てください)"
+    return 1
+}
+
+echo "== 1/3 エージェントの repo を取り込む"
 # 追う branch の無い repo (= remote を持たない手元だけの repo) は取り込む先が無いので飛ばして番人の導入へ進む
 # (= 起動の点検の remote_sync と同じ扱い)
 if ! git -C "${AGENT}" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
     echo "   (skipped, no upstream branch)"
 else
-    git -C "${AGENT}" pull -q --rebase --autostash || { echo "   pull が止まりました。 ${AGENT} の状態を確かめてください"; exit 1; }
+    { fetch_retry "${AGENT}" && git -C "${AGENT}" rebase -q --autostash '@{u}'; } \
+        || { echo "   pull が止まりました。 ${AGENT} の状態を確かめてください"; exit 1; }
 fi
 
 echo "== 2/3 番人を develop に揃えて導入し直す"
-git -C "${GUARD_CLONE}" fetch -q origin develop || exit 1
+fetch_retry "${GUARD_CLONE}" origin develop || exit 1
 if [ -n "$(git -C "${GUARD_CLONE}" log --oneline origin/develop..develop 2>/dev/null)" ]; then
     echo "   手元の develop に origin に無い commit があります (= 消さずに止めます): git -C ${GUARD_CLONE} log origin/develop..develop"
     exit 1

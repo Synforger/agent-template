@@ -1,7 +1,7 @@
 #!/bin/bash
 # .tooling/distribute/guard-update.sh の test。 作り物の番人の clone (= 導入の script は身代わり) とエージェントの
 # repo を組み、 追う branch の無い repo では pull を飛ばして番人の導入まで進む事、 追う branch が在れば pull する事、
-# pull が止まれば導入へ進まずに止まる事を確かめる。
+# pull が止まれば導入へ進まずに止まる事、 1 回断られた fetch は打ち直して通る事を確かめる。
 #
 #   bash .tooling/tests/test-guard-update.sh
 set -uo pipefail
@@ -44,7 +44,26 @@ new_agent() {
 }
 
 update() {
-    GUARD_CLONE="${T}/guard" TMPDIR="${T}" bash "${T}/agent/.tooling/distribute/guard-update.sh" > "${T}/out" 2>&1
+    GUARD_CLONE="${T}/guard" TMPDIR="${T}" GUARD_UPDATE_FETCH_WAIT_S=0 \
+        bash "${T}/agent/.tooling/distribute/guard-update.sh" > "${T}/out" 2>&1
+}
+
+# 最初の fetch を 1 回だけ断る git (= GitHub が時々 publickey で断る形の身代わり)
+REAL_GIT="$(command -v git)"
+mkdir -p "${T}/flaky"
+cat > "${T}/flaky/git" <<FLAKY
+#!/bin/bash
+if [[ " \$* " == *" fetch "* ]] && [ ! -e "${T}/refused-once" ]; then
+    touch "${T}/refused-once"
+    echo "git@github.com: Permission denied (publickey)." >&2
+    exit 128
+fi
+exec "${REAL_GIT}" "\$@"
+FLAKY
+chmod +x "${T}/flaky/git"
+flaky_update() {
+    rm -f "${T}/refused-once"
+    PATH="${T}/flaky:${PATH}" update
 }
 
 # --- 追う branch の無い repo (= この test が実証する本体) ----------------------------------
@@ -67,12 +86,30 @@ update
 check "追う branch が在れば pull する" [ "$(tgit -C "${T}/agent" log -1 --format=%s)" = "from the other machine" ]
 check "pull の後に番人の導入へ進む" [ -e "${T}/bootstrapped" ]
 
+# --- 1 回断られた fetch は打ち直して通る ---------------------------------------------------
+rm -f "${T}/bootstrapped"
+tgit -C "${T}/other" commit -q --allow-empty -m "after a refused fetch"
+tgit -C "${T}/other" push -q origin HEAD:master
+flaky_update
+check "エージェントの fetch が 1 回断られても exit 0" [ $? -eq 0 ]
+check "断られた後の打ち直しで取り込む" [ "$(tgit -C "${T}/agent" log -1 --format=%s)" = "after a refused fetch" ]
+check "打ち直した後に番人の導入へ進む" [ -e "${T}/bootstrapped" ]
+new_agent
+flaky_update
+check "番人の fetch が 1 回断られても導入まで進む" [ -e "${T}/bootstrapped" ]
+check "断られた事は log に残る" grep -qF "Permission denied" "${T}/guard-update.log"
+
 # --- pull が止まれば導入へ進まない -------------------------------------------------------
+new_agent
+tgit -C "${T}/agent" remote add origin "${T}/agent.git"
+tgit -C "${T}/agent" fetch -q origin
+tgit -C "${T}/agent" branch -q -u origin/master 2>/dev/null || tgit -C "${T}/agent" branch -q --set-upstream-to=origin/master
 rm -f "${T}/bootstrapped"
 mv "${T}/agent.git" "${T}/agent.away"
 update
 check "pull が止まれば exit 1" [ $? -eq 1 ]
 check "pull が止まったと言う" grep -qF "pull が止まりました" "${T}/out"
+check "打ち直しの数を言う" grep -qF "fetch が 5 回とも落ちました" "${T}/out"
 check "pull が止まれば番人の導入へ進まない" [ ! -e "${T}/bootstrapped" ]
 
 echo "test-guard-update: ${pass} passed, ${fail} failed"
