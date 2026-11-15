@@ -307,12 +307,12 @@ done < <(python3 .tooling/docs-check/check-positive-form.py 2>/dev/null)
 # ===== 16. 置き場の宣言と約束の表 =====
 # 物とテストは、 足す側の判断に任せると増える一方になる (= 足す理由は毎回在り、 足さない理由と置いてよい
 # 場所はどこにも書かれていない)。 どの folder に何を置いてよいかと、 道具の約束 ↔ それを試すテストを
-# 2 枚の宣言に持ち、 実物を両方向で突き合わせる (= 書式と出る行の真値は script の冒頭)。
+# 宣言に持ち (= 型が配る 2 枚と、 派生だけの 2 枚)、 実物を両方向で突き合わせる (= 書式と出る行の真値は script の冒頭)。
 # 宣言を持たない repo では回さない (= 緑にも数えない)。 projects/ の中の食い違いは、 その階層の repo で
 # 直す物なので警告にとどめる
 echo "[16/18] declared layout and contracts..."
-if [ ! -f .tooling/layout.txt ] && [ ! -f .tooling/contracts.txt ]; then
-  echo "  (not run: this repo declares neither .tooling/layout.txt nor .tooling/contracts.txt)"
+if [ ! -f .tooling/layout.base.txt ] && [ ! -f .tooling/contracts.base.txt ] && [ ! -f .tooling/layout.txt ] && [ ! -f .tooling/contracts.txt ]; then
+  echo "  (not run: this repo declares none of .tooling/layout.base.txt, contracts.base.txt, layout.txt, contracts.txt)"
 else
   d_bad=0
   while IFS= read -r dl; do

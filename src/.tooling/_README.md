@@ -14,8 +14,8 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 
 | folder | 入る物 |
 |---|---|
-| 直下 | 起動の入口と、 宣言の 2 枚 (= `layout.txt` = 置き場 / `contracts.txt` = 道具の約束とテスト。 どれも派生が自分で持つ。 入口は各機械の shell の alias が握る path なので動かさない) |
-| `hooks/` | Claude Code の hook と statusLine が呼ぶ script |
+| 直下 | 起動の入口と、 宣言の 4 枚 (= 置き場 `layout.base.txt` / `layout.txt`、 道具の約束とテスト `contracts.base.txt` / `contracts.txt`。 `.base` が付く 2 枚は型が配り、 付かない 2 枚は派生が自分の物だけを書く。 入口は各機械の shell の alias が握る path なので動かさない) |
+| `hooks/` | Claude Code の hook と statusLine が呼ぶ script (= 口座の設定が 1 本の写しを呼ぶ機械全体の hook は、 型の `.synced-paths.txt` の行に `# @machine-wide` の印が付く。 その写しを持たない派生は、 自分の `.synced-paths.txt` に `!@machine-wide  # <理由>` を 1 行書く) |
 | `startup/` | 起動時の検査 (= `startup-status.sh` と、 それが束ねる検出・容量・起動の固定・語の配布) とその設定 file |
 | `session-end/` | 終了時の手順が呼ぶ script |
 | `docs-check/` | 文書の検査の入口、 step ごとの検査本体、 派生固有の除外 |
@@ -55,7 +55,7 @@ script は役割の folder に置く (= folder 名を見れば、 そこに在�
 13. **発火記録の網羅** — `docs-check/check-rule-hits.py` で session の .md と隣の `-rule-hits.jsonl` を突合 (= 記録を書き漏らした session を検出、 その階層が記録を始めた日以降のみ対象)
 14. **vision の形** — `docs-check/check-vision-shape.py` で全階層の `vision.md` の必須節欠落と段落数超過を検査 (= 上限は実測由来で script の docstring が根拠)
 15. **主文の肯定形** — `docs-check/check-positive-form.py` で常時 load と skill の主文が「何をするか」 で書かれているかを検査 (= 書式の真値 = `.claude/skills/rule-registry/SKILL.md § 表現形式`)
-16. **置き場の宣言と約束の表** — `docs-check/check-declarations.py` で、 `.tooling/layout.txt` (= どの folder の直下に何を置いてよいか。 階層の入れ子の形もここ) と `.tooling/contracts.txt` (= 道具の約束 1 行 ↔ それを試すテスト 1 本) を実物と両方向で突き合わせる。 宣言に無い file と folder、 表に載っていない道具とテスト、 当たる実物の無い宣言が FAIL (= `projects/` の中の食い違いは WARN)。 2 枚とも持たない repo では回さない
+16. **置き場の宣言と約束の表** — `docs-check/check-declarations.py` で、 置き場 (= どの folder の直下に何を置いてよいか。 階層の入れ子の形もここ。 `.tooling/layout.base.txt` + `layout.txt`) と約束の表 (= 道具の約束 1 行 ↔ それを試すテスト 1 本。 `.tooling/contracts.base.txt` + `contracts.txt`) を、 型の 2 枚と派生の 2 枚を足して実物と両方向で突き合わせる。 宣言に無い file と folder、 表に載っていない道具とテスト、 当たる実物の無い宣言、 型と派生の二重の宣言が FAIL (= `projects/` の中の食い違いは WARN)。 宣言から来た行は、 どの file の何行目かを末尾に出す。 派生は型の行を `!<folder> : <名前>  # <理由>` (置き場) と `!<対象>  # <理由>` (約束) で外せる。 約束の対象の頭の `?` は、 機械全体の hook のように持たない派生もある道具の行で、 対象もテストも無い派生では見ない。 4 枚とも持たない repo では回さない
 17. **決まりの文の言い足し** — `docs-check/check-equals-asides.py` で常時 load と skill の本体に `(= …)` の言い足しが残っていないかを検査 (= 書式の真値 = `.claude/skills/rule-registry/SKILL.md § 表現形式`。 書き直した file の中身が前と同じかは `docs-check/check-rewrite-keeps.py` で確かめる)
 
 ## 新 script を追加する時

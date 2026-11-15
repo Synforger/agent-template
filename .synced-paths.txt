@@ -10,6 +10,12 @@
 #
 # 表記 path は派生先 root からの相対 path (= base 側の src/ プレフィックスは剥がす)
 # 末尾 / で dir 全体を意味する (= 配下全 file を再帰的に sync)
+#
+# 機械全体の印: 列挙の行の末尾に `# @machine-wide <理由>` を付けた path は、 口座の設定が 1 本の写しを呼ぶ hook とその試験。
+#   既定は他の path と同じく全派生へ降りる (= 写しが 1 つの器ではそれが正しい)。 呼ばれる写しを持たない派生は、
+#   自分の `.synced-paths.txt` に `!@machine-wide  # <理由>` を 1 行書く (= 印の付いた path が全部外れ、 型が後から
+#   印つきで足した path も自動で外れる)。 約束の表 (`.tooling/contracts.base.txt`) の同じ道具の行は、 対象の頭の `?` で
+#   持たない派生では見ない
 # =============================================================================
 
 # === 機構 script (= 真値は base、 派生で勝手に編集しない) ===
@@ -17,14 +23,14 @@
 .tooling/startup/detect-duplicates.py
 .tooling/startup/detect-stale-rules.sh
 .tooling/session-end/extract-artifact-index.sh
-.tooling/hooks/skill_gate.py
-.tooling/hooks/skill_triggers.py
-.tooling/hooks/skill_reads.py
+.tooling/hooks/skill_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/skill_triggers.py   # @machine-wide skill_gate が読む
+.tooling/hooks/skill_reads.py   # @machine-wide skill_gate が読む
 !.tooling/hooks/skill-triggers.toml   # どの操作でどの skill を読ませるかは派生ごと (= 型の表は雛形)
-.tooling/hooks/subagent_model_gate.py
-.tooling/hooks/ci_duplicate_guard.py
-.tooling/hooks/commit_paths_guard.py
-.tooling/hooks/bypass_prompt_gate.py
+.tooling/hooks/subagent_model_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/ci_duplicate_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/commit_paths_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/bypass_prompt_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
@@ -82,6 +88,9 @@
 .tooling/docs-check/check-rewrite-keeps.py
 # 決まりの文を読む検査と台帳が共有する code block の読み方
 .tooling/lib/md_fences.py
+# 型が配る宣言 2 枚 (= 置き場と約束の表のうち型が配る分。 派生だけの物は派生の layout.txt・contracts.txt に書く。 検査は 4 枚を足して読む)
+.tooling/layout.base.txt
+.tooling/contracts.base.txt
 .tooling/docs-check/check-declarations.py
 
 # 配る script の test (= 派生が script を直した時に、 同じ test で確かめられるようにする)
@@ -99,11 +108,11 @@
 .tooling/tests/test-guard-place.sh
 .tooling/tests/test-audit-known.sh
 .tooling/tests/test-artifact-index-number.sh
-.tooling/tests/test-skill-gate.sh
-.tooling/tests/test-subagent-model-gate.sh
-.tooling/tests/test-ci-duplicate-guard.sh
-.tooling/tests/test-commit-paths-guard.sh
-.tooling/tests/test-bypass-prompt-gate.sh
+.tooling/tests/test-skill-gate.sh   # @machine-wide skill_gate の試験
+.tooling/tests/test-subagent-model-gate.sh   # @machine-wide subagent_model_gate の試験
+.tooling/tests/test-ci-duplicate-guard.sh   # @machine-wide ci_duplicate_guard の試験
+.tooling/tests/test-commit-paths-guard.sh   # @machine-wide commit_paths_guard の試験
+.tooling/tests/test-bypass-prompt-gate.sh   # @machine-wide bypass_prompt_gate の試験
 .tooling/tests/test-extract-operator-words.sh
 .tooling/tests/test-pages-orphans.sh
 
