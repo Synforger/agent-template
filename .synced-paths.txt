@@ -44,6 +44,7 @@
 
 # docs-check が呼ぶ検査本体 (= step が増えた分は docs-check/ に置き、 script 側は薄く保つ)
 .tooling/docs-check/docs-scan.py
+.tooling/docs-check/drop-base-duplicates.py
 .tooling/docs-check/journal-integrity.py
 .tooling/docs-check/check-rule-references.py
 .tooling/docs-check/check-rule-hits.py

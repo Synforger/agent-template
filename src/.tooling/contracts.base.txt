@@ -71,6 +71,7 @@ docs-check/check-positive-form.py      | -                                  | �
 docs-check/check-equals-asides.py      | -                                  | 常時読み込みと skill に `(= …)` の言い足しが残っていれば 1 file 1 行で出す。 サブプロジェクトが何段続いても対象にする
 docs-check/check-rewrite-keeps.py      | -                                  | 書き直した file の code・引用・日付・URL・発言者が前の版と 1 つでも違えば差を出して exit 1 で止まり、見出しの文だけを直した file は `--update-registry` で台帳の行を新しい見出しへ引き継ぐ。 台帳は file が属する一番深い階層の物を使う
 docs-check/check-declarations.py       | tests/test-check-declarations.sh   | 型の宣言 (`layout.base.txt`・`contracts.base.txt`) と派生の宣言 (`layout.txt`・`contracts.txt`) を足して読み、 宣言に無い file・表に無い道具とテスト・実物の無い宣言・型と派生の二重の宣言を、 宣言のどの file の何行目かと一緒に 1 行ずつ出す。 派生は型の行を理由つきで外せ、 持たない派生もある道具の行 (`?`) は無い派生では見ない
+docs-check/drop-base-duplicates.py     | -                                  | 取り込みの後、 派生の `layout.txt`・`contracts.txt` から型の 2 枚と重なる行を外す (= `--apply` が無ければ数だけを出す)
 
 # --- ルールの台帳 ---
 rules/build-rule-registry.py           | tests/test-build-rule-registry.sh  | ID の頭の文字は階層の深さで決まり (= 親 R・project P・1 段目の subproject S・それより深い段は S2・S3 …)、 番号は変わらない
