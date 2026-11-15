@@ -80,6 +80,7 @@
 .tooling/startup/actions_verdict.py
 .tooling/startup/pending_approvals.py
 .tooling/startup/peer_health.py
+.tooling/startup/unchecked_repos.py
 
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
@@ -125,6 +126,7 @@
 .tooling/tests/test-pages-orphans.sh
 .tooling/tests/test-startup-owners.sh
 .tooling/tests/test-peer-health.sh
+.tooling/tests/test-unchecked-repos.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md
