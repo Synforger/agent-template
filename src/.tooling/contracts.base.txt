@@ -43,6 +43,7 @@ startup/owner_table.py               | tests/test-startup-owners.sh       | 持�
 startup/tool_actions.py              | tests/test-startup-owners.sh       | 配備している道具の repo ごとに、 develop の最新の commit と開いている PR の Actions の結果を 1 行 (`ok` / `RED develop` / `RED PR #N` / `UNKNOWN`) にし、 gh が動かない・20 秒を超えた時は UNKNOWN、 宣言の file が無ければ何も出さない
 startup/actions_verdict.py           | tests/test-startup-owners.sh       | 同じ commit で流し直した run は新しい方が決め、 失敗・時間切れ・error が赤で、 取り消し・走行中・skip は赤にしない。 run の無い develop は、 その commit を作った PR の検査で見る
 startup/pending_approvals.py         | tests/test-startup-owners.sh       | 自分の `.git` を持つ階層のうち、 番人の `detect_repo_kind` が名乗りの検査をかける種類と答えた物だけを `pending_approval: guard.scope <階層>` と名指し、 当たる物が無ければ `pending_approval: none`
+startup/peer_health.py               | tests/test-peer-health.sh          | client の見張りの記録から、 別の機械ごとに ok / DOWN (30 分以上答えない) / WAITING (置かれた連絡が在る) / UNKNOWN (見張りの記録が 15 分以上古い) を 1 行で出し、 記録の無い機械では黙る。 読むだけで client を叩かない
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査を読み上げる係のタブは、 サブプロジェクトの何段目に居ても係として働く
 startup/audit_findings.py              | tests/test-audit-known.sh          | 終わりの行の無い記録は clean と読まず INCOMPLETE と出して、 終わった一番新しい記録で判定し、 境界の無い記録と読み解けない記録は判定せずに黙らせない
 startup/detect-duplicates.py           | -                                  | rule file の節どうしの重なりを組で出す
