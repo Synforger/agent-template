@@ -18,7 +18,7 @@ set -euo pipefail
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記)
 #   BASE_REPO_PATH : ローカル base path (= clone をスキップ、 開発時用)
-#   BASE_BRANCH    : base branch (default: main)
+#   BASE_BRANCH    : base branch (default: develop。 feature branch はここから切り、 PR もここへ向ける)
 #   FEATURE_BRANCH : 上げる feature branch 名 (default: feature/promote-<timestamp>)
 #
 # 動作:
@@ -32,7 +32,7 @@ set -euo pipefail
 # =============================================================================
 
 DEFAULT_BASE_URL="${BASE_REPO_URL:-git@github.com:synforger/agent-template.git}"
-BASE_BRANCH="${BASE_BRANCH:-main}"
+BASE_BRANCH="${BASE_BRANCH:-develop}"
 
 # --file 引数を抽出 (= 残りは commit message)
 SELECTED_FILES=()
@@ -187,7 +187,7 @@ if [ "$KEEP_BASE" -eq 0 ]; then
     echo ""
     if command -v gh > /dev/null 2>&1; then
         echo "Create PR with:"
-        echo "  cd $BASE_DIR && gh pr create --title \"$COMMIT_MSG\" --body 'Promoted from derived agent.'"
+        echo "  cd $BASE_DIR && gh pr create --base $BASE_BRANCH --title \"$COMMIT_MSG\" --body 'Promoted from derived agent.'"
     else
         echo "Open PR manually on the base repo."
     fi

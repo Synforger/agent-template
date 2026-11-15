@@ -98,7 +98,9 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/sync-from-base.sh
 ```
 
-base の `.synced-paths.txt` が列挙する path と、 派生の `.synced-paths.txt` が足した path を、 派生が `!path  # 理由` で外した物を除いて base 最新で上書き。 派生固有 file (= どちらにも列挙されていない path) は触らない。 base が後から足した path は、 派生が何も書かなくても次の取り込みで降りる。 base が列挙する path を外すには `#` の後ろの理由が要り、 理由の無い `!` 行は名指して、 何も写さずに止まる。 外している物は毎回、 理由つきで並べて出す。 `git diff` で確認後 commit。
+base の `.synced-paths.txt` が列挙する path と、 派生の `.synced-paths.txt` が足した path を、 派生が `!path  # 理由` で外した物を除いて base 最新で上書き。 派生固有 file (= どちらにも列挙されていない path) は触らない。 base が後から足した path は、 派生が何も書かなくても次の取り込みで降りる。 base が列挙する path を外すには `#` の後ろの理由が要り、 理由の無い `!` 行は名指して、 何も写さずに止まる。 外している物は毎回、 理由つきで並べて出す。
+
+取り込むたびに、 写した base の版を派生の `.synced-paths.txt` に `# synced from base: <sha>` の行で記録する。 次の取り込みはその版と比べ、 その後に派生が変えた・消した file と、 写す folder の中に派生が足した file を名指して、 何も写さずに止まる。 base へ上げる (`promote-to-base.sh --file <path>`) か、 `!path  # 理由` で外すか、 変更を捨てて `SYNC_OVERWRITE=1` で取り込み直す。 取り込む branch は、 `BASE_BRANCH` で変えない限り base の `develop`。 写した後に派生の docs-check があれば流し、 FAIL があれば FAIL の行を並べて commit の案内を出さない。 通れば `git diff` で確認し、 案内の命令 (= 写した path だけを名指す) で commit する。
 
 ### 派生 → base (= 上り)
 
@@ -109,7 +111,7 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/promote-to-base.sh "feat: 新 docs-check step 追加"
 ```
 
-base 側に feature branch を切って push、 PR 経由で merge。 書き戻すのは sync が写す path と同じ集合で、 その外の派生固有 file は弾かれる。
+base の `develop` から feature branch を切って push、 PR 経由で merge。 書き戻すのは sync が写す path と同じ集合で、 その外の派生固有 file は弾かれる。
 
 ### 競合解決
 

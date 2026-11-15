@@ -101,7 +101,9 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/sync-from-base.sh
 ```
 
-The sync overwrites every path the base's `.synced-paths.txt` lists, plus any path the derivation's own `.synced-paths.txt` adds, except the ones the derivation keeps out with `!path  # why`; derivation-specific files are never touched. A path the base adds later therefore reaches every derivation on its next sync, with nothing to declare. Keeping out a path the base lists needs the reason after `#`: a `!` line without one is named and the sync stops before copying anything. Every sync lists what the derivation keeps out, with its reason. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries. Review with `git diff`, then commit.
+The sync overwrites every path the base's `.synced-paths.txt` lists, plus any path the derivation's own `.synced-paths.txt` adds, except the ones the derivation keeps out with `!path  # why`; derivation-specific files are never touched. A path the base adds later therefore reaches every derivation on its next sync, with nothing to declare. Keeping out a path the base lists needs the reason after `#`: a `!` line without one is named and the sync stops before copying anything. Every sync lists what the derivation keeps out, with its reason. A listed path that no longer exists in the base is reported in the completion summary — a sync never claims a clean success while silently dropping entries.
+
+Each sync records the base commit it copied from as a `# synced from base: <sha>` line in the derivation's `.synced-paths.txt`. The next sync compares against that version: a file the derivation changed, deleted, or added inside a synced folder since then is named, and the sync stops before copying anything. Promote the change (`promote-to-base.sh --file <path>`), keep the path out with `!path  # why`, or drop the change and sync again with `SYNC_OVERWRITE=1`. The sync pulls the base's `develop` branch unless `BASE_BRANCH` says otherwise. After copying, it runs the derivation's docs-check when there is one; if that fails, it lists the FAIL lines and does not print the commit command. Otherwise review with `git diff` and commit with the printed command, which names only the synced paths.
 
 The base's `.synced-paths.txt` is the single truth for both directions, and it declares both halves: listed paths ship, and `!path  # why` lines record what the base deliberately keeps derivation-owned (an index whose content is the derivation's own, a rule file the derivation merges by hand). Anything shipped under `src/.tooling/` or `src/rules/` that is neither listed nor declared fails the base's own CI (`task synced-paths`) — the control file cannot sync itself, so a forgotten entry would otherwise mean "the base ships it, but no derivation receives it" with nothing to catch it.
 
@@ -114,7 +116,7 @@ cd ~/path/to/<your-agent>
 ./.tooling/distribute/promote-to-base.sh "feat: add a new docs-check step"
 ```
 
-This cuts a feature branch on the base, pushes it, and the change lands via a pull request. It writes back the same set of paths a sync copies; any other file is rejected.
+This cuts a feature branch from the base's `develop`, pushes it, and the change lands via a pull request. It writes back the same set of paths a sync copies; any other file is rejected.
 
 ### Conflict policy
 
