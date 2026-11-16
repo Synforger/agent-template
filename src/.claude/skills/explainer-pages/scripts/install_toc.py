@@ -1,13 +1,14 @@
-"""説明のページに横の目次の部品を入れる (説明のページを置いた後と、階層の pages/ を作った後に、人かエージェントが呼ぶ)。
+"""説明のページに横の目次の部品を読む 1 行を入れる (説明のページを置いた後と、階層の pages/ を作った後に、人かエージェントが呼ぶ)。
 
 使い方: `python3 -I install_toc.py <ページの file か folder>...`。folder なら中の `*.html` を全部 (`_archive/` を除く)。
 
 する事:
-1. ページの階層 (`vision.md` の在る一番近い folder) の `pages/_common/toc-sidebar.js` を、真値と同じ中身にする。
-   真値はエージェントの根の `pages/_common/toc-sidebar.js` で、根の階層のページはそれをそのまま読む
-2. ページの `</body>` の前に、その file を読む 1 行を足す。path はページから階層の `pages/_common/` への相対で、
-   タブの folder のページなら `../_common/toc-sidebar.js`、その中の枝の folder のページなら `../../_common/toc-sidebar.js`。
-   既に読む行が在れば、path だけを直す。枝の中のページのタブのトップは、部品が自分の置き場から決める
+1. ページの `</body>` の前に、エージェントの根の `pages/_common/toc-sidebar.js` を読む 1 行を足す。
+   部品の真値は根の 1 本で、階層ごとの `pages/_common/` へは写さない。path は、ページから根の部品への相対
+   (`os.path.relpath`) で、ページの深さで変わる。根の階層のタブのページなら `../_common/toc-sidebar.js`、
+   プロジェクトの階層のタブのページなら `../../../../pages/_common/toc-sidebar.js`
+2. 既に部品を読む行が在れば、path だけを根の部品への path に直す (fixed)。階層の写しを指していた古い行
+   (`../_common/toc-sidebar.js` など) もこれで直る。写しの file は消さず、残りは `check-tab-links.py` が名指す
 3. 2 回流しても増えない。file ごとに added / fixed / ok を 1 行ずつ出す
 4. 組み立ての元は触らずに skipped と出す。元とみなすのは、階層から見て `src/` の下の file と、名前に `template` を
    含む `.html`。書き出し先から見た path は、
@@ -18,7 +19,6 @@
 
 import os
 import re
-import shutil
 import sys
 from pathlib import Path
 
@@ -41,11 +41,6 @@ def tier_of(page: Path) -> Path:
         if folder == AGENT_DIR:
             break
     return AGENT_DIR
-
-
-def component_for(tier: Path) -> Path:
-    """その階層のページが読む部品の file。"""
-    return tier / "pages" / "_common" / COMPONENT_NAME
 
 
 def tagged(html: str, src: str) -> tuple[str, str]:
@@ -77,14 +72,10 @@ def is_build_source(page: Path) -> bool:
 
 
 def install(page: Path) -> str:
-    """ページ 1 本に部品を入れ、結果の 1 語を返す。"""
+    """ページ 1 本に、根の部品を読む行を入れ、結果の 1 語を返す。"""
     if is_build_source(page):
         return "skipped"
-    component = component_for(tier_of(page))
-    if component.resolve() != SOURCE and (not component.is_file() or component.read_bytes() != SOURCE.read_bytes()):
-        component.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(SOURCE, component)
-    src = os.path.relpath(component, page.resolve().parent)
+    src = os.path.relpath(SOURCE, page.resolve().parent)
     html = page.read_text(encoding="utf-8")
     new_html, result = tagged(html, src)
     if new_html != html:

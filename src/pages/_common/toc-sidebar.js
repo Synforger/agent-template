@@ -1,8 +1,8 @@
 /*
- * 説明のページを、API の説明書 (Sphinx) のような 3 段の形にする。ページは `</body>` の前に
- * `<script src="../_common/toc-sidebar.js" defer></script>` を 1 行置くだけ (タブの folder のページの場合)。
- * 真値はエージェントの根の pages/_common/ のこの file で、各階層の pages/_common/ へは
- * .claude/skills/explainer-pages/scripts/install_toc.py が写し、行も足す。
+ * 説明のページを、API の説明書 (Sphinx) のような 3 段の形にする。ページは `</body>` の前に、この file を読む
+ * `<script src="../_common/toc-sidebar.js" defer></script>` を 1 行置くだけ (根の階層のタブの folder のページの場合)。
+ * 真値はエージェントの根の pages/_common/ のこの 1 本で、各階層へは写さず、ページが根のこの file を相対 path で直に読む
+ * (その 1 行は .claude/skills/explainer-pages/scripts/install_toc.py が足す)。
  *   上のバー: 左の開け閉め (☰)・「ページ › 今の節」・右の開け閉め
  *   ページの頭: 「タブのトップ › h2 の段 › h3 の段 › このページ」の道しるべ。段の見出しの中にリンク (枝の入口) が在れば押して移れる
  *   左: タブの全部のページ (タブのトップページ index.html のリンクを、その見出しの段ごとに並べる)。今のページは節まで開く。
@@ -10,9 +10,10 @@
  *       h3 の見出しとその下のページは、h2 の物より 1 段下げて並べる。下にリンクの無い h2 も、下に h3 の段が在れば見出しを残す
  *   右: このページの中の節 (h2・h3)。今読んでいる節に印。幅 RIGHT_MIN_PX 以上で出す
  *   下: 前のページ・次のページ (タブの中のページだけ、トップページの並び順)
- * タブのトップは、この file の置き場から決める。この file は `<階層>/pages/_common/` に在るので、ページが
- * `<階層>/pages/<タブ>/` の下に在れば、枝の folder の中 (`<タブ>/model/x.html` など) でも `<タブ>/index.html` がトップで、
- * 枝の中のページもタブの中として前と次に並ぶ。それ以外の置き場のページは、ページの隣の index.html をトップにする。
+ * タブのトップは、ページ自身の URL から決める。ページの URL の最後の `/pages/` の次の 1 段をタブの folder とし、
+ * ページがその下に在れば、枝の folder の中 (`<タブ>/model/x.html` など) でも `<タブ>/index.html` がトップで、
+ * 枝の中のページもタブの中として前と次に並ぶ。この file の置き場には依らない。`/pages/` の下に無いページと、
+ * `pages/` 直下のページは、ページの隣の index.html をトップにする。
  * 狭い画面では左が引き出しになり、右は左の今のページの下に入る。開け閉めは localStorage に覚える (使えない時は毎回開いた形)。
  * 見出しの id が無い物には `toc-<番号>` を振る。色はページの --bg・--fg・--line・--link・--card・--muted を使う。
  */
@@ -31,11 +32,10 @@
   var STORE_LEFT = "toc-sidebar:left";
   var STORE_RIGHT = "toc-sidebar:right";
   var INDEX_PAGE = "index.html";
-  var COMPONENT_FILE = "toc-sidebar.js";
+  /** ページの URL の中で、階層の説明のページの置き場を指す段。この次の 1 段がタブの folder */
+  var PAGES_FOLDER = "/pages/";
   /** トップページの中で、左の一覧の元にする範囲の印 (本文の文中のリンクを一覧から外すため) */
   var PAGES_MARK = "data-toc-pages";
-  /** この部品を読んだ script の行。document.currentScript は script の実行中にしか取れないので、ここで取っておく */
-  var SELF_SCRIPT = document.currentScript;
 
   var CSS = [
     "body.tsb{padding-top:" + (BAR_HEIGHT_PX + 20) + "px!important;}",
@@ -110,16 +110,14 @@
     return url.href;
   }
 
-  /** ページのタブのトップ {url, isTab}。isTab は、ページが `<階層>/pages/<タブ>/` の下に在り、枝の folder も
-   *  タブの中に数える時に真。部品の行が見つからない時と、タブの folder の外のページは、隣の index.html で isTab は偽。 */
+  /** ページのタブのトップ {url, isTab}。isTab は、ページが `/pages/<タブ>/` の下に在り、枝の folder も
+   *  タブの中に数える時に真。`/pages/` の下に無いページと `pages/` 直下のページは、隣の index.html で isTab は偽。 */
   function topPage(here) {
-    var script = SELF_SCRIPT || document.querySelector('script[src*="' + COMPONENT_FILE + '"]');
-    if (script && script.src) {
-      var pagesRoot = pageUrl("../", script.src);
-      if (here.indexOf(pagesRoot) === 0) {
-        var inside = here.slice(pagesRoot.length).split("/");
-        if (inside.length > 1) { return { url: pagesRoot + inside[0] + "/" + INDEX_PAGE, isTab: true }; }
-      }
+    var at = here.lastIndexOf(PAGES_FOLDER);
+    if (at >= 0) {
+      var pagesRoot = here.slice(0, at + PAGES_FOLDER.length);
+      var inside = here.slice(pagesRoot.length).split("/");
+      if (inside.length > 1) { return { url: pagesRoot + inside[0] + "/" + INDEX_PAGE, isTab: true }; }
     }
     return { url: pageUrl(INDEX_PAGE, here), isTab: false };
   }
