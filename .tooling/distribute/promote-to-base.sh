@@ -9,11 +9,15 @@ set -euo pipefail
 #
 # Usage:
 #   ./.tooling/distribute/promote-to-base.sh [--file <path>]... [<commit-message>]
+#   ./.tooling/distribute/promote-to-base.sh -h | --help
 #
 # Options:
 #   --file <path> : 指定 file のみ promote (= 複数指定可、 書き戻せる集合の中のもののみ受理。
 #                   folder の行で配る物は、 その中の file を名指してもよい)。
 #                   省略時は集合の全件を書き戻し。
+#   -h, --help    : この説明を出して、 何もせずに終わる
+#   上の他の `-` で始まる引数は断る (= 選択肢の打ち間違いを commit の文にして上げない)。
+#   `-` で始まる commit の文は `--` の後に書く
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記)
@@ -38,11 +42,24 @@ set -euo pipefail
 DEFAULT_BASE_URL="${BASE_REPO_URL:-git@github.com:synforger/agent-template.git}"
 BASE_BRANCH="${BASE_BRANCH:-develop}"
 
+usage() {
+    sed -n '/^# Usage:/,/^# =====/{/^# =====/d;s/^# \{0,1\}//;p;}' "${BASH_SOURCE[0]}"
+}
+
 # --file 引数を抽出 (= 残りは commit message)
 SELECTED_FILES=()
 POSITIONAL=()
 while [ $# -gt 0 ]; do
     case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            POSITIONAL+=("$@")
+            break
+            ;;
         --file)
             shift
             SELECTED_FILES+=("$1")
@@ -51,6 +68,10 @@ while [ $# -gt 0 ]; do
         --file=*)
             SELECTED_FILES+=("${1#--file=}")
             shift
+            ;;
+        -*)
+            echo "error: unknown option '$1' (see --help)" >&2
+            exit 2
             ;;
         *)
             POSITIONAL+=("$1")

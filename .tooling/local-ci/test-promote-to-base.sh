@@ -44,6 +44,22 @@ setup() {
 }
 
 promote() { BASE_REPO_PATH="${BASE}" FEATURE_BRANCH=feature/test bash "${AGENT}/.tooling/distribute/promote-to-base.sh" "$@" > "${T}/out" 2>&1; }
+no_test_branch() { ! git -C "${BASE}" show-ref --verify -q refs/heads/feature/test; }
+
+# --- --help は説明だけを出して何も上げず、 知らない選択肢は断る ----------------------------
+setup
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+promote --help
+check "--help は exit 0" [ $? -eq 0 ]
+check "--help は Usage を出す" grep -qF "Usage:" "${T}/out"
+check "--help は branch を切らない" no_test_branch
+promote --bogus
+check "知らない選択肢は exit 2" [ $? -eq 2 ]
+check "知らない選択肢を名指す" grep -qF "unknown option '--bogus'" "${T}/out"
+check "知らない選択肢では branch を切らない" no_test_branch
+promote -- "-x: a message that starts with a dash"
+check "-- の後の文は commit の文になる" \
+    [ "$(git -C "${BASE}" log -1 --format=%s feature/test 2>/dev/null)" = "-x: a message that starts with a dash" ]
 
 # --- 例外だけを書いた派生 -----------------------------------------------------------
 setup

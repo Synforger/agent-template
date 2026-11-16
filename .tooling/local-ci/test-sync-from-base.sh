@@ -39,7 +39,19 @@ setup() {
 # 出力に <文字列> が無い
 lacks() { ! grep -qF -- "$1" "${T}/out"; }
 
-sync() { BASE_REPO_PATH="${BASE}" bash "${AGENT}/.tooling/distribute/sync-from-base.sh" > "${T}/out" 2>&1; }
+sync() { BASE_REPO_PATH="${BASE}" bash "${AGENT}/.tooling/distribute/sync-from-base.sh" "$@" > "${T}/out" 2>&1; }
+
+# --- --help は説明だけを出して何も写さず、 知らない引数は断る ------------------------------
+setup
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+sync --help
+check "--help は exit 0" [ $? -eq 0 ]
+check "--help は Usage を出す" grep -qF "Usage:" "${T}/out"
+check "--help は何も写さない" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
+sync --bogus
+check "知らない引数は exit 2" [ $? -eq 2 ]
+check "知らない引数を名指す" grep -qF "unknown argument '--bogus'" "${T}/out"
+check "知らない引数では何も写さない" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
 
 # --- 例外を書かない派生は、 base の列挙を全部受け取る ---------------------------------
 setup
