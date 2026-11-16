@@ -45,7 +45,12 @@ case "$1 $2" in
         n=$(cat "${S}/n" 2>/dev/null || echo 0); n=$((n + 1)); echo "${n}" > "${S}/n"
         line="$(sed -n "${n}p" "${S}/checks")"; [ -n "${line}" ] || line="$(tail -n 1 "${S}/checks")"
         echo "${line}" ;;
-    "pr merge") [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
+    "pr merge")
+        if [ -f "${S}/merge.err" ]; then cat "${S}/merge.err" >&2; exit 1; fi
+        [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
+    "api -X")
+        if [ -f "${S}/rest.err" ]; then cat "${S}/rest.err" >&2; exit 1; fi
+        [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
     "pr view") cat "${S}/state" ;;
     "repo view") [ -f "${S}/visibility" ] && cat "${S}/visibility" ;;
     "api repos/{owner}/{repo}/actions/workflows") [ -f "${S}/workflows" ] && cat "${S}/workflows" ;;
@@ -115,6 +120,32 @@ out="$(land 7 --merge --tag v1.0.0)"; code=$?
 check "merge されなかったら止まる (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [[ "${out}" == *"#7 is OPEN after the merge was asked for"* ]]; echo $?)"
 check "merge されなかったら tag を打たない (= 手元にも origin にも無い)" "$([ -z "$(git tag -l v1.0.0)" ] && [ -z "$(git ls-remote --tags origin v1.0.0)" ]; echo $?)"
 check "頼んだ merge の仕方で打っている" "$(grep -q '^pr merge 7 --merge --delete-branch' "${FAKE_GH}/calls"; echo $?)"
+
+check "gh が何も言わずに通らなかった時は、 衝突か branch の決まりと言う" "$([[ "${out}" == *"(a conflict, or a rule of the branch)"* ]]; echo $?)"
+
+# --- merge が通らず gh が理由を言った: その 1 行を添えて止まり、 REST へは回らない ---
+scene refused yes "${PASS}"
+printf '%s\n' "direnv: loading ~/x/.envrc" "X Pull request #7 is not mergeable: the base branch policy prohibits the merge." > "${FAKE_GH}/merge.err"
+out="$(land 7 --tag v2.0.0)"; code=$?
+check "gh の言った理由を添えて止まる (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [[ "${out}" == *"#7 is OPEN after the merge was asked for (gh: X Pull request #7 is not mergeable: the base branch policy prohibits the merge.)"* ]] && [[ "${out}" != *"direnv"* ]]; echo $?)"
+check "ほかの理由では REST の口へ回らず、 tag も打たない" "$(! grep -q '^api -X' "${FAKE_GH}/calls" && [ -z "$(git tag -l v2.0.0)" ]; echo $?)"
+
+# --- GitHub の側に処理中の merge が残っている: REST の口へ先頭の sha を付けて 1 回だけ頼み直す ---
+scene in-progress yes "${PASS}"
+echo "GraphQL: Merge already in progress (mergePullRequest)" > "${FAKE_GH}/merge.err"
+out="$(land 7)"; code=$?
+check "Merge already in progress なら REST の口で着地する (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [[ "${out}" == *"asking again through the REST merge with the head ${OLD:0:7}"* ]] && [[ "${out}" == *"#7 merged into main (${MERGE:0:7})"* ]]; echo $?)"
+check "REST の口へは頼んだ仕方と PR の先頭の sha を付けて 1 回だけ打つ" "$([ "$(grep -c '^api -X' "${FAKE_GH}/calls")" = 1 ] && grep -qxF "api -X PUT repos/{owner}/{repo}/pulls/7/merge -f merge_method=squash -f sha=${OLD}" "${FAKE_GH}/calls"; echo $?)"
+check "REST の口で着地しても、 残った元の branch を消す" "$([ -z "$(git ls-remote --heads origin topic)" ]; echo $?)"
+scene in-progress-merge yes "${PASS}"
+echo "GraphQL: Merge already in progress (mergePullRequest)" > "${FAKE_GH}/merge.err"
+land 7 --merge >/dev/null
+check "--merge なら REST の口にも merge で頼む" "$(grep -q '^api -X PUT .* -f merge_method=merge ' "${FAKE_GH}/calls"; echo $?)"
+scene in-progress-refused yes "${PASS}"
+echo "GraphQL: Merge already in progress (mergePullRequest)" > "${FAKE_GH}/merge.err"
+echo "gh: Head branch was modified. Review and try the merge again. (HTTP 409)" > "${FAKE_GH}/rest.err"
+out="$(land 7 --tag v3.0.0)"; code=$?
+check "REST の口も断ったら、 その 1 行を添えて止まる (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [[ "${out}" == *"(gh: Head branch was modified. Review and try the merge again. (HTTP 409))"* ]] && [ -z "$(git tag -l v3.0.0)" ]; echo $?)"
 
 # --- 着地して tag: merge の commit に付く (= 手元の古い main ではない) ---
 scene tagged yes "${PASS}"
