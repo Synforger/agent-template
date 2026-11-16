@@ -9,9 +9,11 @@
    トップに `data-toc-pages` の付いた要素が在れば、左の一覧はその中のリンクだけを並べるので、その中のリンクだけを数える
 2. トップページのリンクの先が、全部実在する (= `#` だけのリンクと `http` のリンクは除く)
 3. メモ (= `memo.md`) に書いた file の path が、全部トップページからもリンクされている (= メモだけに入口を作らない)
-4. 1 のページが、全部横の目次の部品を、ページから見た path で読んでいる (直下なら `../_common/toc-sidebar.js`、
-   1 段下の枝なら `../../_common/toc-sidebar.js`)
-5. 階層の `pages/_common/toc-sidebar.js` が在り、真値と同じ中身 (入れるのは隣の `install_toc.py`)
+4. 1 のページが、全部エージェントの根の `pages/_common/toc-sidebar.js` を、ページから見た正しい相対 path で読んでいる
+   (根の階層のタブのページなら `../_common/toc-sidebar.js`、プロジェクトの階層のタブのページなら
+   `../../../../pages/_common/toc-sidebar.js`)。根の部品が無い時もここで名指す
+5. 階層の `pages/_common/toc-sidebar.js` (写し) が残っていれば、消すよう名指す (部品の真値は根の 1 本で、
+   ページは根を直に読む)
 6. 枝の folder を 1 つでも持つタブ (直下に `data/`・`src/` と、`_` か `.` で始まる物を除いた folder が在る) は、
    直下にトップページ以外のページを置かない。置いた物は「枝の外のページ」として 1 本ずつ名指す
 
@@ -132,19 +134,19 @@ def check(tab_dir: Path) -> list[str]:
         for page in sorted(tab_dir.glob("*.html")):
             if page.name != index_path.name:
                 problems.append(f"枝の外のページ: {page.name} (枝の folder を持つタブは、ページを全部枝の中に置く)")
-    component = tab_dir.parent / "_common" / COMPONENT_NAME
     for page in pages:
-        expected_src = os.path.relpath(component, page.parent)
+        expected_src = os.path.relpath(SOURCE, page.parent)
         found = SCRIPT_TAG.search(HTML_COMMENT.sub("", page.read_text(encoding="utf-8")))
         if not found:
             problems.append(f"横の目次を読む行が無い: {page.relative_to(tab_dir)} (install_toc.py で入れる)")
         elif found.group(1) != expected_src:
             problems.append(f"横の目次を読む path が違う: {page.relative_to(tab_dir)} は {found.group(1)}、"
                             f"正しくは {expected_src} (install_toc.py で直す)")
-    if not component.is_file():
-        problems.append(f"横の目次の部品が無い: {component} (install_toc.py で入れる)")
-    elif component.resolve() != SOURCE and component.read_bytes() != SOURCE.read_bytes():
-        problems.append(f"横の目次の部品が真値と違う: {component} (install_toc.py で写し直す)")
+    if not SOURCE.is_file():
+        problems.append(f"横の目次の部品が無い: {SOURCE}")
+    copy = tab_dir.parent / "_common" / COMPONENT_NAME
+    if copy.is_file() and copy.resolve() != SOURCE:
+        problems.append(f"階層に横の目次の部品の写しが残っている: {copy} (消す。ページは根の部品を直に読む)")
     return problems
 
 
