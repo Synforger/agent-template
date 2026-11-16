@@ -118,6 +118,19 @@ rm -r "${P_PAGES}/_common"
 out="$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1)"
 check "check: 直して写しを消すと 0 件に戻る" "0 ok: ${P_PAGES}/ses_tab のトップページから全部辿れる" "$? ${out}"
 
+# --- _archive/ の下: 在る行は直し、 無い行は足さない。 check は写しを指す行を名指す ---
+page "${P_PAGES}/ses_tab/_archive/old.html"
+printf '<html><body><script src="../../_common/toc-sidebar.js" defer></script>\n</body></html>\n' > "${P_PAGES}/ses_tab/_archive/kept.html"
+out="$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1)"
+check "check: _archive/ の下で写しを指すページを名指す" \
+    "\`_archive/\` のページが横の目次を違う path で読む: _archive/kept.html は ../../_common/toc-sidebar.js、正しくは ../../../../../pages/_common/toc-sidebar.js (install_toc.py で直す。写しを消す前に)" \
+    "$(printf '%s\n' "${out}" | grep '_archive')"
+python3 -I "${INSTALL}" "${P_PAGES}/ses_tab" > /dev/null 2>&1
+check "install: _archive/ の下の在る行を根の部品へ直す" "../../../../../pages/_common/toc-sidebar.js" "$(loaded "${P_PAGES}/ses_tab/_archive/kept.html")"
+check "install: _archive/ の下の行の無いページには足さない" "" "$(loaded "${P_PAGES}/ses_tab/_archive/old.html")"
+out="$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1)"
+check "check: _archive/ を直すと 0 件に戻る" "0 ok: ${P_PAGES}/ses_tab のトップページから全部辿れる" "$? ${out}"
+
 # --- 部品: タブのトップをページ自身の URL から決める (= 部品の置き場に依らない) ---
 if command -v node > /dev/null 2>&1; then
     out="$(node - "${COMPONENT}" <<'JS'
