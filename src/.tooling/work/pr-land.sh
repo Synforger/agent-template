@@ -15,7 +15,9 @@
 #      ただし private の repo で workflow が 1 本も無い時は待たない (= 決まりでは、 private の repo は手元の全体の
 #      試験が検査で、 それを流してから打つ)。 公開の repo は Actions の結果で判定するので、 workflow が無ければ止まる。
 #      公開・非公開と workflow の数が gh から読めない時は、 今までどおり待つ
-#   2. merge して、 PR の状態が MERGED になったのを読んで確かめる。 なっていなければ止まる。
+#   2. merge して、 PR の状態が MERGED になったのを読んで確かめる。 なっていなければ、 gh が最後に出した 1 行を
+#      添えて止まる。 GraphQL の口が「Merge already in progress」 と答えた時は、 GitHub の側に処理中の merge が
+#      残っていて同じ口では通らないので、 REST の口へ PR の先頭の sha を付けて 1 回だけ頼み直す。
 #      元の branch が remote に残っていれば消す (= `gh pr merge --delete-branch` は、 その branch が別の
 #      作業場所で開かれている時や repo の設定によって、 何も言わずに残すことがある)
 #   3. --tag が在れば、 その PR の merge commit に tag を打って push する (= 2 が通った時だけ)
@@ -92,15 +94,30 @@ else:
 done
 
 # 2. merge して、 merge されたのを読んで確かめる
-if [ "${keep}" -eq 1 ]; then
-    gh_ pr merge "${pr}" "${how}" >/dev/null
-else
-    gh_ pr merge "${pr}" "${how}" --delete-branch >/dev/null
+read_state() {
+    local landed
+    landed="$(gh_ pr view "${pr}" --json state,baseRefName,mergeCommit,headRefName,headRefOid -q '.state + " " + .baseRefName + " " + (.mergeCommit.oid // "-") + " " + .headRefOid + " " + .headRefName')"
+    read -r state base commit head_at head <<< "${landed}"
+    [ "${commit:-}" = "-" ] && commit=""
+}
+# gh の stderr の最後の 1 行 (= direnv が出す読み込みの行は除く)
+last_error_line() { printf '%s\n' "$1" | grep -v 'direnv: ' | sed '/^[[:space:]]*$/d' | tail -n 1; }
+merge_args=(pr merge "${pr}" "${how}")
+[ "${keep}" -eq 1 ] || merge_args+=(--delete-branch)
+merge_err="$("${GH[@]}" "${merge_args[@]}" 2>&1 >/dev/null)"
+read_state
+if [ "${state:-}" != "MERGED" ] && [[ "${merge_err}" == *"Merge already in progress"* ]] && [ -n "${head_at:-}" ]; then
+    echo "pr-land: GitHub answered 'Merge already in progress' on #${pr}; asking again through the REST merge with the head ${head_at:0:7}"
+    rest_err="$("${GH[@]}" api -X PUT "repos/{owner}/{repo}/pulls/${pr}/merge" -f merge_method="${how#--}" -f sha="${head_at}" 2>&1 >/dev/null)"
+    merge_err="${rest_err:-${merge_err}}"
+    read_state
 fi
-landed="$(gh_ pr view "${pr}" --json state,baseRefName,mergeCommit,headRefName,headRefOid -q '.state + " " + .baseRefName + " " + (.mergeCommit.oid // "-") + " " + .headRefOid + " " + .headRefName')"
-read -r state base commit head_at head <<< "${landed}"
-[ "${commit:-}" = "-" ] && commit=""
-[ "${state:-}" = "MERGED" ] || stop "#${pr} is ${state:-unreadable} after the merge was asked for (a conflict, or a rule of the branch); nothing was tagged"
+if [ "${state:-}" != "MERGED" ]; then
+    said="$(last_error_line "${merge_err}")"
+    reason="a conflict, or a rule of the branch"
+    [ -n "${said}" ] && reason="gh: ${said#gh: }"
+    stop "#${pr} is ${state:-unreadable} after the merge was asked for (${reason}); nothing was tagged"
+fi
 echo "pr-land: #${pr} merged into ${base} (${commit:0:7})"
 if [ "${keep}" -eq 0 ] && [ -n "${head:-}" ]; then
     # 残っている元の branch は、 PR の先頭と同じ commit を指している時だけ消す (= 後から積まれた物は残す)
