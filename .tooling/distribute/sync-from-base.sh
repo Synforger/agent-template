@@ -8,6 +8,9 @@ set -euo pipefail
 #
 # Usage:
 #   ./.tooling/distribute/sync-from-base.sh
+#   ./.tooling/distribute/sync-from-base.sh -h | --help   (= この説明を出して、 何もせずに終わる)
+#
+# 引数は -h / --help の他に取らず、 他の引数は何も写さずに断る (= 打ち間違いで取り込みを走らせない)。
 #
 # Environment:
 #   BASE_REPO_URL  : base repo の git URL (default: 下記 DEFAULT_BASE_URL)
@@ -36,6 +39,18 @@ set -euo pipefail
 # この file は sync 自身を運べないので (= init で一度だけ届く)、 判定も shell の中に置く
 # (= 別の file に出すと、 その file を運ぶ口が無い)
 # =============================================================================
+
+case "${1:-}" in
+    "") ;;
+    -h|--help)
+        sed -n '/^# Usage:/,/^# =====/{/^# =====/d;s/^# \{0,1\}//;p;}' "${BASH_SOURCE[0]}"
+        exit 0
+        ;;
+    *)
+        echo "error: unknown argument '$1' (this script takes none; see --help)" >&2
+        exit 2
+        ;;
+esac
 
 DEFAULT_BASE_URL="${BASE_REPO_URL:-git@github.com:synforger/agent-template.git}"
 BASE_BRANCH="${BASE_BRANCH:-develop}"
