@@ -143,7 +143,7 @@ def check(tab_dir: Path) -> list[str]:
             problems.append(f"横の目次を読む path が違う: {page.relative_to(tab_dir)} は {found.group(1)}、"
                             f"正しくは {expected_src} (install_toc.py で直す)")
     for page in sorted(tab_dir.rglob("*.html")):
-        if "_archive" not in page.relative_to(tab_dir).parts:
+        if "_archive" not in page.relative_to(tab_dir).parts or is_explainer_source(tab_dir, page):
             continue
         found = SCRIPT_TAG.search(HTML_COMMENT.sub("", page.read_text(encoding="utf-8")))
         expected_src = os.path.relpath(SOURCE, page.parent)

@@ -125,6 +125,10 @@ out="$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1)"
 check "check: _archive/ の下で写しを指すページを名指す" \
     "\`_archive/\` のページが横の目次を違う path で読む: _archive/kept.html は ../../_common/toc-sidebar.js、正しくは ../../../../../pages/_common/toc-sidebar.js (install_toc.py で直す。写しを消す前に)" \
     "$(printf '%s\n' "${out}" | grep '_archive')"
+# 組み立ての元 (`src/` の下の雛形) は、 書き出し先から見た path を持つので、 _archive/ の下でも数えない
+mkdir -p "${P_PAGES}/ses_tab/_archive/x/src"
+printf '<html><body><script src="../../../../../pages/_common/toc-sidebar.js" defer></script>\n</body></html>\n' > "${P_PAGES}/ses_tab/_archive/x/src/template.html"
+check "check: _archive/ の下の組み立ての元は名指さない" "" "$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1 | grep 'template.html')"
 python3 -I "${INSTALL}" "${P_PAGES}/ses_tab" > /dev/null 2>&1
 check "install: _archive/ の下の在る行を根の部品へ直す" "../../../../../pages/_common/toc-sidebar.js" "$(loaded "${P_PAGES}/ses_tab/_archive/kept.html")"
 check "install: _archive/ の下の行の無いページには足さない" "" "$(loaded "${P_PAGES}/ses_tab/_archive/old.html")"
