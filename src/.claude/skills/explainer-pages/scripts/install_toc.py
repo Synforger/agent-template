@@ -1,6 +1,6 @@
 """説明のページに横の目次の部品を読む 1 行を入れる (説明のページを置いた後と、階層の pages/ を作った後に、人かエージェントが呼ぶ)。
 
-使い方: `python3 -I install_toc.py <ページの file か folder>...`。folder なら中の `*.html` を全部 (`_archive/` を除く)。
+使い方: `python3 -I install_toc.py <ページの file か folder>...`。folder なら中の `*.html` を全部。`_archive/` の下のページは、行を新しくは足さず、在る行だけを根の部品へ直す (写しを消した後に目次が切れないように)。
 
 する事:
 1. ページの `</body>` の前に、エージェントの根の `pages/_common/toc-sidebar.js` を読む 1 行を足す。
@@ -65,6 +65,18 @@ def pages_in(target: Path) -> list[Path]:
     return sorted(p for p in target.rglob("*.html") if SKIPPED_FOLDER not in p.parts)
 
 
+def archived_in(target: Path) -> list[Path]:
+    """渡された folder の `_archive/` の下のページ (file が渡された時は無し)。在る行だけを直す相手。"""
+    if target.is_file():
+        return []
+    return sorted(p for p in target.rglob("*.html") if SKIPPED_FOLDER in p.parts)
+
+
+def is_archived(page: Path) -> bool:
+    """`_archive/` の下のページか。目次の行を新しくは足さないが、在る行は直す (写しを消した後に切れないように)。"""
+    return SKIPPED_FOLDER in page.parts
+
+
 def is_build_source(page: Path) -> bool:
     """組み立ての元か。`src/` は階層から見た相対の path で見る (根が `src/` の下に在る repo でも全部を飛ばさない)。"""
     inside_tier = page.resolve().relative_to(tier_of(page)).parts[:-1]
@@ -78,6 +90,8 @@ def install(page: Path) -> str:
     src = os.path.relpath(SOURCE, page.resolve().parent)
     html = page.read_text(encoding="utf-8")
     new_html, result = tagged(html, src)
+    if result == "added" and is_archived(page):
+        return "skipped"
     if new_html != html:
         page.write_text(new_html, encoding="utf-8")
     return result
@@ -93,7 +107,7 @@ def main() -> int:
         return 1
     outside = 0
     for target in (Path(arg).expanduser() for arg in sys.argv[1:]):
-        for page in pages_in(target):
+        for page in pages_in(target) + archived_in(target):
             if not page.resolve().is_relative_to(AGENT_DIR):
                 print(f"outside: {page} (この道具のエージェントの folder {AGENT_DIR} の外。そのエージェントの道具で流す)")
                 outside += 1
