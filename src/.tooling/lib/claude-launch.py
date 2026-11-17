@@ -247,6 +247,51 @@ def record_account(session: str) -> Path | None:
     return here if here in accounts else (accounts[0] if accounts else None)
 
 
+def state_file(account: Path) -> Path:
+    """口座の状態の file (= 既定の口座は家の直下の `.claude.json`、 ほかは口座の folder の中)。"""
+    return HOME / ".claude.json" if account == DEFAULT_ACCOUNT else account / ".claude.json"
+
+
+def trust_key(folder: Path) -> str:
+    """Claude Code が folder の信頼を覚える鍵 (= folder の git の repo の根。 repo の外なら folder 自身)。"""
+    import subprocess  # noqa: PLC0415
+    done = subprocess.run(["git", "-C", str(folder), "rev-parse", "--show-toplevel"],
+                          capture_output=True, text=True, check=False)
+    return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else os.path.realpath(folder)
+
+
+def trust_added_dirs(account: Path, extra: list[str]) -> None:
+    """`--add-dir` で渡すエージェントの中の folder を、 口座の状態の file で信頼済みにする。
+
+    Claude Code (2.1.326 から) は、 追加の folder が自前の git の repo だと、 根の信頼が届かず、 起動の前に信頼の窓を
+    出して止まる (= 既定の選びは「No, exit」)。 鍵は窓が覚えるのと同じ repo の根で、 エージェントの folder の中の物だけを書く。
+    """
+    root = os.path.realpath(AGENT)
+    keys = [key for key in dict.fromkeys(trust_key(Path(d)) for d in extra[1::2])
+            if key == root or key.startswith(root + os.sep)]
+    path = state_file(account)
+    if not keys or not path.is_file():
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        say(f"{path} を読めません: {error}")
+        return
+    projects = data.setdefault("projects", {})
+    missing = [key for key in keys if not projects.get(key, {}).get("hasTrustDialogAccepted")]
+    if not missing:
+        return
+    for key in missing:
+        projects[key] = {**projects.get(key, {}), "hasTrustDialogAccepted": True}
+    tmp = path.with_name(path.name + ".launch-tmp")
+    try:
+        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        os.chmod(tmp, path.stat().st_mode & 0o777)
+        os.replace(tmp, path)
+    except OSError as error:
+        say(f"{path} を更新できません: {error}")
+
+
 def pin_fast_mode(dirs: list[Path]) -> None:
     for d in dict.fromkeys(dirs):
         path = d / "settings.json"
@@ -361,6 +406,7 @@ def main() -> int:
     if not os.environ.get("AGENT_CHILD"):
         pull_agent()
     pin_fast_mode([account])
+    trust_added_dirs(account, extra)
     # 番人はこの folder から、 このタブが読んでよい境界を決める (= 含む境界と外側の境界、 folder の
     # guard-reads.txt に書いた境界)。 再開でも同じ階層の folder を渡す
     os.environ["GUARD_WORK_FOLDER"] = str(folder)

@@ -91,6 +91,21 @@ setup
 printf 'Client の件で' > "${T}/msg"
 launch --first-message-file "${T}/msg"
 check "skill を持たない階層には --add-dir を付けない" lacks "${T}/out/args" "--add-dir"
+# --- 自前の git の repo の階層を渡す時は、 口座の状態の file でその repo の根を信頼済みにする ---------------
+setup
+mkdir -p "${T}/agent/projects/Client/.claude/skills"
+git -C "${T}/agent/projects/Client" init -q
+printf '{"projects": {"/elsewhere": {"hasTrustDialogAccepted": true}}, "theme": "dark"}\n' > "${T}/home/.claude.json"
+printf 'Client の件で' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "自前の repo の階層の根を信頼済みにする" python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['projects'][sys.argv[2]]['hasTrustDialogAccepted'] is True" "${T}/home/.claude.json" "${T}/agent/projects/Client"
+check "状態の file のほかの物は残す" python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['theme']=='dark' and d['projects']['/elsewhere']['hasTrustDialogAccepted']" "${T}/home/.claude.json"
+mkdir -p "${T}/home/.claude-work" && printf '{"projects": {}}\n' > "${T}/home/.claude-work/.claude.json"
+printf 'Client の件で' > "${T}/msg"
+env -u PWA_SID -u AGENT_TIER -u GUARD_WORK_FOLDER -u AGENT_CHILD CLAUDE_CONFIG_DIR="${T}/home/.claude-work" HOME="${T}/home" \
+    AGENT_ROOT="${T}/elsewhere" AGENT_CLAUDE_BIN="${T}/claude" OUT="${T}/out" python3 "${LAUNCH}" --first-message-file "${T}/msg" 2> "${T}/out/stderr"
+check "口座の folder の状態の file にも書く" python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['projects'][sys.argv[2]]['hasTrustDialogAccepted'] is True" "${T}/home/.claude-work/.claude.json" "${T}/agent/projects/Client"
+
 
 setup
 mkdir -p "${T}/agent/projects/AP/subprojects/番人"
