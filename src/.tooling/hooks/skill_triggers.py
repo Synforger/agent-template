@@ -1,9 +1,11 @@
 """Which skills an event calls for, by the trigger table (pure: no file, state or command is touched).
 
-The table (`skill-triggers.toml`, read by `skill_reads.py`) lists one skill per `[[skill]]` with one or more
-`[[skill.when]]`. A `[[skill]]` has:
+Two tables are read (by `skill_reads.py`): the base table `skill-triggers.base.toml`, which the agent template
+ships with rows for the skills it ships, and the agent's own `skill-triggers.toml`. Each lists one skill per
+`[[skill]]` with one or more `[[skill.when]]`. A `[[skill]]` has:
 
 - `name`  the name the Skill tool calls it by (a plugin's skill is `<plugin>:<skill>`)
+- `off`   true, in the agent's own table only: drop the base table's row of that name
 - `file`  where its SKILL.md is (optional). `{platform}` stands for the platform's root (`AGENT_PLATFORM_ROOT`,
           else `~/agent-platform`) and `{root}` for the agent's own folder. Without it the skill is the agent's
           own: `<agent>/.claude/skills/<name>/SKILL.md`
@@ -13,7 +15,8 @@ A `when` matches when every condition it writes holds:
 - `event`   the hook event (default `PreToolUse`; also `UserPromptSubmit`, `SessionStart`)
 - `tools`   tool names; a name ending in `*` matches by prefix
 - `path`    a regular expression searched in the path the tool reads or writes
-- `command` a regular expression searched in a Bash command
+- `command` a regular expression searched in a Bash command, leaving out the body of a here-document (the text a
+          command writes with `<<EOF`, such as a message, is not a command)
 - `cwd`     a regular expression searched in the session's working folder
 - `subagent` a regular expression searched in the Agent tool's `subagent_type` (`general-purpose` when the call
           leaves it out)
@@ -21,12 +24,14 @@ A `when` matches when every condition it writes holds:
 - `env`     `NAME=value` pairs that the hook's environment holds
 - `code`    true: the path is a code file (by suffix, or `#!` on the first line), outside the temporary roots
 
+An own row with a base row's name adds its `when` to that row; any other own row is a skill of the agent's own.
 `{root}` in a regular expression stands for the agent's own folder. Called by `skill_gate.py`.
 """
 import re
 from pathlib import Path
 
 DEFAULT_EVENT = "PreToolUse"
+HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 CODE_SUFFIXES = {
     ".py", ".sh", ".bash", ".zsh", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".swift", ".go",
     ".rs", ".rb", ".kt", ".java", ".c", ".cc", ".cpp", ".h", ".hpp", ".m", ".lua", ".ipynb",
@@ -53,6 +58,43 @@ def is_code(path_text: str, first_bytes: bytes, new_content: str, temporary_root
     return new_content.startswith("#!") or first_bytes.startswith(b"#!")
 
 
+def without_heredocs(command: str) -> str:
+    """The command with the body of each here-document taken out (its opening line stays)."""
+    kept: list[str] = []
+    ending = None
+    for line in command.split("\n"):
+        if ending is not None:
+            if line.strip() == ending:
+                ending = None
+            continue
+        kept.append(line)
+        opened = HEREDOC_START.findall(line)
+        if opened:
+            ending = opened[-1][1]
+    return "\n".join(kept)
+
+
+def merged(base: list[dict], own: list[dict]) -> list[dict]:
+    """The base table's rows with the agent's own rows laid over them, each marked with `from_base`.
+
+    An own row with a base row's name adds its `when` to that row (`file` too, when it gives one), and `off = true`
+    drops that row. Any other own row follows the base rows.
+    """
+    rows = {row["name"]: {**row, "when": list(row.get("when", [])), "from_base": True} for row in base}
+    for row in own:
+        name = row["name"]
+        if name in rows and rows[name]["from_base"]:
+            if row.get("off"):
+                del rows[name]
+                continue
+            rows[name]["when"] += row.get("when", [])
+            if "file" in row:
+                rows[name]["file"] = row["file"]
+        elif not row.get("off"):
+            rows[name] = {**row, "when": list(row.get("when", [])), "from_base": False}
+    return list(rows.values())
+
+
 def tool_matches(tool_name: str, tools: list[str]) -> bool:
     return any(tool_name.startswith(name[:-1]) if name.endswith("*") else tool_name == name for name in tools)
 
@@ -71,7 +113,8 @@ def when_matches(when: dict, event: dict) -> bool:
     if "tools" in when and not tool_matches(event["tool"], when["tools"]):
         return False
     for key in ("path", "command", "cwd", "subagent", "prompt"):
-        if key in when and not searched(when[key], event[key], event["root"]):
+        text = without_heredocs(event[key]) if key == "command" else event[key]
+        if key in when and not searched(when[key], text, event["root"]):
             return False
     for pair in when.get("env", []):
         name, _, value = pair.partition("=")

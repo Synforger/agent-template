@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Have the agent read a skill the first time its session does what the skill is for (a hook entry).
 
-The trigger table `skill-triggers.toml` says which operation calls for which skill. When an operation matches
+The trigger tables say which operation calls for which skill: `skill-triggers.base.toml`, which the agent
+template ships for the skills it ships, under the agent's own `skill-triggers.toml` (rules in `skill_triggers.py`). When an operation matches
 skills the session's transcript does not show as read, the hook says so once:
 - PreToolUse: the tool is denied with the list of skills to read; the agent reads them and runs the tool again
 - UserPromptSubmit / SessionStart: one line of context names the skills to read
@@ -12,7 +13,7 @@ never stops for that skill: it is the read the gate asks for.
 
 The settings of every account on the machine name this one copy of the hook, so a session of another agent reaches
 it too. The agent is the one its launcher names in `AGENT_ROOT`, and its own table and skills are used: a session
-of another agent never hears about this agent's skills, and an agent without a table hears nothing.
+of another agent never hears about this agent's skills, and an agent without tables hears nothing.
 
 An unreadable payload, table or transcript passes silently (fail-open).
 Called from the agent's Claude Code settings (PreToolUse, UserPromptSubmit, SessionStart).
@@ -25,11 +26,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from skill_reads import READING_TOOLS, first_bytes, load_table, read_skills, transcript_of  # noqa: E402
+from skill_reads import READING_TOOLS, first_bytes, load_rows, read_skills, transcript_of  # noqa: E402
 from skill_triggers import is_code, skill_file, skills_for, target_path  # noqa: E402
 
 ROOT = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
 TABLE = Path(os.environ.get("SKILL_GATE_TABLE") or ROOT / ".tooling/hooks/skill-triggers.toml")
+BASE_TABLE = Path(os.environ.get("SKILL_GATE_BASE_TABLE") or ROOT / ".tooling/hooks/skill-triggers.base.toml")
 PLATFORM = Path(os.environ.get("AGENT_PLATFORM_ROOT") or Path.home() / "agent-platform")
 # Folders, without the trailing slash. The test's own work folder sits under /var/folders, so it narrows this list.
 TEMPORARY_ROOTS = tuple(os.environ.get("SKILL_GATE_TEMPORARY_ROOTS",
@@ -92,7 +94,7 @@ def main() -> None:
     try:
         payload = json.load(sys.stdin)
         event = event_of(payload)
-        table = load_table(TABLE)
+        table = load_rows(BASE_TABLE, TABLE, ROOT, PLATFORM)
         matched = skills_for(table, event)
         if not matched:
             return

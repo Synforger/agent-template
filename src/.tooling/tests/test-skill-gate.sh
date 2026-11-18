@@ -10,6 +10,7 @@ W="$(mktemp -d)"
 trap 'rm -rf "${W}"' EXIT
 export SKILL_GATE_TEMPORARY_ROOTS="/scratch-root"  # 作業場は /var/folders の下なので、 一時の置き場を別にする
 export SKILL_GATE_TABLE="${W}/table.toml"
+export SKILL_GATE_BASE_TABLE="${W}/no-base.toml"  # 型の表は、 下の型の表の試験の所でだけ置く
 export AGENT_ROOT="${ROOT}"  # 起動役が渡す、 この session のエージェントの根
 pass=0
 fail=0
@@ -181,9 +182,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from skill_gate import PLATFORM, ROOT
-from skill_reads import load_table
+from skill_reads import load_rows
 from skill_triggers import skill_file
-rows = load_table(Path(sys.argv[1]) / "skill-triggers.toml")
+rows = load_rows(Path(sys.argv[1]) / "skill-triggers.base.toml", Path(sys.argv[1]) / "skill-triggers.toml", ROOT, PLATFORM)
 print(" ".join(r["name"] for r in rows if not skill_file(r, ROOT, PLATFORM).is_file()))
 PY
 )"
@@ -192,13 +193,60 @@ check "本物の表の skill が全部在る (無い: ${real_missing})" [ -z "${
 # 機械全体の設定がこの hook を呼ぶので、 別のエージェントの session (= 起動役が別の根を渡す) も来る
 OTHER="${W}/other-agent"
 mkdir -p "${OTHER}/.tooling/hooks"
-other_hook() { printf '{"transcript_path":"%s",%s}' "$1" "$2" | env -u SKILL_GATE_TABLE AGENT_ROOT="${OTHER}" AGENT_PLATFORM_ROOT="${W}/platform" python3 "${HOOKS}/skill_gate.py"; }
+other_hook() { printf '{"transcript_path":"%s",%s}' "$1" "$2" | env -u SKILL_GATE_TABLE -u SKILL_GATE_BASE_TABLE AGENT_ROOT="${OTHER}" AGENT_PLATFORM_ROOT="${W}/platform" python3 "${HOOKS}/skill_gate.py"; }
 check "表の無い別のエージェントの session では、 この agent の skill を名指さない" silent "$(other_hook "${NONE}" "$(tool Bash '{"command":"tabs send x body.md"}')")"
 printf '[[skill]]\nname = "own-skill"\n[[skill.when]]\ntools = ["Bash"]\ncommand = %s\n' "'\\btabs\\s+send\\b'" > "${OTHER}/.tooling/hooks/skill-triggers.toml"
 out="$(other_hook "${NONE}" "$(tool Bash '{"command":"tabs send x body.md"}')")"
 check "別のエージェントの session は、 そのエージェントの表で止める" names "${out}" own-skill
 check "別のエージェントの skill は、 そのエージェントの folder で案内する" bash -c 'grep -q "$2/.claude/skills/own-skill/SKILL.md" <<< "$1"' _ "${out}" "${OTHER}"
 check "別のエージェントの session に、 この agent の表の skill を名指さない" bash -c '! grep -q "\`messages\`" <<< "$1"' _ "${out}"
+
+# 型の表 (= skill-triggers.base.toml) の上に派生の表を重ねる
+BASE="${W}/base.toml"; OWN="${W}/own.toml"
+cat > "${BASE}" <<'TOML'
+[[skill]]
+name = "code-writing"
+[[skill.when]]
+tools = ["Bash"]
+command = '\bmkdir\b'
+
+[[skill]]
+name = "no-such-skill"
+[[skill.when]]
+tools = ["Bash"]
+command = '\bmkdir\b'
+
+[[skill]]
+name = "rule-registry"
+[[skill.when]]
+tools = ["Bash"]
+command = '\brmdir\b'
+TOML
+cat > "${OWN}" <<'TOML'
+[[skill]]
+name = "code-writing"
+[[skill.when]]
+tools = ["Bash"]
+command = '\btouch\b'
+
+[[skill]]
+name = "rule-registry"
+off = true
+TOML
+both() { SKILL_GATE_BASE_TABLE="${BASE}" SKILL_GATE_TABLE="$1" hook "${NONE}" "$2"; }
+MKDIR="$(tool Bash '{"command":"mkdir x"}')"
+check "型の表の行は、 派生の表が無くても効く" names "$(both "${W}/missing.toml" "${MKDIR}")" code-writing
+check "派生に SKILL.md の無い型の行は黙る" bash -c '! grep -q no-such-skill <<< "$1"' _ "$(both "${W}/missing.toml" "${MKDIR}")"
+check "派生の表の同じ name の行は、 型の行に条件を足す" names "$(both "${OWN}" "$(tool Bash '{"command":"touch x"}')")" code-writing
+check "足した後も型の行の条件は効く" names "$(both "${OWN}" "${MKDIR}")" code-writing
+check "派生の off = true は型の行を外す" silent "$(both "${OWN}" "$(tool Bash '{"command":"rmdir x"}')")"
+check "off の無い型の行はそのまま効く" names "$(both "${W}/missing.toml" "$(tool Bash '{"command":"rmdir x"}')")" rule-registry
+
+# heredoc の中身 (= 命令が書き込む連絡の本文) の語では当てない
+check "heredoc の中身の語では当てない" silent "$(both "${W}/missing.toml" "$(tool Bash '{"command":"cat > m.md <<EOF\nmkdir x\nEOF"}')")"
+check "引用符の付いた終わりの印の heredoc も中身を見ない" silent "$(both "${W}/missing.toml" "$(tool Bash '{"command":"cat > m.md <<'"'"'EOF'"'"'\nmkdir x\nEOF\necho done"}')")"
+check "heredoc の後に続く命令では当てる" names "$(both "${W}/missing.toml" "$(tool Bash '{"command":"cat > m.md <<EOF\nhello\nEOF\nmkdir x"}')")" code-writing
+check "heredoc を開く行の命令では当てる" names "$(both "${W}/missing.toml" "$(tool Bash '{"command":"mkdir x && cat > m.md <<EOF\nhello\nEOF"}')")" code-writing
 
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]
