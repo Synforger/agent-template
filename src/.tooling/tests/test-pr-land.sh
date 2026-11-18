@@ -61,6 +61,7 @@ scene() {   # scene <名前> <merge が通るか: yes|no> <checks の行...>
     export FAKE_GH="${WORK}/$1"; mkdir -p "${FAKE_GH}"; shift
     local merges="$1"; shift
     printf '%s\n' "$@" > "${FAKE_GH}/checks"
+    echo PUBLIC > "${FAKE_GH}/visibility"; echo 1 > "${FAKE_GH}/workflows"
     # PR の元の branch (= topic) は、 PR の先頭 (= HEAD_AT、 既定は OLD) を指して origin に在る
     git push -q -f origin "${OLD}:refs/heads/topic"
     echo "OPEN main - ${HEAD_AT:-${OLD}} topic" > "${FAKE_GH}/state"
@@ -95,6 +96,12 @@ scene public-none yes '[]'
 echo PUBLIC > "${FAKE_GH}/visibility"; echo 0 > "${FAKE_GH}/workflows"
 out="$(TIMEOUT=2 land 7)"; code=$?
 check "workflow の無い公開の repo は merge しない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"public repo with no workflow"* ]]; echo $?)"
+
+# --- gh が repo を読めない (= 口座がその repo を見られない): 待たずに止まる ---
+scene unreadable yes "${PASS}"
+rm -f "${FAKE_GH}/visibility" "${FAKE_GH}/workflows"
+out="$(TIMEOUT=30 land 7)"; code=$?
+check "repo を読めない時は検査を待たずに止まる (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [ "$(grep -c '^pr checks' "${FAKE_GH}/calls")" = 0 ] && [[ "${out}" == *"could not read the repository"* ]]; echo $?)"
 
 # --- workflow の在る private の repo: 今までどおり検査を待つ ---
 scene private-with yes '[]' "${PASS}"

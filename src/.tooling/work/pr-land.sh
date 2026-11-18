@@ -14,7 +14,8 @@
 #   1. 検査が 1 つ以上登録され、 全部が終わるまで待つ。 1 つでも落ちていれば止まる (= merge しない)。
 #      ただし private の repo で workflow が 1 本も無い時は待たない (= 決まりでは、 private の repo は手元の全体の
 #      試験が検査で、 それを流してから打つ)。 公開の repo は Actions の結果で判定するので、 workflow が無ければ止まる。
-#      公開・非公開と workflow の数が gh から読めない時は、 今までどおり待つ
+#      gh が repo の公開・非公開を読めない時は、 待たずに止まる (= 使っている口座がその repo を見られないので、
+#      検査も読めず、 待っても必ず時間切れになる)
 #   2. merge して、 PR の状態が MERGED になったのを読んで確かめる。 なっていなければ、 gh が最後に出した 1 行を
 #      添えて止まる。 GraphQL の口が「Merge already in progress」 と答えた時は、 GitHub の側に処理中の merge が
 #      残っていて同じ口では通らないので、 REST の口へ PR の先頭の sha を付けて 1 回だけ頼み直す。
@@ -57,7 +58,10 @@ stop() { echo "pr-land: stopped — $1" >&2; exit 1; }
 # 1. 検査: 1 つ以上在って、 全部終わるまで待つ
 visibility="$(gh_ repo view --json visibility -q .visibility)"
 workflows="$(gh_ api 'repos/{owner}/{repo}/actions/workflows' -q .total_count)"
-if [ "${workflows}" = "0" ] && [ "${visibility}" = "PRIVATE" ]; then
+if [ -z "${visibility}" ]; then
+    stop "gh could not read the repository of #${pr} (not merged). The account it uses may not see this repository:
+  run it with GH_TOKEN, or PR_LAND_GH, set to an account that can"
+elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PRIVATE" ]; then
     echo "pr-land: #${pr} is in a private repo with no workflow; its check is the local whole test run, so nothing is awaited"
 elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PUBLIC" ]; then
     stop "#${pr} is in a public repo with no workflow; a public repo is judged by its Actions (not merged)"
