@@ -40,6 +40,7 @@ printf 'AGENT_ROOT=%s\n' "${AGENT_ROOT-unset}" > "${OUT}/root"
 printf 'AGENT_TIER=%s\nCLAUDE_CONFIG_DIR=%s\nGUARD_WORK_FOLDER=%s\nPWA_NOTE=%s\nAGENT_CHILD=%s\n' "${AGENT_TIER-unset}" \
     "${CLAUDE_CONFIG_DIR-unset}" "${GUARD_WORK_FOLDER-unset}" "${PWA_NOTE-unset}" "${AGENT_CHILD-unset}" > "${OUT}/env"
 printf 'VIRTUAL_ENV=%s\nUV_PROJECT_ENVIRONMENT=%s\nPATH=%s\n' "${VIRTUAL_ENV-unset}" "${UV_PROJECT_ENVIRONMENT-unset}" "${PATH}" >> "${OUT}/env"
+printf 'ANTHROPIC_API_KEY=%s\nANTHROPIC_AUTH_TOKEN=%s\n' "${ANTHROPIC_API_KEY-unset}" "${ANTHROPIC_AUTH_TOKEN-unset}" >> "${OUT}/env"
 SH
     chmod +x "${T}/claude"
 }
@@ -58,6 +59,14 @@ VIRTUAL_ENV="${T}/tool-env" UV_PROJECT_ENVIRONMENT="${T}/tool-env" PATH="${T}/to
 check "呼び手の VIRTUAL_ENV を渡さない" has "${T}/out/env" "VIRTUAL_ENV=unset"
 check "呼び手の UV_PROJECT_ENVIRONMENT を渡さない" has "${T}/out/env" "UV_PROJECT_ENVIRONMENT=unset"
 check "PATH から呼び手の環境の bin を外す" bash -c "! grep -q '${T}/tool-env/bin' '${T}/out/env'"
+
+# --- API の鍵は渡さない (= タブはサブスクで動く) ------------------------------------------
+
+setup
+printf 'Client の件で' > "${T}/msg"
+ANTHROPIC_API_KEY="sk-ant-fixture" ANTHROPIC_AUTH_TOKEN="fixture-token" launch --first-message-file "${T}/msg"
+check "ANTHROPIC_API_KEY を渡さない" has "${T}/out/env" "ANTHROPIC_API_KEY=unset"
+check "ANTHROPIC_AUTH_TOKEN を渡さない" has "${T}/out/env" "ANTHROPIC_AUTH_TOKEN=unset"
 
 # --- 最初の発話から階層 ---------------------------------------------------------------
 
