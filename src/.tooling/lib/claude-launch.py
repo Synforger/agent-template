@@ -51,6 +51,9 @@ PULL_TIMEOUT_SECONDS = float(os.environ.get("AGENT_PULL_TIMEOUT", "20"))
 #: 呼び手の道具が自分のために立てた Python の環境の変数 (= client の backend が自分の環境で動き、 立てるタブへ
 #: そのまま受け継がせる)。 残すと、 タブで別の repo の uv を打った時に、 その道具の動いている環境が作り直される
 CALLER_ENV_VARS = ("UV_PROJECT_ENVIRONMENT", "UV_RUN_RECURSION_DEPTH")
+#: Anthropic の API の鍵の変数。 Claude Code はこれが環境に在るとサブスクのログインより鍵を使い、 タブとタブが打つ
+#: `claude -p` が API の請求になる。 タブはサブスクで動かし、 鍵はプログラムが自分の置き場から読む
+API_KEY_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 
 HOME = Path.home()
 #: エージェントの folder は、 この file の置き場だけで決める (= 受け継いだ `AGENT_ROOT` は別のエージェントの
@@ -62,8 +65,8 @@ NAME = AGENT.name
 
 
 def drop_caller_environment() -> None:
-    """呼び手の道具の Python の環境 (= 変数と PATH の中のその bin) を、 claude へ渡す環境から外す。"""
-    for name in CALLER_ENV_VARS:
+    """呼び手の道具の Python の環境 (= 変数と PATH の中のその bin) と API の鍵を、 claude へ渡す環境から外す。"""
+    for name in CALLER_ENV_VARS + API_KEY_ENV_VARS:
         os.environ.pop(name, None)
     venv = os.environ.pop("VIRTUAL_ENV", None)
     if venv:
