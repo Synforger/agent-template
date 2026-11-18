@@ -46,7 +46,7 @@ projects/**/rules : always.md ?registry.jsonl ?hits-since.json ?_archive/**
 .tooling/commit : *.sh *.py
 .tooling/distribute : *.sh
 .tooling/docs-check : *.sh *.py ?local-excludes.txt
-.tooling/hooks : *.sh *.py skill-triggers.toml
+.tooling/hooks : *.sh *.py skill-triggers.toml skill-triggers.base.toml
 .tooling/lib : *.py guard-place.sh
 .tooling/rules : *.py
 .tooling/session-end : *.sh *.py

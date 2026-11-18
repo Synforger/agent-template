@@ -93,6 +93,8 @@ lib/client_openings.py                 | tests/test-extract-operator-words.sh | 
 ?hooks/commit_paths_guard.py           | tests/test-commit-paths-guard.sh   | エージェントの checkout (= `AGENT_ROOT` と hook を持つエージェントの根) で、 `--` の後に path の無い `git commit` と `-a` / `--all` の commit だけを止め、 複数行の message・`-C`・前の段の `cd` も読み、 別の repo・自分の .git を持つ階層・文字として含むだけの命令・読めない時は通す
 ?hooks/skill_gate.py                   | tests/test-skill-gate.sh           | 表の操作に当たり、 その session (= サブエージェントは自分) の会話の記録に読んだ跡の無い skill がある時だけ、 道具を 1 回止めて (= 発話と起動は 1 行の注意で) 全部まとめて名指し、 読んだ後・当たらない操作・表が無い時は黙る
 ?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | 表の条件 (= 道具・path・命令・作業の folder・体の種類・発話・環境・code の file) が全部当たる行の skill を返す
+?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | 型の表 (= skill-triggers.base.toml) の上にエージェントの表を重ね、 同じ name の行は条件を足し、 `off = true` は型の行を外し、 エージェントに SKILL.md の無い型の行は黙る
+?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | Bash の命令の条件は heredoc の中身 (= 命令が書き込む連絡の本文) を除いて照らし、 heredoc を開く行と後に続く命令は照らす
 ?hooks/skill_reads.py                  | tests/test-skill-gate.sh           | 会話の記録から、 skill を呼んだ跡か SKILL.md を読んだ跡を名前ごとに拾う
 ?hooks/subagent_model_gate.py          | tests/test-subagent-model-gate.sh  | Agent の道具で立てる体は model が sonnet か、 それより小さい haiku の時だけ通り、 書いていない (= 親の model を継ぐ)・他の model・fork は止まって直し方を返す
 ?hooks/bypass_prompt_gate.py           | tests/test-bypass-prompt-gate.sh   | 全部通すモードで Claude Code が Bash の確認を出しかけた時だけ、 窓を出さずに断って書き直し方を返し (= rm には消す先の書き方)、 ほかのモード・ほかの道具・読めない入力では黙る

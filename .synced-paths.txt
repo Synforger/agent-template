@@ -26,7 +26,8 @@
 .tooling/hooks/skill_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/skill_triggers.py   # @machine-wide skill_gate が読む
 .tooling/hooks/skill_reads.py   # @machine-wide skill_gate が読む
-!.tooling/hooks/skill-triggers.toml   # どの操作でどの skill を読ませるかは派生ごと (= 型の表は雛形)
+.tooling/hooks/skill-triggers.base.toml   # 型が配る skill の行。 skill_gate が派生の表の下に重ねて読む
+!.tooling/hooks/skill-triggers.toml   # 派生だけの skill の行と、 型の行へ足す条件 (= 型の file は雛形)
 .tooling/hooks/subagent_model_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/ci_duplicate_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/commit_paths_guard.py   # @machine-wide 口座の設定の hook が呼ぶ

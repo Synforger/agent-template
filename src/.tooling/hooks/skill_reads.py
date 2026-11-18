@@ -1,4 +1,4 @@
-"""Read the trigger table, and find which skills a session's transcript shows were read.
+"""Read the trigger tables, and find which skills a session's transcript shows were read.
 
 Read means: the body the harness injects when a skill is loaded (`Base directory for this skill: <folder>`),
 or a Read tool call on the skill's SKILL.md. A skill the table gives a `file` is found by that file: its folder
@@ -11,6 +11,8 @@ import re
 import tomllib
 from pathlib import Path
 
+from skill_triggers import merged, skill_file
+
 LOADED_MARK = "Base directory for this skill:"
 READING_TOOLS = {"Read"}
 
@@ -20,6 +22,13 @@ def load_table(path: Path) -> list[dict]:
     if not path.is_file():
         return []
     return tomllib.loads(path.read_text(encoding="utf-8")).get("skill", [])
+
+
+def load_rows(base: Path, own: Path, root: Path, platform: Path) -> list[dict]:
+    """The rows the gate uses: the base table laid under the agent's own, keeping a base row only when the agent
+    has that skill's SKILL.md (an agent the template made without a skill hears nothing about it)."""
+    rows = merged(load_table(base), load_table(own))
+    return [row for row in rows if not row["from_base"] or skill_file(row, root, platform).is_file()]
 
 
 def transcript_of(payload: dict) -> Path | None:
