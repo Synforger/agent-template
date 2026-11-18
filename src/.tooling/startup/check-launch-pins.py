@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""起動の model と effort が launcher の値のまま効いているかを見る (= startup-status の 2 行)。
+"""起動の model と effort と口座が launcher の決めたまま効いているかを見る (= startup-status の 3 行)。
 
 model_pin: 起動の経路のどこかが版つき id (claude-opus-5) や変種の接尾辞 (opus[1m]) を名指ししていないか。
   見る場所 = launcher の MODEL / shell の設定 file の --model / 各 config dir の settings.json の model
@@ -10,11 +10,17 @@ effort_pin: launcher の --effort が何かに上書きされていないか。
   launcher から起動した session の実効値 CLAUDE_EFFORT。 launcher を通った session かどうかは、
   launcher が session に渡す階層の環境変数 (= launcher の `os.environ["…_TIER"] = …` の行が名指す) で見分ける。
 
+api_key: タブがサブスクの口座でなく API の key で動く道が無いか。 Claude Code は key の環境変数が在ると、
+  サブスクのログインより key を使う (= 対話のタブも `claude -p` も API の請求に変わる)。 key は使う道具が自分の
+  file から読み、 環境には置かない。 見る場所 = shell の設定 file の key の代入 / 各 config dir の settings.json の
+  `env` の key と `apiKeyHelper` / launchd の全体の環境 (= `launchctl getenv`) / この session の環境。
+
   python3 .tooling/startup/check-launch-pins.py   (= エージェントの repo の root で。 AGENT_ROOT / HOME で差し替え可)
 """
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
@@ -25,6 +31,11 @@ SHELL_FILES = [".zshenv", ".zprofile", ".zshrc", ".zlogin", ".bash_profile", ".b
 PINNED_MODEL = re.compile(r"^claude-|\[")
 SHELL_MODEL = re.compile(r"--model[= ]+.?(claude-[a-z]+-[0-9]|[a-z]+\[)")
 SHELL_EFFORT = re.compile(r"^\s*(export\s+)?CLAUDE_CODE_EFFORT_LEVEL=")
+KEY_NAMES = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+SHELL_KEY = re.compile(r"^\s*(export\s+)?(" + "|".join(KEY_NAMES) + r")=\S")
+LAUNCHCTL_TIMEOUT_SECONDS = 3
+#: 試験が launchctl の代わりに呼ぶ命令 (= 既定は launchctl)
+LAUNCHCTL = os.environ.get("LAUNCH_PINS_LAUNCHCTL", "launchctl")
 # launcher が、 自分の起動した session に渡す階層の環境変数
 LAUNCH_MARK = re.compile(r'os\.environ\["([A-Z][A-Z0-9_]*_TIER)"\]\s*=')
 
@@ -96,14 +107,48 @@ def effort_pin(src: str) -> str:
     return f"effort_pin: ok (launcher={effort}, session={session or 'unmeasured'})"
 
 
+def launchd_keys() -> list[str]:
+    """launchd の全体の環境に置かれた key の名前 (= 読めない時は空)。"""
+    found = []
+    for name in KEY_NAMES:
+        try:
+            done = subprocess.run([LAUNCHCTL, "getenv", name], capture_output=True, text=True,
+                                  timeout=LAUNCHCTL_TIMEOUT_SECONDS, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+        if done.returncode == 0 and done.stdout.strip():
+            found.append(name)
+    return found
+
+
+def api_key() -> str:
+    found = [f"{shell_file}(key の代入)" for shell_file in shell_hits(SHELL_KEY)]
+    for path in settings_files():
+        try:
+            settings = json.loads(read(path) or "{}")
+        except ValueError:
+            continue
+        env = settings.get("env") if isinstance(settings.get("env"), dict) else {}
+        found += [f"settings({short(path)} env.{name})" for name in KEY_NAMES if env.get(name)]
+        if settings.get("apiKeyHelper"):
+            found.append(f"settings({short(path)} apiKeyHelper)")
+    found += [f"launchd({name})" for name in launchd_keys()]
+    found += [f"session({name})" for name in KEY_NAMES if os.environ.get(name)]
+    if found:
+        return f"api_key: SET {', '.join(found)} (= タブがサブスクでなく API の key で動く)"
+    return "api_key: ok (shell・settings・launchd・session のどこにも key が無い = タブはサブスクで動く)"
+
+
 def main() -> None:
     if not LAUNCHER.is_file():
         print(f"model_pin: (skipped, {LAUNCHER.relative_to(ROOT)} not found)")
         print(f"effort_pin: (skipped, {LAUNCHER.relative_to(ROOT)} not found)")
+        print(api_key())
         return
     src = read(LAUNCHER)
     print(model_pin(src))
     print(effort_pin(src))
+    print(api_key())
 
 
 if __name__ == "__main__":

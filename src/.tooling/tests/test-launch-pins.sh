@@ -15,7 +15,8 @@ fail=0
 expect() {
     local what="$1" pattern="$2" out
     out="$(HOME="${T}/home" AGENT_ROOT="${T}/agent" \
-        AGENT_TIER="${TIER-}" CLAUDE_EFFORT="${SESSION_EFFORT-}" python3 "${CHECK}")"
+        AGENT_TIER="${TIER-}" CLAUDE_EFFORT="${SESSION_EFFORT-}" LAUNCH_PINS_LAUNCHCTL="${T}/launchctl" LAUNCHD_KEY="${LAUNCHD_KEY-}" \
+        env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN ${SESSION_KEY:+ANTHROPIC_API_KEY=${SESSION_KEY}} python3 "${CHECK}")"
     if grep -qE -- "${pattern}" <<< "${out}"; then
         pass=$((pass + 1))
     else
@@ -37,6 +38,10 @@ setup() {
     printf '{"theme": "dark"}\n' > "${T}/home/.claude/settings.json"
     printf '{"theme": "dark"}\n' > "${T}/home/.claude-work/settings.json"
     launcher opus high
+    printf '#!/bin/sh\n[ "$2" = "${LAUNCHD_KEY-}" ] && echo sk-test\nexit 0\n' > "${T}/launchctl"
+    chmod +x "${T}/launchctl"
+    LAUNCHD_KEY=""
+    SESSION_KEY=""
     TIER=""
     SESSION_EFFORT=""
 }
@@ -100,6 +105,28 @@ expect "--effort を渡さない launcher は UNPINNED" '^effort_pin: UNPINNED'
 
 setup; rm "${T}/agent/.tooling/lib/claude-launch.py"
 expect "launcher が無い派生は skip" '^model_pin: \(skipped, \.tooling/lib/claude-launch\.py not found\)'
+
+# --- api_key ---
+setup
+expect "key がどこにも無ければ緑" '^api_key: ok'
+
+setup; printf 'export ANTHROPIC_API_KEY=sk-test\n' > "${T}/home/.zshrc"
+expect "zshrc の key の代入は赤" '^api_key: SET zshrc\(key の代入\)'
+
+setup; printf '# export ANTHROPIC_API_KEY=sk-test\nexport ANTHROPIC_API_KEY=\n' > "${T}/home/.zshenv"
+expect "comment と空の代入は緑" '^api_key: ok'
+
+setup; printf '{"env": {"ANTHROPIC_AUTH_TOKEN": "x"}}\n' > "${T}/home/.claude-work/settings.json"
+expect "settings の env の key は赤" '^api_key: SET settings\(~/.claude-work/settings.json env.ANTHROPIC_AUTH_TOKEN\)'
+
+setup; printf '{"apiKeyHelper": "/bin/echo x"}\n' > "${T}/home/.claude/settings.json"
+expect "settings の apiKeyHelper は赤" '^api_key: SET settings\(~/.claude/settings.json apiKeyHelper\)'
+
+setup; LAUNCHD_KEY=ANTHROPIC_API_KEY
+expect "launchd の全体の環境の key は赤" '^api_key: SET launchd\(ANTHROPIC_API_KEY\)'
+
+setup; SESSION_KEY=sk-test
+expect "この session の環境の key は赤" '^api_key: SET session\(ANTHROPIC_API_KEY\)'
 
 echo "launch-pins: ${pass} ok, ${fail} FAIL"
 [ "${fail}" -eq 0 ]
