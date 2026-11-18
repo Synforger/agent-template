@@ -86,7 +86,11 @@ else:
         fail*) stop "a check failed on #${pr}: ${verdict#fail } (not merged)" ;;
     esac
     if [ "${waited}" -ge "${TIMEOUT}" ]; then
-        [ "${verdict}" = "none" ] && stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged)"
+        [ "${verdict}" = "none" ] && stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged).
+  If a workflow here listens to pull_request and GitHub created no run for this PR at all, GitHub's
+  record of which workflow starts on which event is stale for this repository: turn the repository's
+  Actions off and on again ('gh api -X PUT repos/{owner}/{repo}/actions/permissions -F enabled=false',
+  then the same with '-F enabled=true' and the allowed_actions it had), then push to the PR again"
         stop "the checks on #${pr} did not finish in ${TIMEOUT}s (not merged)"
     fi
     sleep "${INTERVAL}"
