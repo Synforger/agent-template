@@ -1,72 +1,15 @@
-# どの操作の時に、 どの skill を読ませるか (= skill_gate.py が読む表。 この agent の skill だけを書く)。
+# どの操作の時に、 どの skill を読ませるか (= この agent だけの行。 skill_gate.py が、 型が配る
+# skill-triggers.base.toml の上に重ねて読む)。 型が配る skill の行は型の表が持つので、 ここには書かない。
 #
-# 1 つの [[skill]] が 1 本の skill。 [[skill.when]] のどれかが当たり、 その session の会話の記録に
-# その skill を読んだ跡が無い時だけ、 1 回止めて (= 発話・起動は 1 行の注意で) 読ませる。
-# 条件の書き方は skill_triggers.py の先頭。 {root} はこの agent の folder。
-# 当たる操作の決まっていない skill (= review-rules) は書かない (= 一覧の説明に任せる)。
-# 派生は自分の skill の行を足す (= この file は型から降りない)。
-
-[[skill]]
-name = "code-writing"
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"]
-code = true
-[[skill.when]]
-tools = ["Bash"]
-command = '\bmkdir\b'
-
-[[skill]]
-name = "sub-agent"
-[[skill.when]]
-tools = ["Agent", "Task", "Workflow"]
-
-[[skill]]
-name = "explainer-pages"
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit"]
-path = '{root}/.*(\.html$|/pages/)'
-
-[[skill]]
-name = "automation-machinery"
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit"]
-path = '{root}/\.tooling/'
-
-[[skill]]
-name = "rule-registry"
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit"]
-path = '{root}/(.*/)?rules/'
-
-[[skill]]
-name = "implementation-plan"
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit"]
-path = '{root}/(.*/)?plans/'
-
-[[skill]]
-name = "base-sync"
-[[skill.when]]
-tools = ["Bash"]
-command = '(sync-from-base|promote-to-base)\.sh|\bplatform\s+(build|cutover|rollback)\b'
-
-[[skill]]
-name = "public-repo"
-[[skill.when]]
-tools = ["Bash"]
-command = '\bgh\s+pr\s+create\b'
-
-[[skill]]
-name = "session-end"
-[[skill.when]]
-event = "UserPromptSubmit"
-prompt = '<session-rollover phase="close">'
-
-[[skill]]
-name = "external-implementation"
-[[skill.when]]
-tools = ["Bash"]
-command = '\bgit\s+clone\b|\buv\s+add\b|\bpnpm\s+add\b|\bpip\s+install\b'
-[[skill.when]]
-tools = ["Write", "Edit", "MultiEdit"]
-path = '/third_party/'
+# ここに書くのは、 この agent だけの skill と、 使う plugin の skill と、 型の行へ足す条件 (= 同じ name で書く)。
+# 型の行を外す時は、 同じ name の [[skill]] に off = true を書く。
+# name は Skill の道具で呼ぶ名前 (= plugin の skill は <plugin>:<skill>)。
+# file は SKILL.md の在処で、 plugin の skill には書く (= 省くとこの agent の .claude/skills/<name>/SKILL.md)。
+# 条件と file の書き方は skill_triggers.py の先頭。 {root} はこの agent の folder、 {platform} は器の根。
+#
+# 例 (= この agent だけの skill):
+# [[skill]]
+# name = "my-skill"
+# [[skill.when]]
+# tools = ["Bash"]
+# command = '\bmy-command\b'
