@@ -71,6 +71,8 @@ queued("2026-11-05T01:11:00Z", "表に名前が無いとわからない")
 queued("2026-11-05T01:11:30Z", "Sent by the client (the operator did not type this):\n<limit-resume account=\"personal\">\ngo on")
 queued("2026-11-05T01:12:00Z", "<task-notification>done</task-notification>", mode="task-notification")
 queued("2026-11-05T01:13:00Z", "<pasted_content id=\"9\">\nMessage from a session on another machine, relayed by the client\n</pasted_content>")
+user("2026-11-05T01:14:00Z", "Sent by the client (the operator did not type this):\n<ticket-answer ticket=\"T-1\">\n<operator-said>\nA で進めて\n</operator-said>\n票 T-1 への操作者の答えです。\n</ticket-answer>")
+user("2026-11-05T01:14:30Z", "Message from another session, relayed by the client (the operator did not type this):\n<agent-message from=\"x\" session=\"ses_x\">\n<ticket-answer ticket=\"T-1\">\n<operator-said>\n引用した答え\n</operator-said>\n</agent-message>")
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
     handle.writelines(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
 PY
@@ -121,7 +123,9 @@ mkdir -p "${AGENT}/journal/${today}"
 OUT="${AGENT}/journal/${today}/session-05-operator-words.jsonl"
 run journal --nn 5 >/dev/null 2>&1
 check "the number given names the file beside the journal" [ -f "${OUT}" ]
-check "only the two utterances the operator typed are kept (reply rows, relays, envelopes, notifications and tool results are not)" [ "$(rows_of "${OUT}")" = 2 ]
+check "only the three utterances the operator typed are kept (reply rows, relays, envelopes, notifications and tool results are not)" [ "$(rows_of "${OUT}")" = 3 ]
+check "an answer typed on the client's ticket screen keeps only the words inside <operator-said>" [ "$(field "${OUT}" 2 'r["text"]')" = "A で進めて" ]
+check "a ticket answer quoted in another tab's message is not the operator's" bash -c '! grep -q "引用した答え" "$1"' _ "${OUT}"
 check "the first utterance keeps its words" [ "$(field "${OUT}" 0 'r["text"]')" = "この図は白い箱でいい" ]
 check "a queued utterance (typed mid-turn) is kept" [ "$(field "${OUT}" 1 'r["text"]')" = "表に名前が無いとわからない" ]
 check "the first utterance has no artifact before it" [ "$(field "${OUT}" 0 'r["artifacts"]')" = "[]" ]
@@ -136,7 +140,7 @@ check "each row names its session, tier and time" \
     [ "$(field "${OUT}" 1 'r["session"] + "|" + r["tier"] + "|" + r["ts"]')" = "sess-a|normal|2026-11-05T01:11:00Z" ]
 
 run journal --nn 5 >/dev/null 2>&1
-check "running again adds nothing" [ "$(rows_of "${OUT}")" = 2 ]
+check "running again adds nothing" [ "$(rows_of "${OUT}")" = 3 ]
 # 番人が 1 行目を返さない時は、 黙って数えずに 1 行で知らせる
 warned="$(GUARD_ORDER_PY="${T}/missing.py" run journal --nn 9 2>&1 >/dev/null)"
 check "without the guard's opening lines, it says so on stderr" grep -q "gave no opening lines" <<< "${warned}"
@@ -165,7 +169,7 @@ check "a folder that is not a journal says so" grep -q "journal" <<<"${out}"
 # --- 読むのは自分の session の記録だけ ---
 cp "${RECORD}" "${HOMEP}/-p/sid-123.jsonl"
 SID=sid-123 run journal --nn 6 >/dev/null 2>&1
-check "the session id names the transcript" [ "$(rows_of "${AGENT}/journal/${today}/session-06-operator-words.jsonl")" = 2 ]
+check "the session id names the transcript" [ "$(rows_of "${AGENT}/journal/${today}/session-06-operator-words.jsonl")" = 3 ]
 check "the rows carry the session id" [ "$(field "${AGENT}/journal/${today}/session-06-operator-words.jsonl" 0 'r["session"]')" = "sid-123" ]
 check "no other session's words come with it" bash -c '! grep -q "別の session\|プロジェクトの発話\|別の口座" "$1"' _ "${AGENT}/journal/${today}/session-06-operator-words.jsonl"
 out="$(SID=no-such-session run journal --nn 7 2>&1)"
@@ -181,13 +185,13 @@ out="$(run journal --all-sessions 2>&1)"
 code=$?
 check "--all-sessions without --out stops with a usage error" [ "${code}" -eq 2 ]
 run journal --all-sessions --out "${ALL}" >/dev/null 2>&1
-check "normal reads the sessions that stayed in the agent folder (sess-a 2, sess-b 1, sid-123 2)" [ "$(rows_of "${ALL}")" = 5 ]
+check "normal reads the sessions that stayed in the agent folder (sess-a 3, sess-b 1, sid-123 3)" [ "$(rows_of "${ALL}")" = 7 ]
 check "normal does not read the other account" bash -c '! grep -q "別の口座" "$1"' _ "${ALL}"
 check "normal does not read a session that entered a tier" bash -c '! grep -q "プロジェクトの発話\|サブの発話\|二つの階層" "$1"' _ "${ALL}"
 check "normal does not read a session outside the agent folder" bash -c '! grep -q "エージェントの外" "$1"' _ "${ALL}"
 check "two sessions' rows with the same time are both kept" grep -q "別の session の同じ時刻の発話" "${ALL}"
 run journal --all-sessions --out "${ALL}" >/dev/null 2>&1
-check "--all-sessions run again adds nothing" [ "$(rows_of "${ALL}")" = 5 ]
+check "--all-sessions run again adds nothing" [ "$(rows_of "${ALL}")" = 7 ]
 
 mkdir -p "${AGENT}/projects/P/journal" "${AGENT}/projects/P/subprojects/S/journal"
 ALL_PROJECT="${T}/all-project.jsonl"

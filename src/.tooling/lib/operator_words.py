@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """会話の記録の行から、 操作者が打った発話と、 その直前に作られた物の path を取り出す判定の部品 (= file にも状態にも触らない)。
 
-呼ぶのは `session-end/extract-operator-words.py`。 操作者の発話とは次の 2 つで、 連絡・封筒・通知・道具の返りは含めない。
+呼ぶのは `session-end/extract-operator-words.py`。 操作者の発話とは次の 3 つで、 連絡・封筒・通知・道具の返りは含めない。
 - `type: user` の行の文字の本文 (= 道具の返りを持つ行・harness が足した行・会話の要約の行を除く)
 - `type: attachment` で `attachment.type == queued_command` かつ `commandMode == prompt` の行の `prompt`
   (= 作業中に打って、 後から取り込まれた発話)
+- client の知らせのうち、 1 行目のすぐ次が `<ticket-answer>` の物の `<operator-said>` の中身
+  (= 操作者が client の票の画面で打った答え。 別のタブの連絡は 2 行目が `<agent-message>` なので、 この形にならない)
 
 作った物の path とは、 直前の操作者の発話からこの発話までの間のアシスタントの文と道具の入力に出た、
 html・スライドの file (pptx)・pdf・png・svg の path。 URL は含めない。
@@ -35,6 +37,8 @@ ARTIFACT = re.compile(r"[^\s\"'`<>()\[\]{}\\,;|=]+\.(?:html?|pptx|pdf|png|svg)(?
 # 命令の中の変数とワイルドカードは、 どの物かを指さない
 SHELL_PATTERN = re.compile(r"[*$?]")
 MAX_ARTIFACTS = 12
+# client の知らせの 2 行目から始まる、 票への操作者の答えの封筒。 中の <operator-said> だけが操作者の言葉
+TICKET_ANSWER = re.compile(r"\A<ticket-answer\b[^>\n]*>\n<operator-said>\n(.*?)\n</operator-said>\n", re.DOTALL)
 # 取り込みの 1 頁で、本文に並べる文言の直しの数の上限 (= 残りは前後の版を開けば読める)
 MAX_REVIEW_WORDS = 10
 
@@ -68,6 +72,11 @@ def utterance_text(row: dict, client_openings: tuple[str, ...] = ()) -> str | No
     if raw is None:
         return None
     text = PASTED_TAG.sub("", raw).strip()
+    if text.startswith(tuple(client_openings)) and "\n" in text:
+        answer = TICKET_ANSWER.match(text.split("\n", 1)[1])
+        if answer is None:
+            return None
+        return answer.group(1).strip() or None
     if not text or text.startswith("<") or text.startswith(NOT_OPERATOR_PREFIXES + tuple(client_openings)):
         return None
     return text
