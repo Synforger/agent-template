@@ -76,9 +76,9 @@ cwd = '/agent-platform/tools/'
 name = "session-end"
 [[skill.when]]
 event = "UserPromptSubmit"
-# 別のタブからの連絡 (= 封筒が Message from で始まる) の本文の言葉では当てない
+# 操作者が打っていない発話 (別のタブの連絡・client の知らせ・体の完了の知らせ) の本文の言葉では当てない
 # 「終わりまで」「終わりに」の類の言い回しでは当てない
-prompt = '<session-rollover phase="close">|^(?!Message from )[\s\S]*(終わり(?![まにのをへ])|締めよう|今日はここまで|寝る)'
+prompt = '<session-rollover phase="close">|^(?!Message from |Sent by the client|Tab opened by the client|<task-notification>)[\s\S]*(終わり(?![まにのをへ])|締めよう|今日はここまで|寝る)'
 
 [[skill]]
 name = "external-implementation"
