@@ -113,6 +113,8 @@ T="${W}/named.jsonl"; record "${T}" "${SPOKE}" '{"type":"assistant","message":{"
 check "Bash の命令で path を名指しただけでは読んだ跡に数えない" denies "$(hook "${T}" "$(tool Write "${CODE}")")"
 T="${W}/prefix.jsonl"; record "${T}" "${SPOKE}" "$(loaded code-writing-old)"
 check "名前が前方で同じ別の skill は読んだ跡に数えない" denies "$(hook "${T}" "$(tool Write "${CODE}")")"
+T="${W}/through.jsonl"; record "${T}" "${SPOKE}" "$(loaded_from /x/tools/code-writing/skills/tabs)"
+check "別の skill の folder の path の途中に名前があるだけでは読んだ跡に数えない" denies "$(hook "${T}" "$(tool Write "${CODE}")")"
 
 check "code でない file は通る" silent "$(hook "${NONE}" "$(tool Write "{\"file_path\":\"${W}/notes.md\",\"content\":\"x\"}")")"
 check "一時の置き場は通る" silent "$(hook "${NONE}" "$(tool Write '{"file_path":"/scratch-root/a.py","content":"x"}')")"

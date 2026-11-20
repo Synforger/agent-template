@@ -278,13 +278,15 @@ missing_paths=()
 for p in "${sync_paths[@]}"; do
     src="$BASE_DIR/src/$p"
     dst="$AGENT_DIR/$p"
-    # 末尾 / の dir 同期 or 単体 file
+    # 末尾 / の dir 同期 or 単体 file。 中身の同じ file は書かない (= 更新時刻を動かさない)。 skill の gate は
+    # SKILL.md の更新時刻で「読んだ後に変わった」 を見るので、 中身の同じ file まで書くと、 取り込みのたびに
+    # 全部のタブが読んだ skill を全部読み直す。 そのため rsync は -a の時刻 (-t) を外し、 中身 (-c) で比べる
     if [ -d "$src" ] || [[ "$p" == */ ]]; then
         mkdir -p "$dst"
-        rsync -a --delete "$src/" "$dst/"
+        rsync -rlpcD --delete "$src/" "$dst/"
     elif [ -f "$src" ]; then
         mkdir -p "$(dirname "$dst")"
-        cp "$src" "$dst"
+        cmp -s "$src" "$dst" || cp "$src" "$dst"
     else
         # 中間 stderr は完了バナーまでスクロールで流れる。 集計して末尾で再掲する
         # (= 運ばれなかった事実が「✓ sync complete」 と同じ画面に必ず並ぶ)

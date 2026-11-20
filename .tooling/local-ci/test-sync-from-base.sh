@@ -315,5 +315,24 @@ sync
 check "docs-check が緑なら通る" [ $? -eq 0 ]
 check "docs-check が緑なら commit の案内を出す" grep -qF "git add -A --pathspec-from-file=" "${T}/out"
 
+# --- 中身の同じ file は書かない (= 更新時刻を動かさない。 skill の gate が更新時刻で読み直しを決める) ----------
+setup
+mkdir -p "${BASE}/src/.claude/skills/demo"
+echo "demo v1" > "${BASE}/src/.claude/skills/demo/SKILL.md"
+echo "gone" > "${BASE}/src/.claude/skills/demo/old.md"
+printf '%s\n' ".claude/skills/demo/" >> "${BASE}/.synced-paths.txt"
+printf '%s\n' "# exceptions only" > "${AGENT}/.synced-paths.txt"
+sync
+touch -d 2020-01-01T00:00:00Z "${AGENT}/.tooling/startup/status.sh" "${AGENT}/.claude/skills/demo/SKILL.md"
+mtime() { python3 -c 'import os, sys; print(int(os.stat(sys.argv[1]).st_mtime))' "$1"; }
+old="$(mtime "${AGENT}/.tooling/startup/status.sh")"
+echo "helper v3" > "${BASE}/src/.tooling/lib/helper.sh"
+rm "${BASE}/src/.claude/skills/demo/old.md"
+sync
+check "中身の同じ単体の file は更新時刻が動かない" [ "$(mtime "${AGENT}/.tooling/startup/status.sh")" = "${old}" ]
+check "中身の同じ folder の中の file は更新時刻が動かない" [ "$(mtime "${AGENT}/.claude/skills/demo/SKILL.md")" = "${old}" ]
+check "中身の違う file は写す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh")" = "helper v3" ]
+check "base が folder から消した file は消える" [ ! -e "${AGENT}/.claude/skills/demo/old.md" ]
+
 echo "test-sync-from-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

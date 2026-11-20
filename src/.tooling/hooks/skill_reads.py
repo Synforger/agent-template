@@ -122,9 +122,13 @@ def _note_read(times: dict[str, float | None], name: str, when: float | None) ->
 
 
 def _loaded_pattern(name: str, file: Path | None) -> re.Pattern[str]:
-    """The mark the harness writes when it loads the skill: its folder, or any folder ending in its name."""
+    """The mark the harness writes when it loads the skill: its folder, or any folder ending in its name.
+
+    The name must be the folder's last part: a plugin's skill folder such as `.../tools/<name>/skills/tabs` only
+    passes through it. The block is searched as JSON text, where the line break after the folder is the two characters
+    `\\n`, so the folder ends at a backslash, a quote or a line break."""
     if file is None:
-        return re.compile(re.escape(LOADED_MARK) + r"[^\n\"]*/" + re.escape(name) + r"(?![\w-])")
+        return re.compile(re.escape(LOADED_MARK) + r"[^\n\"\\]*/" + re.escape(name) + r"(?![\w/.-])")
     return re.compile(re.escape(LOADED_MARK) + r"\s*" + re.escape(str(file.parent)) + r"(?![\w/.-])")
 
 
