@@ -1,6 +1,6 @@
 #!/bin/bash
 # test-skill-gate.sh - skill_gate.py は、 表の操作に当たって会話の記録に読んだ跡の無い skill がある時だけ 1 回言い、
-# 読んだ後・当たらない操作・表が無い時は黙る。 作り物の会話の記録と表で、 止める所と黙る所を 1 つずつ確かめる。
+# 読んだ後・当たらない操作・表が無い時は黙る。 読んだ後に SKILL.md が書き換わった skill は、 もう 1 回言う。 作り物の会話の記録と表で、 止める所と黙る所を 1 つずつ確かめる。
 # 表の `file` (= plugin の skill の SKILL.md の在処) を持つ skill は、 その file で案内し、 その file で読んだ跡を見る。
 #   bash .tooling/tests/test-skill-gate.sh
 set -u
@@ -161,6 +161,33 @@ T="${W}/plugin-loaded.jsonl"; record "${T}" "${SPOKE}" "$(loaded_from "${PLUGIN_
 check "plugin の skill を呼んだ印 (= folder の path) の後は黙る" silent "$(hook "${T}" "${REPORT}")"
 T="${W}/plugin-other.jsonl"; record "${T}" "${SPOKE}" "$(read_file "${W}/elsewhere/skills/tabs/SKILL.md")" "$(loaded_from "${PLUGIN_DIR}-old")"
 check "別の場所の同じ名前の SKILL.md と、 前方が同じ別の folder は読んだ跡に数えない" denies "$(hook "${T}" "${REPORT}")"
+
+# 読んだ後に SKILL.md が書き換わったら、 次の当たりでもう 1 回読ませる (= 読んだ行の時刻と file の更新時刻を比べる)
+mkdir -p "${PLUGIN_DIR}"; printf '# tabs\n' > "${PLUGIN_DIR}/SKILL.md"
+touch -d 2026-11-20T10:00:00Z "${PLUGIN_DIR}/SKILL.md"
+loaded_at() { printf '{"type":"user","timestamp":"%s","message":{"content":[{"type":"text","text":"Base directory for this skill: %s\\n\\n# tabs"}]}}' "$2" "$1"; }
+read_at() { printf '{"type":"assistant","timestamp":"%s","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"%s"}}]}}' "$2" "$1"; }
+edit_at() { printf '{"type":"assistant","timestamp":"%s","message":{"content":[{"type":"tool_use","id":"%s","name":"Edit","input":{"file_path":"%s"}}]}}' "$3" "$2" "$1"; }
+result_at() { printf '{"type":"user","timestamp":"%s","message":{"content":[{"type":"tool_result","tool_use_id":"%s","is_error":%s,"content":"done"}]}}' "$2" "$1" "${3:-false}"; }
+T="${W}/stale.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)"
+out="$(hook "${T}" "${REPORT}")"
+check "読んだ後に SKILL.md が書き換わっていたら、 もう 1 回止める" denies "${out}"
+check "書き換わった skill はそうと言う" grep -q 'changed since this session read it' <<< "${out}"
+check "初めての案内は書き換わったとは言わない" bash -c '! grep -q "changed since" <<< "$1"' _ "$(hook "${NONE}" "${REPORT}")"
+T="${W}/fresh.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T11:00:00Z)"
+check "書き換わりより後に読んでいれば黙る" silent "$(hook "${T}" "${REPORT}")"
+T="${W}/reread.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)" "$(read_at "${PLUGIN_DIR}/SKILL.md" 2026-11-20T10:30:00Z)"
+check "読み直した後は黙る (= 最後の読みで比べる)" silent "$(hook "${T}" "${REPORT}")"
+T="${W}/own-edit.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)" \
+    "$(edit_at "${PLUGIN_DIR}/SKILL.md" toolu_e1 2026-11-20T09:59:59Z)" "$(result_at toolu_e1 2026-11-20T10:00:01Z)"
+check "読んだ後に自分で Edit した書き換えでは止めない" silent "$(hook "${T}" "${REPORT}")"
+T="${W}/edit-failed.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)" \
+    "$(edit_at "${PLUGIN_DIR}/SKILL.md" toolu_e2 2026-11-20T09:59:59Z)" "$(result_at toolu_e2 2026-11-20T10:00:01Z true)"
+check "失敗した Edit は読みに数えない" denies "$(hook "${T}" "${REPORT}")"
+T="${W}/edit-only.jsonl"; record "${T}" "${SPOKE}" "$(edit_at "${PLUGIN_DIR}/SKILL.md" toolu_e3 2026-11-20T10:30:00Z)" "$(result_at toolu_e3 2026-11-20T10:30:01Z)"
+check "読まずに Edit しただけでは最初の読みに数えない" denies "$(hook "${T}" "${REPORT}")"
+T="${W}/no-time.jsonl"; record "${T}" "${SPOKE}" "$(loaded_from "${PLUGIN_DIR}")"
+check "時刻の無い読みの行は今の版を読んだと見る" silent "$(hook "${T}" "${REPORT}")"
 
 # その skill 自身の SKILL.md を読む Read は止めない (= 案内が求める読みそのもの)
 OPS_FILE="${W}/platform/tools/client/skills/ops/SKILL.md"
