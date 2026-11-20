@@ -112,6 +112,10 @@ printf '<a href="./ses_withpage/index.html">page</a> <a href="./ses_gone/index.h
 check "トップのリンクの先が無ければ出る" \
     "$(run --tier normal)" \
     "pages_orphans: 2 (中身あり 0: - / 雛形だけ 0: - / 別の階層のタブ 1: ses_withdata→projects/見本 / 階層のトップの無いリンク先 1: ./ses_gone/index.html)"
+printf '<!-- 例: <tr><td><a href="./<タブの id>/index.html">タブ</a></td></tr> -->\n<a href="./ses_withpage/index.html">page</a>\n' > "${ROOT}/pages/index.html"
+check "トップの HTML のコメントの中の例のリンクは数えない" \
+    "$(run --tier normal)" \
+    "pages_orphans: 1 (中身あり 0: - / 雛形だけ 0: - / 別の階層のタブ 1: ses_withdata→projects/見本)"
 printf 'ses_live normal\nses_home\nses_withpage normal\nses_withdata normal\nses_bare normal\n' > "${LIVE}"
 echo top > "${ROOT}/pages/index.html"
 check "--live-ids の 2 つ目の欄の階層も読み、html を持たないタブ (data だけ) は辿れないに数えない" \
