@@ -28,6 +28,8 @@ import sys
 # .tooling/docs-check/ から 2 段上が repo root (= 部品の置き場。 歩く木の根は main で --root に替えられる)
 TOOL_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROOT = TOOL_ROOT
+# 道具が自分の cache の folder に置く印の file (Cache Directory Tagging の取り決め。pytest・cargo などが置く)
+CACHE_DIR_TAG = "CACHEDIR.TAG"
 sys.path.insert(0, os.path.join(TOOL_ROOT, ".tooling", "lib"))
 from tier_paths import tier_prefix  # noqa: E402
 
@@ -111,13 +113,15 @@ def collect(local_excludes):
         _scratch / _template* / CLAUDE.md を除く (+ 派生固有の local-excludes)
       - _README.md = .git / .claude/worktrees のみ除く (= .tooling 配下も対象)
       - file 名索引 = .git / .tooling / .claude/worktrees を除く
+      - どの用途でも、道具の cache の folder (印の file `CACHEDIR.TAG` を持つ folder。pytest の .pytest_cache など) は歩かない
     """
     md_list, readme_list, basenames = [], [], set()
     for dirpath, dirnames, filenames in os.walk("."):
-        # .git と worktree は全用途で不要なので歩かない
+        # .git と worktree は全用途で不要なので歩かない。cache の folder は道具が書き出した物で、文書ではない
         dirnames[:] = [
             d for d in dirnames
             if os.path.join(dirpath, d).replace(os.sep, "/") not in {"./.git", "./.claude/worktrees"}
+            and not os.path.isfile(os.path.join(dirpath, d, CACHE_DIR_TAG))
         ]
         for name in filenames:
             path = os.path.join(dirpath, name).replace(os.sep, "/")
