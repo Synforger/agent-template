@@ -63,7 +63,7 @@ lib/session_scope.py                   | tests/test-extract-operator-words.sh | 
 
 # --- 文書の検査 ---
 docs-check/docs-check.sh               | -                                  | 文書の検査の全段を回し、 FAIL が 1 件でも在れば exit 1。 必須の file と folder の欠けと置き場の宣言は、 サブプロジェクトが何段続いても見る
-docs-check/docs-scan.py                | -                                  | frontmatter・容量・索引・切れた参照・雛形の埋め残しを 1 回の走査で出す。 下の階層の文書は、 親プロから途中の各段まで宣言した repo の file 名を引ける
+docs-check/docs-scan.py                | tests/test-docs-scan.sh            | frontmatter・容量・索引・切れた参照・雛形の埋め残しを 1 回の走査で出す。 下の階層の文書は、 親プロから途中の各段まで宣言した repo の file 名を引ける。 道具の cache の folder (印の file CACHEDIR.TAG を持つ folder) の下は歩かない
 docs-check/journal-integrity.py        | -                                  | journal の file 名・frontmatter・階層の違反を出す
 docs-check/check-rule-references.py    | -                                  | ルールが指す repo 内の path が無ければ 1 行ずつ出す。 サブプロジェクトが何段続いても対象にする
 docs-check/check-rule-hits.py          | -                                  | 発火記録を書き漏らした session を 1 行ずつ出す。 サブプロジェクトが何段続いても対象にする
