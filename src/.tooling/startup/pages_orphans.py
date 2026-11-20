@@ -42,6 +42,8 @@ TABS_TIMEOUT_S = 20
 GIT_TIMEOUT_S = 20
 SECONDS_PER_DAY = 86400
 HREF_PATTERN = re.compile(r'href="([^"]+)"')
+# HTML のコメントの中 (雛形の書き方の例など) はリンクに数えない
+HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 # 階層のトップのリンクのうち、pages/ の中の file を指さない物
 OUTSIDE_LINK_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
 # tabs list の 2 つ目の欄のうち、このエージェントの階層を名乗る物
@@ -126,7 +128,7 @@ def orphans(pages: Path, live_tabs: dict[str, str | None], tier: str, now_s: flo
 def top_page_gaps(pages: Path, live_tabs: dict[str, str | None], tier: str) -> tuple[list[str], list[str]]:
     """階層のトップについて → (説明のページを持つのに指されていない、この階層の生きているタブの id, 先の無いリンク)。"""
     top = pages / TOP_PAGE
-    hrefs = HREF_PATTERN.findall(top.read_text(encoding="utf-8")) if top.is_file() else []
+    hrefs = HREF_PATTERN.findall(HTML_COMMENT.sub("", top.read_text(encoding="utf-8"))) if top.is_file() else []
     linked_tabs: set[str] = set()
     missing: list[str] = []
     for href in hrefs:
