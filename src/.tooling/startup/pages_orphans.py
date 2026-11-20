@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
-"""起動した階層の `pages/` の下に、生きているタブの物でない folder が残っていないかを出す (起動の検査 startup-status.sh が呼ぶ)。
+"""起動した階層の `pages/` の下に、この階層の生きているタブの物でない folder が残っていないかと、階層のトップ
+`pages/index.html` がこの階層のタブの説明のページへ辿れるかを出す (起動の検査 startup-status.sh が呼ぶ)。
 
 使い方: `python3 pages_orphans.py [--root DIR] [--tier TIER] [--live-ids FILE]`。
 - 階層は `--tier`、無ければ環境変数 `AGENT_TIER` (無ければ `normal`)。`normal` は根の `pages/`、ほかは `<階層>/pages/`
-- 生きているタブの id は `--live-ids` の file (1 行 1 id) から、無ければ `tabs list` の各行の頭の id から読む。
-  別の機械のタブ (`home:ses_…`) は機械の名前を外して数える。git で配られた別の機械のタブの folder を残り物にしないため
+- 生きているタブの id と階層は `--live-ids` の file (1 行に `<id> [<階層>]`) から、無ければ `tabs list` の各行の
+  頭の id と 2 つ目の欄の階層から読む。階層が分かるのは `normal` と `projects/…` の欄だけで、境界の外・別の機械・
+  別のエージェントのタブは階層が伏せてあるので、分からない物として扱う。別の機械のタブ (`home:ses_…`) は機械の名前を
+  外して数える。git で配られた別の機械のタブの folder を残り物にしないため
+- 生きているタブでも、階層が分かって今の階層と違うタブの folder は「別の階層のタブ」として数える。タブが別の
+  階層へ移った後に、元の階層に残った folder が当たる
+- 階層のトップのリンクを読み、説明のページ (タブのトップ以外の html) を持つ、この階層の生きているタブの folder を
+  指していない物を「階層のトップから辿れない」、リンクの先が無い物を「階層のトップの無いリンク先」として数える。
+  階層の分からないタブはここでも数えない
 - `_` で始まる folder (雛形・部品・退避) は数えない
 - 出すのは 1 行: `pages_orphans: <数> (中身あり <数>: <id>… / 雛形だけ <数>: <id>…)`。中身ありは、タブのトップ
-  `index.html` とメモ `memo.md` の外に file を 1 つでも持つ folder。一覧が読めない時は `pages_orphans: UNKNOWN (<理由>)`
+  `index.html` とメモ `memo.md` の外に file を 1 つでも持つ folder。上の 3 つは、在る時だけ
+  ` / 別の階層のタブ <数>: <id>→<階層>…`・` / 階層のトップから辿れない <数>: <id>…`・
+  ` / 階層のトップの無いリンク先 <数>: <href>…` を後ろに足す。一覧が読めない時は `pages_orphans: UNKNOWN (<理由>)`
 - git に 1 file も載っていない folder (= この機械にしか無い物。別の機械へは渡らず、消さない限り残る) は、id の後ろに
   `(<日数>日)` を付ける。日数は folder の中の一番新しい file の時刻から数える。git の様子が読めない時は、全部を載っていない物として扱う
 
@@ -17,6 +27,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +41,11 @@ NORMAL_TIER = "normal"
 TABS_TIMEOUT_S = 20
 GIT_TIMEOUT_S = 20
 SECONDS_PER_DAY = 86400
+HREF_PATTERN = re.compile(r'href="([^"]+)"')
+# 階層のトップのリンクのうち、pages/ の中の file を指さない物
+OUTSIDE_LINK_PREFIXES = ("#", "http://", "https://", "mailto:", "data:")
+# tabs list の 2 つ目の欄のうち、このエージェントの階層を名乗る物
+KNOWN_TIER_PREFIX = "projects/"
 
 
 def pages_folder(root: Path, tier: str) -> Path:
@@ -37,14 +53,28 @@ def pages_folder(root: Path, tier: str) -> Path:
     return root / "pages" if tier in ("", NORMAL_TIER) else root / tier / "pages"
 
 
-def live_ids_from_list(text: str) -> set[str]:
-    """`tabs list` の出力から、生きているタブの id の集合。別の機械の `<機械>:<id>` は id だけにする。"""
-    ids: set[str] = set()
+def known_tier(word: str) -> str | None:
+    """`tabs list` の階層の欄の語が、このエージェントの階層を名乗っていればその階層。伏せてあれば None。"""
+    return word if word == NORMAL_TIER or word.startswith(KNOWN_TIER_PREFIX) else None
+
+
+def live_tabs_from_list(text: str) -> dict[str, str | None]:
+    """`tabs list` の出力から、生きているタブの id → 階層 (分からなければ None)。別の機械の `<機械>:<id>` は id だけにする。"""
+    tabs: dict[str, str | None] = {}
     for line in text.splitlines():
         words = line.split()
-        if words:
-            ids.add(words[0].rsplit(":", 1)[-1])
-    return ids
+        if not words:
+            continue
+        machine_and_id = words[0].rsplit(":", 1)
+        tier = known_tier(words[1]) if len(words) > 1 and len(machine_and_id) == 1 else None
+        tabs[machine_and_id[-1]] = tier
+    return tabs
+
+
+def has_pages(folder: Path) -> bool:
+    """タブのトップの外に、説明のページ (html) を 1 つでも持つか。`_archive/` の下は数えない。"""
+    return any(p.is_file() and p.suffix == ".html" and p.relative_to(folder).as_posix() != TOP_PAGE
+               and "_archive" not in p.relative_to(folder).parts for p in folder.rglob("*"))
 
 
 def has_content(folder: Path) -> bool:
@@ -70,23 +100,57 @@ def idle_days(folder: Path, now_s: float) -> int:
     return max(0, int((now_s - newest_s) // SECONDS_PER_DAY))
 
 
-def orphans(pages: Path, live_ids: set[str], now_s: float) -> tuple[list[str], list[str]]:
-    """→ (中身ありの folder 名, 雛形だけの folder 名)。どちらも名前順。git に載っていない folder の名前には `(<日数>日)` が付く。"""
+def tab_folders(pages: Path) -> list[Path]:
+    """`pages/` の直下のタブの folder (`_` で始まる物を除く)。名前順。"""
+    return sorted(p for p in pages.iterdir() if p.is_dir() and not p.name.startswith(SKIPPED_PREFIX))
+
+
+def orphans(pages: Path, live_tabs: dict[str, str | None], tier: str, now_s: float) -> tuple[list[str], list[str], list[str]]:
+    """→ (中身ありの folder 名, 雛形だけの folder 名, 別の階層のタブの `<id>→<階層>`)。どれも名前順。
+    git に載っていない folder の名前には `(<日数>日)` が付く。"""
     tracked = tracked_folders(pages)
     with_content: list[str] = []
     template_only: list[str] = []
-    for folder in sorted(p for p in pages.iterdir() if p.is_dir() and not p.name.startswith(SKIPPED_PREFIX)):
-        if folder.name in live_ids:
+    moved: list[str] = []
+    for folder in tab_folders(pages):
+        if folder.name in live_tabs:
+            other_tier = live_tabs[folder.name]
+            if other_tier is not None and other_tier != tier:
+                moved.append(f"{folder.name}→{other_tier}")
             continue
         label = folder.name if folder.name in tracked else f"{folder.name}({idle_days(folder, now_s)}日)"
         (with_content if has_content(folder) else template_only).append(label)
-    return with_content, template_only
+    return with_content, template_only, moved
 
 
-def read_live_ids(path: str | None) -> set[str] | str:
-    """生きているタブの id の集合。読めない時は理由の文字列。"""
+def top_page_gaps(pages: Path, live_tabs: dict[str, str | None], tier: str) -> tuple[list[str], list[str]]:
+    """階層のトップについて → (説明のページを持つのに指されていない、この階層の生きているタブの id, 先の無いリンク)。"""
+    top = pages / TOP_PAGE
+    hrefs = HREF_PATTERN.findall(top.read_text(encoding="utf-8")) if top.is_file() else []
+    linked_tabs: set[str] = set()
+    missing: list[str] = []
+    for href in hrefs:
+        if href.startswith(OUTSIDE_LINK_PREFIXES):
+            continue
+        target = (pages / href.split("#", 1)[0]).resolve()
+        if not target.exists():
+            missing.append(href)
+        elif target.is_relative_to(pages.resolve()) and target != pages.resolve():
+            linked_tabs.add(target.relative_to(pages.resolve()).parts[0])
+    unlinked = [folder.name for folder in tab_folders(pages)
+                if live_tabs.get(folder.name) == tier and folder.name not in linked_tabs and has_pages(folder)]
+    return unlinked, missing
+
+
+def read_live_tabs(path: str | None) -> dict[str, str | None] | str:
+    """生きているタブの id → 階層 (分からなければ None)。読めない時は理由の文字列。"""
     if path:
-        return {line.strip() for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()}
+        tabs: dict[str, str | None] = {}
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            words = line.split()
+            if words:
+                tabs[words[0]] = known_tier(words[1]) if len(words) > 1 else None
+        return tabs
     if not shutil.which("tabs"):
         return "tabs が無い"
     try:
@@ -95,7 +159,7 @@ def read_live_ids(path: str | None) -> set[str] | str:
         return f"tabs list が {TABS_TIMEOUT_S} 秒で返らない"
     if done.returncode != 0 or not done.stdout.strip():
         return "tabs list が読めない (PWA のタブの外)"
-    return live_ids_from_list(done.stdout)
+    return live_tabs_from_list(done.stdout)
 
 
 def option(argv: list[str], name: str) -> str | None:
@@ -113,17 +177,24 @@ def main(argv: list[str]) -> int:
     if not pages.is_dir():
         print("pages_orphans: 0 (この階層に pages/ が無い)")
         return 0
-    live_ids = read_live_ids(option(argv, "--live-ids"))
-    if isinstance(live_ids, str):
-        print(f"pages_orphans: UNKNOWN ({live_ids})")
+    live_tabs = read_live_tabs(option(argv, "--live-ids"))
+    if isinstance(live_tabs, str):
+        print(f"pages_orphans: UNKNOWN ({live_tabs})")
         return 0
-    with_content, template_only = orphans(pages, live_ids, time.time())
-    count = len(with_content) + len(template_only)
+    tier = tier if tier else NORMAL_TIER
+    with_content, template_only, moved = orphans(pages, live_tabs, tier, time.time())
+    unlinked, missing = top_page_gaps(pages, live_tabs, tier)
+    count = len(with_content) + len(template_only) + len(moved) + len(unlinked) + len(missing)
     if not count:
         print("pages_orphans: 0")
         return 0
-    print(f"pages_orphans: {count} (中身あり {len(with_content)}: {' '.join(with_content) or '-'}"
-          f" / 雛形だけ {len(template_only)}: {' '.join(template_only) or '-'})")
+    groups = [f"中身あり {len(with_content)}: {' '.join(with_content) or '-'}",
+              f"雛形だけ {len(template_only)}: {' '.join(template_only) or '-'}"]
+    for name, items in (("別の階層のタブ", moved), ("階層のトップから辿れない", unlinked),
+                        ("階層のトップの無いリンク先", missing)):
+        if items:
+            groups.append(f"{name} {len(items)}: {' '.join(items)}")
+    print(f"pages_orphans: {count} ({' / '.join(groups)})")
     return 0
 
 

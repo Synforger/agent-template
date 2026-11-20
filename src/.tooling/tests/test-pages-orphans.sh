@@ -2,6 +2,8 @@
 # .tooling/startup/pages_orphans.py の test。 作り物の agent の根と `tabs` の身代わりを置き、 起動した階層の pages/ の
 # 残り物が、 生きているタブ・別の機械のタブ・`_` 始まりを数えずに、 中身ありと雛形だけに分かれて出る事と、
 # git に載っていない folder にだけ経過日数 (= 中の一番新しい file の時刻から) が付く事と、
+# 生きているが別の階層のタブの folder を数える事と、 階層のトップが、 説明のページを持つこの階層のタブを指していない時と
+# 先の無いリンクを持つ時に数える事 (= 階層の伏せてあるタブは数えない) と、
 # タブの一覧が読めない時に UNKNOWN になる事を確かめる。
 #
 #   bash .tooling/tests/test-pages-orphans.sh
@@ -82,9 +84,9 @@ fake_tabs "${LIST}" 0
 check "normal の pages/ を、生きているタブ・別の機械のタブ・_ 始まりを外して分け、git に載る物には日数を付けない" \
     "$(run --tier normal)" \
     "pages_orphans: 3 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 1: ses_bare)"
-check "AGENT_TIER の階層の pages/ を見る (この階層は何も git に載っていないので全部に日数が付く)" \
+check "AGENT_TIER の階層の pages/ を見る (git に何も載っていないので日数が付き、normal のタブの folder は別の階層のタブに出る)" \
     "$(AGENT_TIER=projects/見本/subprojects/親 run)" \
-    "pages_orphans: 3 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 1: ses_bare(0日))"
+    "pages_orphans: 4 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 1: ses_bare(0日) / 別の階層のタブ 1: ses_live→normal)"
 check "git の外の根は、全部に日数が付く" \
     "$("${PYTHON}" "${CHECK}" --root "${T}/nogit" --tier normal --live-ids <(printf 'ses_live\nses_home\n'))" \
     "pages_orphans: 3 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 1: ses_bare(0日))"
@@ -94,6 +96,27 @@ LIVE="${T}/live.txt"
 printf 'ses_live\nses_home\nses_withpage\nses_withdata\nses_bare\n' > "${LIVE}"
 check "全部が生きているタブなら 0" "$(run --tier normal --live-ids "${LIVE}")" "pages_orphans: 0"
 
+# 階層の目: ses_withpage はこの階層のタブで説明のページを持つ / ses_withdata は下の階層へ移ったタブ /
+# ses_bare は境界の外のタブ (階層が伏せてある)
+TIERED=$'ses_live  normal  口座=personal  busy  境界=なし  main\nses_withpage  normal  口座=personal  idle  境界=なし  page\nses_withdata  projects/見本  口座=personal  idle  境界=なし  moved\nses_bare  別の境界  口座=work  idle  境界=1  (別の境界のタブ)\nhome:ses_home  別の機械  main'
+fake_tabs "${TIERED}" 0
+check "移ったタブは別の階層のタブに、説明のページを持つのにトップが指さないタブは辿れないに出る (境界の外のタブは数えない)" \
+    "$(run --tier normal)" \
+    "pages_orphans: 2 (中身あり 0: - / 雛形だけ 0: - / 別の階層のタブ 1: ses_withdata→projects/見本 / 階層のトップから辿れない 1: ses_withpage)"
+printf '<a href="./ses_withpage/index.html">page</a> <a href="../projects/見本/pages/index.html">下</a> <a href="https://example.com">外</a> <a href="#top">頭</a>\n' > "${ROOT}/pages/index.html"
+mkdir -p "${ROOT}/projects/見本/pages" && echo top > "${ROOT}/projects/見本/pages/index.html"
+check "トップが指していれば辿れないに出ない (外と # のリンクは見ない)" \
+    "$(run --tier normal)" \
+    "pages_orphans: 1 (中身あり 0: - / 雛形だけ 0: - / 別の階層のタブ 1: ses_withdata→projects/見本)"
+printf '<a href="./ses_withpage/index.html">page</a> <a href="./ses_gone/index.html">古い</a>\n' > "${ROOT}/pages/index.html"
+check "トップのリンクの先が無ければ出る" \
+    "$(run --tier normal)" \
+    "pages_orphans: 2 (中身あり 0: - / 雛形だけ 0: - / 別の階層のタブ 1: ses_withdata→projects/見本 / 階層のトップの無いリンク先 1: ./ses_gone/index.html)"
+printf 'ses_live normal\nses_home\nses_withpage normal\nses_withdata normal\nses_bare normal\n' > "${LIVE}"
+echo top > "${ROOT}/pages/index.html"
+check "--live-ids の 2 つ目の欄の階層も読み、html を持たないタブ (data だけ) は辿れないに数えない" \
+    "$(run --tier normal --live-ids "${LIVE}")" \
+    "pages_orphans: 1 (中身あり 0: - / 雛形だけ 0: - / 階層のトップから辿れない 1: ses_withpage)"
 fake_tabs "" 1
 check "tabs list が失敗したら UNKNOWN" "$(run --tier normal)" "pages_orphans: UNKNOWN (tabs list が読めない (PWA のタブの外))"
 rm -f "${BIN}/tabs"
