@@ -6,8 +6,10 @@ template ships for the skills it ships, under the agent's own `skill-triggers.to
 skills the session's transcript does not show as read, the hook says so once:
 - PreToolUse: the tool is denied with the list of skills to read; the agent reads them and runs the tool again
 - UserPromptSubmit / SessionStart: one line of context names the skills to read
-A skill already read stays silent for the rest of the session. Only the instruction to read is given, never the
-body, so a skill is never loaded twice by this hook. The instruction names each skill's SKILL.md: the agent's own
+A skill already read stays silent for the rest of the session, until its SKILL.md is written after that read (another
+tab changed the rule, or a pull brought a new version): then the next matching operation asks for it once more, so a
+long session does not keep working by a rule that has since changed. Only the instruction to read is given, never the
+body, so this hook never loads a skill by itself. The instruction names each skill's SKILL.md: the agent's own
 `.claude/skills/<name>/SKILL.md`, or the `file` the table gives (a plugin's skill). A Read of that very file
 never stops for that skill: it is the read the gate asks for.
 
@@ -26,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from skill_reads import READING_TOOLS, first_bytes, load_rows, read_skills, transcript_of  # noqa: E402
+from skill_reads import READING_TOOLS, changed_since, first_bytes, load_rows, read_times, transcript_of  # noqa: E402
 from skill_triggers import is_code, skill_file, skills_for, target_path  # noqa: E402
 
 ROOT = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
@@ -73,24 +75,27 @@ def is_own_file_read(event: dict, file: Path) -> bool:
     return event["tool"] in READING_TOOLS and event["path"] == str(file)
 
 
-def instruction(files: dict[str, Path], reason: str) -> str:
-    listed = ", ".join(f"`{name}` ({file})" for name, file in files.items())
+def instruction(files: dict[str, Path], changed: set[str], reason: str) -> str:
+    listed = ", ".join(f"`{name}` ({file}{', changed since this session read it' if name in changed else ''})"
+                       for name, file in files.items())
     return (f"{reason} read the skill(s) {listed} first: call the Skill tool with each name, or Read the file. "
-            "This happens once a session per skill; after the read it stays silent.")
+            "After the read it stays silent until the SKILL.md changes again.")
 
 
-def say(event_name: str, files: dict[str, Path], tool: str) -> None:
+def say(event_name: str, files: dict[str, Path], changed: set[str], tool: str) -> None:
     if event_name in CONTEXT_EVENTS:
-        output = {"hookSpecificOutput": {"hookEventName": event_name,
-                                         "additionalContext": instruction(files, "[skill-gate] For what this turn asks,")}}
+        text = instruction(files, changed, "[skill-gate] For what this turn asks,")
+        output = {"hookSpecificOutput": {"hookEventName": event_name, "additionalContext": text}}
     else:
+        text = instruction(files, changed, f"Before this {tool} call,")
         output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                         "permissionDecisionReason": instruction(files, f"Before this {tool} call,")}}
+                                         "permissionDecisionReason": text}}
     print(json.dumps(output, ensure_ascii=False))
 
 
 def main() -> None:
-    """Read the payload and speak only about matched skills the transcript does not show as read."""
+    """Read the payload and speak only about matched skills the transcript does not show as read, or whose SKILL.md
+    changed after the last read."""
     try:
         payload = json.load(sys.stdin)
         event = event_of(payload)
@@ -102,11 +107,12 @@ def main() -> None:
         files = {name: skill_file(row, ROOT, PLATFORM) for name, row in rows.items()}
         declared = {name: files[name] for name, row in rows.items() if "file" in row}
         transcript = transcript_of(payload)
-        already = read_skills(transcript, matched, declared) if transcript is not None and transcript.is_file() else set()
+        reads = read_times(transcript, matched, declared) if transcript is not None and transcript.is_file() else {}
+        changed = {name for name, read_time in reads.items() if changed_since(files[name], read_time)}
         unread = {name: file for name, file in files.items()
-                  if name not in already and not is_own_file_read(event, file)}
+                  if (name not in reads or name in changed) and not is_own_file_read(event, file)}
         if unread:
-            say(event["name"], unread, event["tool"])
+            say(event["name"], unread, changed, event["tool"])
     except Exception:  # noqa: BLE001 — an unreadable payload, table or transcript never stops the agent (fail-open)
         return
 
