@@ -21,12 +21,7 @@ command = '\bmkdir\b(?!(\s+-\S+)*\s+"?\S*_scratch/)'
 
 [[skill]]
 name = "sub-agent"
-# 読むだけの体 (= 調べ物・探索・計画) は書く決まりが要らないので当てない
-[[skill.when]]
-tools = ["Agent", "Task"]
-subagent = '^(?!(Explore|Plan|claude-code-guide|web-fetch|statusline-setup|feature-dev:code-(explorer|reviewer|architect))$)'
-[[skill.when]]
-tools = ["Workflow"]
+# 体は子のタブだけ (= サブエージェントと Workflow は subagent_gate が止める)
 [[skill.when]]
 tools = ["Bash"]
 command = '\btabs\s+new\b'
