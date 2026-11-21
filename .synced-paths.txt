@@ -28,7 +28,7 @@
 .tooling/hooks/skill_reads.py   # @machine-wide skill_gate が読む
 .tooling/hooks/skill-triggers.base.toml   # 型が配る skill の行。 skill_gate が派生の表の下に重ねて読む
 !.tooling/hooks/skill-triggers.toml   # 派生だけの skill の行と、 型の行へ足す条件 (= 型の file は雛形)
-.tooling/hooks/subagent_model_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/subagent_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/ci_duplicate_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/commit_paths_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/bypass_prompt_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
@@ -121,7 +121,7 @@
 .tooling/tests/test-artifact-index-number.sh
 .tooling/tests/test-artifact-index-scope.sh
 .tooling/tests/test-skill-gate.sh   # @machine-wide skill_gate の試験
-.tooling/tests/test-subagent-model-gate.sh   # @machine-wide subagent_model_gate の試験
+.tooling/tests/test-subagent-gate.sh   # @machine-wide subagent_gate の試験
 .tooling/tests/test-ci-duplicate-guard.sh   # @machine-wide ci_duplicate_guard の試験
 .tooling/tests/test-commit-paths-guard.sh   # @machine-wide commit_paths_guard の試験
 .tooling/tests/test-bypass-prompt-gate.sh   # @machine-wide bypass_prompt_gate の試験
