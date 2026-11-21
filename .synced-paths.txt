@@ -119,6 +119,7 @@
 .tooling/tests/test-guard-place.sh
 .tooling/tests/test-audit-known.sh
 .tooling/tests/test-artifact-index-number.sh
+.tooling/tests/test-artifact-index-scope.sh
 .tooling/tests/test-skill-gate.sh   # @machine-wide skill_gate の試験
 .tooling/tests/test-subagent-model-gate.sh   # @machine-wide subagent_model_gate の試験
 .tooling/tests/test-ci-duplicate-guard.sh   # @machine-wide ci_duplicate_guard の試験
