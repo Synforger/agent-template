@@ -11,6 +11,7 @@
 #   - merge されていないのに tag を打った。 merge が衝突で止まっても、 続けて打った tag は古い main に付く
 #
 # やること:
+#   0. その番号の PR が今いる folder の repo に無ければ、 待たずに止まる (= 別の repo の中で打った時)
 #   1. 検査が 1 つ以上登録され、 全部が終わるまで待つ。 1 つでも落ちていれば止まる (= merge しない)。
 #      ただし private の repo で workflow が 1 本も無い時は待たない (= 決まりでは、 private の repo は手元の全体の
 #      試験が検査で、 それを流してから打つ)。 公開の repo は Actions の結果で判定するので、 workflow が無ければ止まる。
@@ -61,6 +62,10 @@ workflows="$(gh_ api 'repos/{owner}/{repo}/actions/workflows' -q .total_count)"
 if [ -z "${visibility}" ]; then
     stop "gh could not read the repository of #${pr} (not merged). The account it uses may not see this repository:
   run it with GH_TOKEN, or PR_LAND_GH, set to an account that can"
+elif [ -z "$(gh_ pr view "${pr}" --json number -q .number)" ]; then
+    # 検査を待つ前に確かめる: 無い番号では `gh pr checks` が空を返し続け、 上限まで「検査なし」 で待つ
+    stop "this repository ($(gh_ repo view --json nameWithOwner -q .nameWithOwner)) has no #${pr} (not merged).
+  Run pr-land inside the repository the PR belongs to"
 elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PRIVATE" ]; then
     echo "pr-land: #${pr} is in a private repo with no workflow; its check is the local whole test run, so nothing is awaited"
 elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PUBLIC" ]; then

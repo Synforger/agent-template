@@ -51,8 +51,8 @@ case "$1 $2" in
     "api -X")
         if [ -f "${S}/rest.err" ]; then cat "${S}/rest.err" >&2; exit 1; fi
         [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
-    "pr view") cat "${S}/state" ;;
-    "repo view") [ -f "${S}/visibility" ] && cat "${S}/visibility" ;;
+    "pr view") [ -f "${S}/missing" ] && exit 1; cat "${S}/state" ;;
+    "repo view") if [[ "$*" == *nameWithOwner* ]]; then echo o/r; else [ -f "${S}/visibility" ] && cat "${S}/visibility"; fi ;;
     "api repos/{owner}/{repo}/actions/workflows") [ -f "${S}/workflows" ] && cat "${S}/workflows" ;;
 esac
 GH
@@ -84,6 +84,15 @@ check "着地した PR と commit を言う" "$([[ "${out}" == *"#7 merged into 
 scene never yes '[]'
 out="$(TIMEOUT=2 land 7)"; code=$?
 check "検査が 1 つも無いままなら merge しない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"no check was ever reported"* ]]; echo $?)"
+
+# --- 今いる repo に無い PR 番号: 検査を待たずに止まる (= 別の repo の中で打った時) ---
+scene missing yes '[]'
+touch "${FAKE_GH}/missing"
+out="$(TIMEOUT=600 land 9999)"; code=$?
+check "無い PR 番号なら待たずに止まり、 repo を名指す (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && ! grep -q '^pr checks' "${FAKE_GH}/calls" && [[ "${out}" == *"this repository (o/r) has no #9999"* ]]; echo $?)"
+echo PRIVATE > "${FAKE_GH}/visibility"; echo 0 > "${FAKE_GH}/workflows"
+out="$(land 9999)"; code=$?
+check "workflow の無い private の repo でも、 無い番号なら merge を頼まずに止まる (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"has no #9999"* ]]; echo $?)"
 
 # --- workflow の無い private の repo: 待たずに merge する (= 手元の全体の試験が検査) ---
 scene private-none yes '[]'
