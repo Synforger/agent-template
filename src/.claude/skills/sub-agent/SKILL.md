@@ -135,11 +135,13 @@ commit までで止まる。**PR と merge は統括**。
 
 ## 道具を持たない読み手と書き手
 
-道具を持たない `claude -p` は、渡した文だけを読んで 1 回答える。探索も読み直しもしないので、子のタブよりずっと少ない使用量で済む。サブエージェントではないので hook は止めない。対象の repo で次の形で呼ぶ:
+道具を持たない `claude -p` は、渡した文だけを読んで 1 回答える。探索も読み直しもしないので、子のタブよりずっと少ない使用量で済む。サブエージェントではないので hook は止めない。エージェントの folder の外 (会話の一時の folder) で次の形で呼ぶ:
 
 ```
-claude -p --model <sonnet|haiku> --tools "" --no-session-persistence --append-system-prompt "$(cat <決まりの file>)" < <渡す文の file>
+claude -p --model <sonnet|haiku> --tools "" --setting-sources project --no-session-persistence --append-system-prompt "$(cat <決まりの file>)" < <渡す文の file>
 ```
+
+- `--setting-sources project` と folder の外は両方要る。口座の設定の hook (skill を読めという差し込み) が効くと、道具の無い読み手は答えずに道具を呼ぶ文を書いて終わる。エージェントの folder の中では `CLAUDE.md` も読み込まれる (2026-11-21、sonnet の読み手が 1 回これで空振りした)
 
 - **文書を書き直すだけの仕事は、道具を持たない書き手に 1 本 1 回で渡す**。決まりの file には、変えてはいけない物・書き方・言葉の対応表を書き、書き直した全文を 1 回の返事で受け取る。前後が同じ物を指すかは `.tooling/docs-check/check-rewrite-keeps.py` と同じ形の機械の比較で確かめ、統括は全文を読む
   - Why: 書き手はエージェントの決まりを読まないので決まりの文の書き方が写らず、道具が無いので探索も読み直しもしない。同じ日に、skill の書き直しを子のタブ 5 体に渡した時は使用量が大きく増え、手引き 18 本を道具の無い書き手に渡した時はほとんど増えなかった
