@@ -30,6 +30,7 @@ agent-template/
 │   ├── distribute/sync-from-base.sh   # base → derivation (pull down)
 │   ├── distribute/promote-to-base.sh  # derivation → base (promote up)
 │   ├── local-ci/synced-paths-check.sh # .synced-paths.txt vs the shipped payload
+│   ├── local-ci/run_tests.py          # runs the test scripts under a time limit each, naming the slowest 10
 │   ├── local-ci/test-sync-from-base.sh # sync-from-base.sh against a fake base and derivation
 │   └── local-ci/test-promote-to-base.sh # promote-to-base.sh against a fake base and derivation
 ├── .synced-paths.txt                  # the paths shipped down to derivations
