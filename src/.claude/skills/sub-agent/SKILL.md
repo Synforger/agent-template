@@ -189,7 +189,9 @@ commit までで止まる。**PR と merge は統括**。
 1. `git fetch origin <base>` の後に worktree を切る (base の今の先端から切る。古い木から切った子が持ち場の外の file の今を読み違えた、2026-11-15)。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**子が書く file を持つ repo で切る**: 階層の folder が自前の `.git` を持つ別の repo なら (`git -C <書く file の folder> rev-parse --show-toplevel` で確かめる)、エージェントの根ではなくその repo で切る。根で切ると、書く先が worktree に入らない (2026-11-08、会社の階層の file を書く子に根の worktree を渡し、子が会社の階層の主 branch に直に commit した)。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
    - Why: 環境の無い worktree を渡すと子がそれぞれ別の python で環境を作り、統括が重ねた準備で `python` と `pip` が別の版を指して、全体の試験を 2 回流し直した。主の checkout の環境で流すと、試験が主の checkout の code を読むので代わりにならない
 2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる。**親の指示や別の子の着地を待たせる子には、待つ前に `tabs report stuck` で何を待つかを報告するよう書く**
-3. `tabs new "<題>" <本文の file>`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
+3. `tabs new "<題>" <本文の file> [--model <名前>] [--effort <段>]`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
+   - **model と effort は仕事の種類で選ぶ**。実装は付けずに既定で立てる。決まった形への書き直しと定型の追随は `--effort medium`、別の model の意見は親と別の model を `--model` で選び effort は既定のままにする。既定・許す値・子から外す道具は、エージェントの `templates/claude-child.json` が持つ。許されない値は既定で立ち、子の最初の発話の `[起動の知らせ]` の行に出る
+     - Why: 子は呼ぶたびに起動の固定分と会話を読み直す。中身の決まった仕事で考える量を下げると、確かめと探索が減り、使用量が下がる (2026-11-21、子から使わない道具を外して 1 回目の文脈を 4.66 万から 2.48 万にした時に、同じレビューで読み直しが 150 万から 51 万になった)
 
 ### 見る
 
