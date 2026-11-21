@@ -41,6 +41,7 @@ printf 'AGENT_TIER=%s\nCLAUDE_CONFIG_DIR=%s\nGUARD_WORK_FOLDER=%s\nPWA_NOTE=%s\n
     "${CLAUDE_CONFIG_DIR-unset}" "${GUARD_WORK_FOLDER-unset}" "${PWA_NOTE-unset}" "${AGENT_CHILD-unset}" > "${OUT}/env"
 printf 'VIRTUAL_ENV=%s\nUV_PROJECT_ENVIRONMENT=%s\nPATH=%s\n' "${VIRTUAL_ENV-unset}" "${UV_PROJECT_ENVIRONMENT-unset}" "${PATH}" >> "${OUT}/env"
 printf 'ANTHROPIC_API_KEY=%s\nANTHROPIC_AUTH_TOKEN=%s\n' "${ANTHROPIC_API_KEY-unset}" "${ANTHROPIC_AUTH_TOKEN-unset}" >> "${OUT}/env"
+printf 'CHILD_PROFILE_ENV=%s\n' "${CHILD_PROFILE_ENV-unset}" >> "${OUT}/env"
 SH
     chmod +x "${T}/claude"
 }
@@ -483,6 +484,56 @@ env -u CLAUDE_CONFIG_DIR -u PWA_SID -u AGENT_TIER -u GUARD_WORK_FOLDER AGENT_CHI
     AGENT_CLAUDE_BIN="${T}/claude" OUT="${T}/out" python3 "${LAUNCH}" --first-message-file "${T}/msg" 2> "${T}/out/stderr"
 check "--child の無い起動は、 受け継いだ子の印を session に渡さない" has "${T}/out/env" "AGENT_CHILD=unset"
 check "子でない起動は MODEL (= opus) のまま" [ "$(grep -A1 -xF -- --model "${T}/out/args" | tail -1)" = "opus" ]
+
+# --- 子のタブの起動の設定 (= templates/claude-child.json) ----------------------------------
+
+after() { grep -A1 -xF -- "$1" "${T}/out/args" | tail -1; }
+child_msg() { # <child-start の塊に足す行>
+    printf '%s\n<agent-message from="parent" session="ses_p">\n<child-start>\ntier=normal\n%s</child-start>\n\nやって\n</agent-message>' \
+        "${RELAYED}" "$1" > "${T}/msg"
+}
+profile() {
+    mkdir -p "${T}/agent/templates"
+    cat > "${T}/agent/templates/claude-child.json" <<'JSON'
+{"model": "sonnet", "effort": "high", "models": ["sonnet", "haiku"], "efforts": ["medium", "high"],
+ "env": {"CHILD_PROFILE_ENV": "1"}, "settings": {"skillOverrides": {"pdf": "off"}},
+ "disallowed_tools": ["Agent", "Workflow"]}
+JSON
+}
+
+setup
+profile
+child_msg $'model=haiku\neffort=medium\n'
+launch --child --first-message-file "${T}/msg"
+check "親が選んだ model を、 設定が許せば採る" [ "$(after --model)" = "haiku" ]
+check "親が選んだ effort を、 設定が許せば採る" [ "$(after --effort)" = "medium" ]
+check "設定の env を子に渡す" has "${T}/out/env" "CHILD_PROFILE_ENV=1"
+check "設定の settings を --settings で渡す" [ "$(after --settings)" = '{"skillOverrides": {"pdf": "off"}}' ]
+check "外す道具を --disallowedTools で渡す" [ "$(after --disallowedTools)" = "Agent,Workflow" ]
+check "--disallowedTools は --model より前 (= 後ろの発話を道具の名前として吸わない)" \
+    [ "$(grep -nxF -- --disallowedTools "${T}/out/args" | cut -d: -f1)" -lt "$(grep -nxF -- --model "${T}/out/args" | cut -d: -f1)" ]
+check "子の最初の発話は封筒ごと渡る (= 設定があっても)" [ "$(tail -1 "${T}/out/args")" = "</agent-message>" ]
+
+setup
+profile
+child_msg $'model=gpt\neffort=max\n'
+launch --child --first-message-file "${T}/msg"
+check "許されない model は既定で起動する" [ "$(after --model)" = "sonnet" ]
+check "許されない effort は既定で起動する" [ "$(after --effort)" = "high" ]
+check "許されない値は 1 行で言う" grep -q "model=gpt は" "${T}/out/stderr"
+
+setup
+profile
+printf 'おはよう' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "子でない起動は子の設定を読まない" bash -c "! grep -qxF -- --disallowedTools '${T}/out/args' && grep -qxF 'CHILD_PROFILE_ENV=unset' '${T}/out/env'"
+
+setup
+mkdir -p "${T}/agent/templates"
+printf '{' > "${T}/agent/templates/claude-child.json"
+child_msg ''
+launch --child --first-message-file "${T}/msg"
+check "読めない設定は既定で起動し、 1 行で言う" bash -c "[ \"\$(grep -A1 -xF -- --model '${T}/out/args' | tail -1)\" = sonnet ] && grep -q 'を読めません' '${T}/out/stderr'"
 
 # --- 入口 ------------------------------------------------------------------------
 
