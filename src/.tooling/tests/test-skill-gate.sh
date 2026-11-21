@@ -94,7 +94,8 @@ record() { local file="$1"; shift; printf '%s\n' "$@" > "${file}"; }
 # hook <transcript> <payload の残りの JSON>
 hook() { printf '{"transcript_path":"%s",%s}' "$1" "$2" | AGENT_PLATFORM_ROOT="${W}/platform" python3 "${HOOKS}/skill_gate.py"; }
 tool() { printf '"hook_event_name":"PreToolUse","tool_name":"%s","tool_input":%s' "$1" "$2"; }
-denies() { grep -q '"permissionDecision": "deny"' <<< "$1"; }
+# 道具は止めずに通し、 読む案内を足す (= 止めるとエージェントが同じ命令をもう一度書く)
+denies() { grep -q 'ran as written. Before the next step' <<< "$1" && ! grep -q permissionDecision <<< "$1"; }
 names() { grep -q "\`$2\`" <<< "$1"; }
 silent() { [ -z "$1" ]; }
 
@@ -142,6 +143,8 @@ check "発話の注意は止めない" bash -c '! grep -q permissionDecision <<<
 check "別のタブの連絡の本文の語では鳴らさない" silent "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"Message from another session, relayed by the client (the operator did not type this):\n<agent-message from=\"x\" session=\"ses_x\">\n今日はもう締めよう\n</agent-message>"')"
 check "体の完了の知らせの本文の語では鳴らさない" silent "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"<task-notification>\n<result>寝る前に決めておく</result>\n</task-notification>"')"
 check "client の知らせの本文の語では鳴らさない" silent "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"Sent by the client (the operator did not type this):\n今日はここまで"')"
+check "包まれて届いた別のタブの連絡の本文の語では鳴らさない" silent "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"<pasted_content id=\"ab12\">\nMessage from another session, relayed by the client (the operator did not type this):\n<agent-message from=\"x\" session=\"ses_x\">\n今日はもう締めよう\n</agent-message>\n</pasted_content id=\"ab12\">"')"
+check "包まれた操作者の貼り付けの後の語では鳴らす" names "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"<pasted_content id=\"ab12\">\nlog の行\n</pasted_content id=\"ab12\">\n今日はもう締めよう"')" session-end
 check "入れ替えの封筒の引き金では鳴らす" names "$(hook "${NONE}" '"hook_event_name":"UserPromptSubmit","prompt":"Automatic session rollover, sent by the client:\n<session-rollover phase=\"close\">\n</session-rollover>"')" session-end
 T="${W}/ended.jsonl"; record "${T}" "${SPOKE}" "$(loaded session-end)"
 check "読んだ後の発話は黙る" silent "$(hook "${T}" '"hook_event_name":"UserPromptSubmit","prompt":"締めよう"')"
@@ -176,6 +179,22 @@ out="$(hook "${T}" "${REPORT}")"
 check "読んだ後に SKILL.md が書き換わっていたら、 もう 1 回止める" denies "${out}"
 check "書き換わった skill はそうと言う" grep -q 'changed since this session read it' <<< "${out}"
 check "初めての案内は書き換わったとは言わない" bash -c '! grep -q "changed since" <<< "$1"' _ "$(hook "${NONE}" "${REPORT}")"
+# 読んだ時の版が git に在れば、 全文の代わりに差分を見せ、 見せた差し込みを読んだ印に数える
+GIT_PLUGIN="${W}/platform/tools/client"
+tgit() { HOME="${W}" git -c user.name=t -c user.email=t@example.invalid "$@"; }
+tgit -C "${GIT_PLUGIN}" init -q
+tgit -C "${GIT_PLUGIN}" add -A && GIT_COMMITTER_DATE=2026-11-20T08:00:00Z tgit -C "${GIT_PLUGIN}" commit -q --date=2026-11-20T08:00:00Z -m first
+printf '# tabs\nname the child by its work\n' > "${PLUGIN_DIR}/SKILL.md"
+T="${W}/diffed.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)"
+out="$(hook "${T}" "${REPORT}")"
+check "読んだ時の版が git に在れば、 差分を見せる" grep -q '+name the child by its work' <<< "${out}"
+check "差分を見せた時は、 全文を読めとは言わない" bash -c '! grep -q "read the skill" <<< "$1"' _ "${out}"
+shown() { printf '{"type":"attachment","timestamp":"%s","attachment":{"type":"hook_additional_context","content":[%s]}}' "$1" "$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$2")"; }
+note="$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"])' "${out}")"
+T="${W}/diff-shown.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)" "$(shown "$(date -u -v+1M +%Y-%m-%dT%H:%M:%SZ)" "${note}")"
+check "差分を見せた差し込みの後は黙る (= その版を読んだに数える)" silent "$(hook "${T}" "${REPORT}")"
+rm -rf "${GIT_PLUGIN}/.git"; printf '# tabs\n' > "${PLUGIN_DIR}/SKILL.md"; touch -d 2026-11-20T10:00:00Z "${PLUGIN_DIR}/SKILL.md"
+
 T="${W}/fresh.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T11:00:00Z)"
 check "書き換わりより後に読んでいれば黙る" silent "$(hook "${T}" "${REPORT}")"
 T="${W}/reread.jsonl"; record "${T}" "${SPOKE}" "$(loaded_at "${PLUGIN_DIR}" 2026-11-20T09:00:00Z)" "$(read_at "${PLUGIN_DIR}/SKILL.md" 2026-11-20T10:30:00Z)"
