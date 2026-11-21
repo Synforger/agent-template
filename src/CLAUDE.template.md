@@ -88,7 +88,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - **`bash .tooling/startup/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
 - **`normal` の時は直下の `journal/` 最新 3 session を Read** (= 新しい順。 階層で起動した時は、 下の 5 点の 4 が同じ事をその階層の journal でする)
-- **持つ票を読む** (= client のタブ、 `PWA_SID` が在る時): `tabs ticket mine`。 持つ動いている票が 1 枚 1 行 (= id・題・状態・印・次の 1 手) で、 待ちは数だけ出る。 本文は要る時に `tabs ticket show <id>`。 タブが持つ仕事の真値はこの一覧で、 journal は続きを持たない
+- **持つ票を読む** (= client のタブ、 `PWA_SID` が在る時): `tabs ticket mine`。 持つ動いている票が 1 枚 1 行 (= id・題・状態・印・次の 1 手) で、 待ちは数だけ出る (= 1 枚も無ければ「持っている票はありません」 の 1 行)。 本文は要る時に `tabs ticket show <id>`。 タブが持つ仕事の真値はこの一覧で、 journal は続きを持たない
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
 
