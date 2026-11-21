@@ -28,7 +28,8 @@ agent-template/
 ├── .tooling/                          # template 運用 script
 │   ├── init-new-agent.sh              # 派生立ち上げ
 │   ├── distribute/sync-from-base.sh   # base → 派生 取り込み
-│   └── distribute/promote-to-base.sh  # 派生 → base 昇格
+│   ├── distribute/promote-to-base.sh  # 派生 → base 昇格
+│   └── local-ci/run_tests.py          # 試験の script を 1 本ずつ上限つきで流し、遅い 10 本を出す
 ├── .synced-paths.txt                  # 派生に降ろす path 列挙
 └── src/                               # ★ 派生に降りる中身
     ├── CLAUDE.template.md             # 派生で CLAUDE.md として人格を書く
