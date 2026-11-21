@@ -521,6 +521,42 @@ launch --child --first-message-file "${T}/msg"
 check "許されない model は既定で起動する" [ "$(after --model)" = "sonnet" ]
 check "許されない effort は既定で起動する" [ "$(after --effort)" = "high" ]
 check "許されない値は 1 行で言う" grep -q "model=gpt は" "${T}/out/stderr"
+check "許されない値の知らせは子の最初の発話にも載る" bash -c "tail -1 '${T}/out/args' | grep -q '^\[起動の知らせ\] .*model=gpt は'"
+
+setup
+profile
+printf '%s\n<session-rollover phase="start">\ntier=normal\nmode=continue\nmodel=haiku\neffort=medium\n</session-rollover>' "${ROLLED}" > "${T}/msg"
+launch --child --first-message-file "${T}/msg"
+check "入れ替えで起き直した子は、 封筒の model を読む" [ "$(after --model)" = "haiku" ]
+check "入れ替えで起き直した子は、 封筒の effort を読む" [ "$(after --effort)" = "medium" ]
+
+setup
+mkdir -p "${T}/agent/templates"
+cat > "${T}/agent/templates/claude-child.json" <<'JSON'
+{"model": "sonnet", "models": "sonnet", "disallowed_tools": "Agent", "colour": "red",
+ "env": {"AGENT_TIER": "x", "GUARD_WORK_FOLDER": "/", "ANTHROPIC_API_KEY": "k", "CHILD_PROFILE_ENV": "1"}}
+JSON
+child_msg $'model=son\n'
+launch --child --first-message-file "${T}/msg"
+check "形の違う models は使わない (= 部分一致で son を採らない)" [ "$(after --model)" = "sonnet" ]
+check "形の違う disallowed_tools は使わない" lacks "${T}/out/args" "--disallowedTools"
+check "知らない鍵は 1 行で言う" grep -q "知らない鍵 colour" "${T}/out/stderr"
+check "env で階層を上書きしない" has "${T}/out/env" "AGENT_TIER=normal"
+check "env で番人の folder を上書きしない" lacks "${T}/out/env" "GUARD_WORK_FOLDER=/"
+check "env で API の鍵を足さない" has "${T}/out/env" "ANTHROPIC_API_KEY=unset"
+check "決まった頭でない env は渡す" has "${T}/out/env" "CHILD_PROFILE_ENV=1"
+
+REAL_PROFILE="${TOOLING}/../templates/claude-child.json"
+if [ -f "${REAL_PROFILE}" ]; then
+    check "エージェントの子の設定は、 鍵も形も全部使える (= 知らせが出ない)" python3 - "${LAUNCH}" "${REAL_PROFILE}" <<'PY'
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("launch", sys.argv[1]); m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+profile = json.load(open(sys.argv[2])); notes = []
+kept = m.checked_profile(profile, notes)
+sys.exit(1 if notes or kept.get("model") not in kept.get("models", []) or kept.get("effort") not in kept.get("efforts", []) else 0)
+PY
+fi
 
 setup
 profile
