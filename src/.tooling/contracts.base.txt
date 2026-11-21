@@ -53,6 +53,7 @@ startup/detect-stale-rules.sh          | -                                  | 7 
 # --- 終了 ---
 session-end/extract-artifact-index.sh  | tests/test-guard-may-write.sh      | その session が触った file と commit を、 書ける階層の journal にだけ書く
 session-end/extract-artifact-index.sh  | tests/test-artifact-index-number.sh | 索引の file は、 渡された番号 (= --nn) で、 渡されなければその日の journal の次の番号で書き、 誤った番号では書かずに止まる
+session-end/extract-artifact-index.sh  | tests/test-artifact-index-scope.sh  | 索引に載せる commit と file は journal の階層の folder の中の物だけで、 下の階層と別の階層の commit は載せず、 自分の repo を持つ階層はその repo から取る
 session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 操作者が打った発話 (= 作業中に打って積まれた分も) だけを、 直前に出た作った物の path つきで journal の隣の番号つきの file に書く。 別のタブからの連絡・封筒・通知・道具の返りは書かず、 2 度流しても行が増えない
 session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 渡した番号 (= 無ければ次の番号) の file に書き、 誤った番号と journal でない folder は書かずに止まる。 読むのは自分の session の記録 1 本だけで、 別の記録を名指す口は無い。 `--all-sessions` は走らせた口座の記録のうち、 その階層の持ち物の session だけを、 渡した file へ書く
 session-end/extract-operator-words.py  | tests/test-extract-operator-words.sh | 作った物の path は、 作業 folder と上の段・階層の folder・その `pages/`・タブの folder を起点に在る file の絶対の path に解いて書き、 どの起点からも在る file に当たらない path は落とす

@@ -11,6 +11,9 @@
 # 引数省略の default 解決を無くして毎回明示指定に一本化)
 #
 # 階層自己完結原則: jsonl は当 session の正規階層に出力、 他階層に pointer stub 量産しない
+# 載せる commit は、 journal の階層の folder (= journal-dir の親) の中の物だけ。 その下の階層 (= projects/ と
+# subprojects/) は除く。 全タブが同じ checkout で commit するので、 repo 全体を読むと別のタブの commit が混ざり、
+# 自分の repo を持つ階層では自分の commit が 1 本も載らない
 
 set -uo pipefail
 
@@ -78,9 +81,11 @@ today=$(date '+%Y-%m-%d')
 # repo 直下に絶対 path がそのまま連結された gitignore 外の誤配置が生まれ、
 # 別文脈の journal index が意図しない remote に push される事故になる。
 case "$JOURNAL_DIR_ARG" in
-    /*) DATE_DIR="$JOURNAL_DIR_ARG/$today" ;;
-    *)  DATE_DIR="$ROOT/$JOURNAL_DIR_ARG/$today" ;;
+    /*) JOURNAL_DIR="$JOURNAL_DIR_ARG" ;;
+    *)  JOURNAL_DIR="$ROOT/$JOURNAL_DIR_ARG" ;;
 esac
+DATE_DIR="$JOURNAL_DIR/$today"
+TIER_DIR="$(dirname "$JOURNAL_DIR")"
 # 書き先は引数で決まる。 入口の番人はこの script の中を読まないので、 この session がそこへ書けるかを
 # 書く前に自分で訊く (= 拒まれたら folder も作らずに止まる。 番人の 1 行はそのまま stderr に出る)
 if ! python3 "$ROOT/.tooling/lib/guard-may-write.py" "$DATE_DIR"; then
@@ -103,11 +108,11 @@ session_nn=$(printf "%02d" $((max_nn + 1)))
 [ -n "$NN_ARG" ] && session_nn=$(printf "%02d" "$((10#$NN_ARG))")
 OUT_FILE="$DATE_DIR/session-${session_nn}-auto-index.jsonl"
 
-# エージェント配下で触った file (= session 開始 ts 以降の commit のみ)
-agent_files=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --name-only --pretty=format: 2>/dev/null | sort -u | grep -v '^$' || true)
-
-# 当 session の commit (= エージェント配下)
-agent_commits=$(git -C "$ROOT" -c core.quotePath=false log --since="$SINCE_ARG" --format='%H %s' 2>/dev/null || true)
+# この階層の folder の中で、 session 開始 ts 以降に入った commit と file。 pathspec は -C の folder から読まれるので、
+# 親の repo に入った階層も、 自分の repo を持つ階層も同じ形で絞れる (= 親に subprojects/、 プロジェクトに projects/ は無い)
+TIER_PATHS=(. ':(exclude)projects' ':(exclude)subprojects')
+agent_files=$(git -C "$TIER_DIR" -c core.quotePath=false log --since="$SINCE_ARG" --name-only --pretty=format: -- "${TIER_PATHS[@]}" 2>/dev/null | sort -u | grep -v '^$' || true)
+agent_commits=$(git -C "$TIER_DIR" -c core.quotePath=false log --since="$SINCE_ARG" --format='%H %s' -- "${TIER_PATHS[@]}" 2>/dev/null || true)
 
 # 当日 関連 PR (= gh があれば)
 gh_prs=""
