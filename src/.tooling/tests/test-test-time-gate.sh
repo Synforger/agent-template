@@ -74,6 +74,12 @@ reset
 hook PreToolUse sA id1 "pytest" 1000 0 "" "${T}/plain" > /dev/null
 check "git の外は記録しない" [ "$(running_count)" = 0 ]
 
+# --- vitest の報告の遅い所も読む ---------------------------------------------------------------------------------
+reset
+ran sA v1 "npx vitest run" 1000 1002 > /dev/null
+out="$(ran sA v2 "npx vitest run" 2000 2012 "$(printf ' Test Files  3 passed\n\nslowest 2 tests\n   1430 ms  src/a.test.js > waits\n     12 ms  src/b.test.js > quick\n')")"
+check "vitest の遅い所の行を文に並べる" mentions "1430 ms  src/a.test.js > waits" <<< "${out}"
+
 # --- 基準の鍵は試験の段の folder と命令だけ (= 前後の段・cd の書き方では割れない) ---------------------------------
 reset
 ran sA k1 "pytest -q" 1000 1002 > /dev/null

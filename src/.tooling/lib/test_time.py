@@ -58,8 +58,11 @@ TEST_HEADS = (
     ("go", "test"),
     ("cargo", "test"),
 )
-DURATION_LINE = re.compile(r"^\s*(\d+(?:\.\d+)?s\s+(?:call|setup|teardown)\s+\S+.*?)\s*$", re.MULTILINE)
-SLOWEST_MARK = re.compile(r"slowest\s+\d*\s*durations", re.IGNORECASE)
+#: 遅い所の 1 行 = pytest の `12.34s call tests/x.py::test_y` か、 vitest の報告の `   1234 ms  src/x.test.js > 名前`
+DURATION_LINE = re.compile(
+    r"^\s*(\d+(?:\.\d+)?s\s+(?:call|setup|teardown)\s+\S+.*?|\d+\s+ms\s+\S+.*?)\s*$", re.MULTILINE)
+#: 遅い所の見出し = pytest の `slowest 10 durations` か、 vitest の報告の `slowest 10 tests`
+SLOWEST_MARK = re.compile(r"slowest\s+\d*\s*(?:durations|tests)", re.IGNORECASE)
 TOOL_USE_ID = re.compile(r"<tool-use-id>\s*([^<\s]+)\s*</tool-use-id>")
 OUTPUT_FILE = re.compile(r"<output-file>\s*([^<\n]+?)\s*</output-file>")
 STATUS = re.compile(r"<status>\s*([^<\s]+)\s*</status>")
