@@ -88,6 +88,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - **`bash .tooling/startup/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
 - **`normal` の時は直下の `journal/` 最新 3 session を Read** (= 新しい順。 階層で起動した時は、 下の 5 点の 4 が同じ事をその階層の journal でする)
+- **持つ票を読む** (= client のタブ、 `PWA_SID` が在る時): `tabs ticket mine`。 持つ動いている票が 1 枚 1 行 (= id・題・状態・印・次の 1 手) で、 待ちは数だけ出る。 本文は要る時に `tabs ticket show <id>`。 タブが持つ仕事の真値はこの一覧で、 journal は続きを持たない
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
 
@@ -111,7 +112,9 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 
 この行なしでブリーフィング進行 = Phase B スキップと同等の違反。
 
-**2. ブリーフィング**: 時間帯に合わせた挨拶 → 前回の続き → 今日やること → 「何から始めますか?」。 自分の言葉で自然に。
+**2. ブリーフィング**: 時間帯に合わせた挨拶 → 前回の続き (= 最新 journal と `tabs ticket mine`) → 今日やること (= 持つ票と、 その印) → 「何から始めますか?」。 自分の言葉で自然に。
+
+**自動の入れ替えで起動した時** (= 最初の発話が `<session-rollover phase="start">`): ブリーフィングでは、 最新 journal (= 今の機械の物) の `## 入れ替えの時点` を上から読み上げる。 どこで切れたかを伝え、 最後の出力は全文を出す。 `mode=continue` なら待たずに、 出どころが操作者か別のタブの票の次の 1 手から続ける。 出どころが自分の票の手は、 実行前に操作者へ 1 行で見せて待つ。 `mode=wait` は待ち、 出どころが操作者か別のタブの票の送るだけの手は進める。 client の外の session は、 票の代わりに journal の `## 生きている依頼` を読む (= 手の印 `[操作者]`・`[タブ]` が出どころに当たる)
 
 ### 終了時 (= 必須)
 
