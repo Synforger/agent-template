@@ -113,4 +113,4 @@ distribute/guard-update.sh             | -                                  | �
 distribute/guard-update.sh             | tests/test-guard-update.sh         | 追う branch の無い repo では pull を飛ばしてそう名乗り、 番人の導入まで進む。 pull が止まれば導入へ進まずに止まる。 1 回断られた fetch は打ち直して通る
 
 # --- 作業中に手で呼ぶ ---
-work/pr-land.sh                        | tests/test-pr-land.sh              | 検査が通るまで merge せず、 merge されるまで tag を打たない
+work/pr-land.sh                        | tests/test-pr-land.sh              | 検査が通るまで merge せず、 検査を待った先頭だけを merge し、 merge されるまで tag を打たない
