@@ -80,6 +80,20 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# A path is relative to the agent's root, and has no empty, '.', '..' or '.git' segment
+plain_path() {
+    case "$1" in ""|/*|"~"*) return 1 ;; esac
+    case "/${1%/}/" in *//*|*/./*|*/../*|*/.git/*) return 1 ;; esac
+    return 0
+}
+
+for sel in ${SELECTED_FILES[@]+"${SELECTED_FILES[@]}"}; do
+    if ! plain_path "$sel"; then
+        echo "error: --file '$sel' is not a path relative to the agent's root" >&2
+        exit 1
+    fi
+done
+
 COMMIT_MSG="${POSITIONAL[0]:-chore: promote changes from derived agent}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -186,6 +200,13 @@ if [ "${#SELECTED_FILES[@]}" -gt 0 ]; then
 else
     sync_paths=("${all_sync_paths[@]}")
 fi
+
+for p in "${sync_paths[@]}"; do
+    if ! plain_path "$p"; then
+        echo "error: '$p' is not a path relative to the agent's root — nothing was promoted" >&2
+        exit 1
+    fi
+done
 
 cd "$BASE_DIR"
 # 同じ feature branch へ 2 回目以降を積めるようにする (= 1 回の昇格は複数の promote で

@@ -183,6 +183,8 @@ The bar for "add a detector" is kept deliberately low — quality holds because 
 
 The base ships with zero concrete agent names or operator identifiers. Scanning itself lives in the machine-resident guard-dispatcher (a separate repo) and is enforced for every repo at the commit / push boundary; the word list lives in machine config (`~/.config/anon-words/`) and is never committed.
 
+The hooks this template ships are guardrails for a cooperating agent, not a security boundary: some let an operation through when the guard or a tool they call is absent.
+
 ## License
 
 [Apache License 2.0](./LICENSE)
