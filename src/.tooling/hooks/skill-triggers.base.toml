@@ -25,6 +25,10 @@ name = "sub-agent"
 [[skill.when]]
 tools = ["Bash"]
 command = '\btabs\s+new\b'
+# 言語 model を program から呼ぶ命令 (= § API とサブスクの使い分け)
+[[skill.when]]
+tools = ["Bash"]
+command = '\bclaude\s+(-p|--print)\b|\btabs\s+ask\b|anthropic[-_]api[-_]key|ANTHROPIC_API_KEY|api\.anthropic\.com'
 # 子のタブ (= AGENT_CHILD=1) の起動と締めは、 CLAUDE.md の手順の代わりに § 子の側の決まり で行う
 [[skill.when]]
 event = "SessionStart"
