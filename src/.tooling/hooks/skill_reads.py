@@ -5,7 +5,8 @@ or a Read tool call on the skill's SKILL.md. A skill the table gives a `file` is
 after the mark, or its path in the Read call. Any other skill is found by its name: `.../<name>` after the mark,
 or `skills/<name>/SKILL.md` in the Read call. A Bash command that only names the file (an edit, a search) is not
 a read. Each read keeps the time of its transcript row, so the gate can ask again when the SKILL.md changed after
-it; an Edit or Write the session itself made to that file, after a read, counts as reading the version it wrote.
+it; an Edit or Write the session itself made to that file, after a read, counts as reading the version it wrote, and
+so does the gate's own context that showed the session what changed in it (a row carrying `DIFF_MARK` and the name).
 Called by `skill_gate.py`.
 """
 import json
@@ -17,6 +18,8 @@ from pathlib import Path
 from skill_triggers import merged, skill_file
 
 LOADED_MARK = "Base directory for this skill:"
+#: The gate's context that showed what changed in a skill since the session read it; it counts as reading that version
+DIFF_MARK = "[skill-gate] changes to"
 READING_TOOLS = {"Read"}
 WRITING_TOOLS = {"Edit", "MultiEdit", "Write"}
 
@@ -69,6 +72,13 @@ def read_times(transcript: Path, names: list[str], files: dict[str, Path] | None
         except ValueError:
             continue
         when = _row_time(row)
+        attachment = row.get("attachment") or {}
+        if row.get("type") == "attachment" and attachment.get("type") == "hook_additional_context":
+            shown = "\n".join(str(part) for part in attachment.get("content") or [])
+            for name in candidates:
+                if f"{DIFF_MARK} `{name}`" in shown:
+                    _note_read(times, name, when)
+            continue
         content = (row.get("message") or {}).get("content")
         if isinstance(content, str):
             content = [{"type": "text", "text": content}]

@@ -5,8 +5,8 @@ client は、別のタブの連絡・client 自身の知らせ・自動の入れ
 その 1 行目の真値は番人で、番人の口 `order.py --openings` が 1 行に 1 つ返す。頭が `>>` なら別の機械からの連絡、
 `>` ならこの機械の client が打った物。番人が答えない間 (口の無い古い番人) は、番人の `orders.txt` の `>` の行を読む。
 
-呼ぶのは、締めで操作者の言葉を拾う `session-end/extract-operator-words.py`。届いた発話の読み方を出す hook のように、
-操作者が打った物かどうかを決める物は、同じ表を使う。
+呼ぶのは、締めで操作者の言葉を拾う `session-end/extract-operator-words.py`。操作者が打った物かどうかを決める物は、
+この表を使う。
 試験は `GUARD_ORDER_PY` で作り物の口を、`GUARD_CONFIG_DIR` で作り物の `orders.txt` の folder を渡す。
 """
 

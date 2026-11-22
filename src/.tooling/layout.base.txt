@@ -50,6 +50,6 @@ projects/**/rules : always.md ?registry.jsonl ?hits-since.json ?_archive/**
 .tooling/lib : *.py guard-place.sh
 .tooling/rules : *.py
 .tooling/session-end : *.sh *.py
-.tooling/startup : *.sh *.py ?pc-labels.txt ?pc-labels.example.txt ?deployed-clones.txt ?deployed-clones.example.txt duplicates-allowlist.txt
+.tooling/startup : *.sh *.py action-policy.txt ?pc-labels.txt ?pc-labels.example.txt ?deployed-clones.txt ?deployed-clones.example.txt duplicates-allowlist.txt
 .tooling/tests : test-*.sh
 .tooling/work : *.sh *.py
