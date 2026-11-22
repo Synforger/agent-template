@@ -19,6 +19,8 @@ from pathlib import Path
 
 from shell_segments import segments, without_text
 
+#: 受け入れの命令。 hook は 1 本の写しが機械の全部のタブで走るので、 打つ folder によらない path で名指す
+ACCEPT_COMMAND = f"python3 {shlex.quote(str(Path(__file__).resolve().parents[1] / 'work' / 'test-time.py'))}"
 #: 鳴る線の倍率と増え幅。 `elapsed > max(base × RING_RATIO, base + RING_EXTRA_SECONDS)` の時だけ鳴る
 RING_RATIO = 1.25
 RING_EXTRA_SECONDS = 5.0
@@ -307,7 +309,7 @@ def ring_message(repo_name: str, command: str, base_seconds: float, elapsed_seco
         " 読む・直す・試験を流し直す手は止まらない。 消える道は 2 つ:\n"
         "  (a) 既定は縮める (並列・時計の待ち・重い準備の使い回し)。 縮めて同じ命令を流し直し、 線の内に収まれば消える\n"
         "  (b) 縮める手を試しても縮まらなかった時だけ、 試した手を書いて受け入れる:"
-        ' `python3 .tooling/work/test-time.py accept --tried "<試した手>" --before <いつもの秒> --after <今回の秒>`'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <今回の秒>`'
     )
 
 
@@ -321,7 +323,7 @@ def closing_deny_message(ringing: list[dict]) -> str:
         "試験の時間が、 いつもの時間を越えたまま閉じられません (commit・PR・報告・票の close と pass・rollover):\n"
         f"{lines}\n"
         "縮めて同じ命令を流し直し線の内に収める (既定)。 縮める手を試しても縮まらなかった時だけ、"
-        ' `python3 .tooling/work/test-time.py accept --tried "<試した手>" --before <秒> --after <秒>` で受け入れる'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <秒> --after <秒>` で受け入れる'
         " (最後に載った 1 件ずつ受ける)。"
     )
 
