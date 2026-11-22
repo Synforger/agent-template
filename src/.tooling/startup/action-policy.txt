@@ -1,0 +1,117 @@
+# 起動の検査の反応の決まり。 読むのは action_policy.py で、 検査の出力に当たる行がある項目だけを出す。
+# 項目は `@ <行の頭> | <見せる正規表現>` の行で始まり、 次の @ の行までが本文。 本文の {root} はエージェントの folder。
+# 行の頭が一致する検査の行のどれかが正規表現に当たる時だけ、 その本文を出す。 ok の行しか無い項目は出さない。
+
+@ remote_sync | BEHIND|UNKNOWN
+  - remote_sync BEHIND -> run 'git fetch && git rebase --autostash @{u}' and re-read every startup file before briefing
+    (UNKNOWN -> say so in the briefing; do not claim the state is current)
+
+@ others: | .
+  - others: lines -> warnings whose owner is another tier (the name in 'owner', or '(別の境界)' when this tab
+    may not read it). Do not read them out and do not fix them: the owner's own startup fixes them
+
+@ docs-check: | FAIL: [1-9]
+  - docs-check FAIL >= 1 -> must fix within the same session (= only this tab's tier: the 'fail:' lines under it;
+    FAIL in other tiers is counted under others:)
+
+@ static_capacity: | over limit
+  - static_capacity over limit -> DELETE rules outright, in one shot, then return to the task.
+    Moving text to a skill or rewording it shorter does not count. Never make the user wait on this.
+
+@ company_terms: | ^company_terms: (?!0\b)
+  - company_terms LEAK >= 1 -> forbidden vocabulary reached the state tree; scrub/delete within the same session
+
+@ weekly_audit: | NEW|STALE|NO RUN
+  - weekly_audit NEW / STALE / NO RUN -> say it first in the briefing, with the repos and what was found (NEW = findings
+    the guard has not accepted, shown only to the one tab that reads them out: normal for repos outside every area,
+    the tier holding a .weekly-audit-reader file for the areas that tier reads, every tab of an area no reader reads;
+    the new: lines name them). The
+    operator decides what to remove from history, the agent fixes what it can (files, future commits). Once the
+    operator decides to accept what is listed, run the guard's 'weekly-audit.sh --accept [--as-of <time>] <repo>'
+    from a tab that reads that area; run it only on that decision, never to silence a line
+
+@ weekly_audit: | INCOMPLETE
+  - weekly_audit INCOMPLETE -> the newest audit has not finished (running, or stopped half way); the lines under it
+    are from the last finished run. Say it in the briefing when that log is 1d old or more (= it stopped)
+
+@ weekly_audit: | OLD LOG
+  - weekly_audit OLD LOG -> the guard that wrote the log names no repo's area: deploy the guard as the line says
+
+@ git_guard: | ^git_guard: (?!armed)
+  - git_guard not 'armed' -> the commit-msg identifier scan is off for those repos; clear the local
+    core.hooksPath (the global dispatcher already delegates to .githooks/) before committing there
+
+@ agent_guard: | MISSING
+  - agent_guard MISSING -> this machine's guard-dispatcher checkout predates agent-hooks/ (the agent can read
+    areas and write anywhere until then): in the guard-dispatcher clone run 'git fetch origin &&
+    git checkout -B develop origin/develop && bash scripts/bootstrap-machine.sh' (= its README)
+
+@ agent_guard: | \bOFF\b
+  - agent_guard OFF -> the operator switched the entry guard off on purpose: say so in the briefing and do
+    not reinstall or remove the file (= the operator removes the guard's agent-off to switch it on)
+
+@ model_pin: | PINNED
+  - model_pin PINNED -> a launch path names a model version or a variant suffix; use the bare alias
+    (opus / fable / sonnet / haiku) so every release and every default change is picked up; a settings(...)
+    hit is the per-machine model key the CLI writes back: delete that key
+
+@ effort_pin: | OVERRIDDEN|UNPINNED
+  - effort_pin OVERRIDDEN -> an env var beats the launcher's --effort; remove the named line and say in
+    the briefing that this session runs at the overridden effort until the next launch
+
+@ api_key: | \bSET\b
+  - api_key SET -> an Anthropic key sits where tabs pick it up, so tabs (and claude -p) bill the API instead of the
+    subscription: remove the named line (a tool that needs a key reads it from its own file under secrets/) and
+    say it in the briefing; a session(...) hit lasts until this tab is launched again
+
+@ guard_deploy: | STALE|UNKNOWN
+  - guard_deploy STALE -> this machine runs an older guard than origin/develop (merged fixes are not in
+    effect here yet): run it from this session and say it in the briefing (= a merged guard fix is the agent's to deploy):
+    bash {root}/.tooling/distribute/guard-update.sh   (UNKNOWN -> say the deploy state was not checked)
+
+@ tool_actions( | \bRED\b|UNKNOWN
+  - tool_actions RED develop / RED PR #N -> the Actions of that tool repo failed on its develop (= the commit that
+    was merged last: its own runs, or the checks of the PR that made it) or on an open PR: say it in the briefing
+    and hand it to the tab that owns the tool (UNKNOWN -> say the Actions state was not checked, with the reason)
+
+@ unchecked_repos: | ^unchecked_repos: (?!none)
+  - unchecked_repos N -> repos the guard's matching does not reach: say it in the briefing with the repos shown
+    (only the areas this tab reads). The tab that reads an area fixes its repos (guard.scope, or moving the repo),
+    normal takes the '-' and '_exempt' rows; repos of areas this tab does not read are counted only, not chased
+
+@ peer( | DOWN|WAITING|UNKNOWN
+  - peer(<name>) DOWN / WAITING -> the other machine has not answered the client's patrol (DOWN: 30 minutes or
+    more): say it in the briefing with how long and how many messages wait; the operator wakes that machine
+    (UNKNOWN -> the client's patrol has not written for 15 minutes: hand it to the client tab)
+
+@ pending_approval: | ^pending_approval: (?!none)
+  - pending_approval -> the guard checks this tier's own repo for names, so the closing commit will stop: run
+    'git config guard.scope corpus' in that tier's folder; if the guard asks for the operator's yes, ask in the briefing
+
+@ clone_deploy( | BEHIND|UNKNOWN
+  - clone_deploy BEHIND -> this machine still runs what that clone held before the newer commits: say it in
+    the briefing and follow that repo's own deploy steps (the derived agent keeps them, e.g. in a skill)
+    (UNKNOWN -> say the deploy state of that repo was not checked)
+
+@ platform_check: | problem|UNKNOWN
+  - platform_check N problem(s) -> part of this machine's platform is missing or down (e.g. a config dir that
+    does not trust the moved checkout, a resident service not loaded / not running / restarting): say it in
+    the briefing with every problem: line, read the error log a line names, and fix it in this session or
+    hand it to the tab that owns that part (UNKNOWN -> say the platform was not checked, with the reason)
+
+@ claude_settings: | drifted|missing
+  - claude_settings drifted -> a config dir diverged from templates/claude-settings.json; fold the
+    wanted change into the truth, then run .tooling/distribute/sync-claude-settings.sh --apply
+
+@ children: | 完了|詰まり
+  - children 完了 / 詰まり >= 1 -> a child tab this tab opened has reported: read its report, take the result in
+    (merge / remove its worktree), then 'tabs close <id>', and say it in the briefing. 作業中 children keep
+    running on their own (= 'tabs children' lists them); the steps are skill sub-agent § 子のタブ
+
+@ pages_orphans: | ^pages_orphans: (?!0\s*$)
+  - pages_orphans >= 1 -> folders under this tier's pages/ belong to no live tab (中身あり = it holds pages or
+    data, 雛形だけ = only the client's top page and memo), belong to a live tab that now works in another tier
+    (別の階層のタブ: move its pages to that tab's folder in its tier), or the tier's top pages/index.html does
+    not reach a tab of this tier that holds pages or links to nothing (階層のトップから辿れない / 無いリンク先):
+    say it in the briefing and settle every one in this session by the rules of pages/_README.md and skill
+    explainer-pages (UNKNOWN -> say the check did not run)

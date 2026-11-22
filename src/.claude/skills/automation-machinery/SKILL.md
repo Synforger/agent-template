@@ -18,6 +18,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 |---|---|---|
 | `.tooling/startup/startup-status.sh` | 起動時 Phase B-共通 | stdout 1 ブロック。冒頭は `PC: <label>` 行である |
 | `.tooling/startup/check-launch-pins.py` | startup-status から (`step_launch_pins`) | `model_pin: ok` / `PINNED <場所>` / `UNPINNED`、`effort_pin: ok` / `OVERRIDDEN <場所>` / `UNPINNED`。起動の経路が model の版を名指ししていないか、launcher の `--effort` が環境変数に上書きされていないかを測る。起動 launcher を持つ派生でだけ測り、無ければ `skipped` である |
+| `.tooling/startup/action_policy.py` (+ 本文 `action-policy.txt`) | startup-status から (最後の段) | `action policy:` と、ok でない行に当たる反応の決まりだけ。当たる物が無ければ `nothing to act on` の 1 行である。test は `tests/test-action-policy.sh` である |
 | guard deploy (startup-status 内蔵) | 起動時 startup-status | `guard_deploy: ok` / `STALE` / `UNKNOWN`。動いている番人の clone が origin/develop と揃っているかを見る。番人の直しは merge しただけでは効かない |
 | `.tooling/distribute/guard-update.sh` | 手動。`guard_deploy STALE` が出た時に流す | repo の pull・番人の clone を develop に揃えて導入し直す・設定の配布。配る script を持つ派生だけが持つ |
 | `.tooling/startup/check-deployed-clones.sh` | startup-status から (`step_clone_deploys`) | `clone_deploy(<名前>): ok` / `BEHIND <n>` / `UNKNOWN`。この機械が手元の clone から配備している repo が、追う branch の origin より遅れていないかを見る。見るのは派生が `.tooling/startup/deployed-clones.txt` に宣言した clone だけで、file が無ければ何も出さない。雛形は `deployed-clones.example.txt`、test は `tests/test-deployed-clones.sh` である |
@@ -43,7 +44,7 @@ when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.jso
 | `.tooling/docs-check/check-rewrite-keeps.py` | 手動 (文を書き直した時。`--ref <前の版>`) | 書き直した file と前の版で、`code`・「引用」・日付・URL・[発言者] の増減を 1 行ずつ出し、差が在れば exit 1。見出しは段と並びが同じなら文だけ直してよい |
 | `.tooling/lib/md_fences.py` | `check-positive-form.py`・`check-equals-asides.py`・`build-rule-registry.py` が import する | 行ごとに code block の中かを返す。block は開いた印と同じ字で同じ本数以上の印だけの行で閉じる |
 | `.tooling/startup/capacity-candidates.py` | check-static-capacity の超過時 | バイト数降順の削減候補 + 発火実績。「少し削って測り直す」の往復を作らないための出力である |
-| `.tooling/hooks/skill_gate.py` (+ `skill_triggers.py`・`skill_reads.py`・表 `skill-triggers.toml`) | PreToolUse (全部の道具)・UserPromptSubmit・SessionStart hook | 表の操作に当たり、会話の記録にその skill を呼んだ跡か Read で読んだ跡が無ければ、道具を 1 回止めて全部まとめて名指す。表の操作は、道具・path・命令・作業の folder・発話・起動の環境である。サブエージェントは自分の記録を見る。発話と起動は止めず、1 行の注意で済ませる。skill ごとに 1 session に 1 回で、最後に読んだ後に SKILL.md が書き換わっていれば (自分の Edit・Write は除く) 次の当たりでもう 1 回止める。読めない時は通す。test は `tests/test-skill-gate.sh` である |
+| `.tooling/hooks/skill_gate.py` (+ `skill_triggers.py`・`skill_reads.py`・表 `skill-triggers.toml`) | PreToolUse (全部の道具)・UserPromptSubmit・SessionStart hook | 表の操作に当たり、会話の記録にその skill を呼んだ跡か Read で読んだ跡が無ければ、道具は止めずに通して全部まとめて名指す。読んだ後に書き換わった skill は、読んだ版からの差分を見せる。表の操作は、道具・path・命令・作業の folder・発話・起動の環境である。サブエージェントは自分の記録を見る。skill ごとに 1 session に 1 回で、最後に読んだ後に SKILL.md が書き換わっていれば (自分の Edit・Write は除く) 次の当たりで差分を見せ、差分が取れない時と長い時だけ読み直しを名指す。読めない時は通す。test は `tests/test-skill-gate.sh` である |
 | git hook guard (startup-status 内蔵) | 起動時 startup-status | `armed` / `DISARMED` / repo 名一覧。git は hooksPath を 1 つしか見ず、local 上書き 1 個で scan が丸ごと死ぬ |
 
 派生で足す例は、禁止語 detector (`detect-company-terms.sh`) / 起動 launcher / 終了時の事前検証 / 発火記録の集計である。置けば startup-status が拾い、無ければ skip する。台帳と記録は base が出荷し、どう集計するかは派生の持ち物である。

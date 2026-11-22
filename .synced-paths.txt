@@ -36,6 +36,8 @@
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
+.tooling/startup/action_policy.py   # startup-status が呼ぶ (= 当たる反応の決まりだけを出す)
+.tooling/startup/action-policy.txt   # action_policy が読む反応の決まりの本文
 .tooling/startup/audit-known.sh
 .tooling/startup/audit_findings.py
 .tooling/startup/check-launch-pins.py
@@ -131,6 +133,8 @@
 .tooling/tests/test-commit-paths-guard.sh   # @machine-wide commit_paths_guard の試験
 .tooling/tests/test-bypass-prompt-gate.sh   # @machine-wide bypass_prompt_gate の試験
 .tooling/tests/test-extract-operator-words.sh
+.tooling/tests/test-client-openings.sh
+.tooling/tests/test-action-policy.sh
 .tooling/tests/test-pages-orphans.sh
 .tooling/tests/test-startup-owners.sh
 .tooling/tests/test-peer-health.sh

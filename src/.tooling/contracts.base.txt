@@ -25,7 +25,8 @@ lib/claude-launch.py                   | tests/test-claude-launch.sh        | �
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | 自動の入れ替えで起動し直された時と、 client が階層ごとに立てたタブ (= `<tab-open>`) は、 封筒が運ぶ階層で起動する
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | `--child` の起動は子のタブとして、 最初の発話の `<child-start>` の階層で起動し、 エージェントを pull しない。 `--child` の無い起動は子の印を受け継がない
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの folder は起動の file の置き場で決まり (= 受け継いだ `AGENT_ROOT` では決めない)、 `AGENT_ROOT` で session に渡る
-startup/startup-status.sh              | -                                  | 起動の検査を束ねて 1 ブロックで出し、 末尾に反応の指針を出す
+startup/action_policy.py               | tests/test-action-policy.sh        | 起動の検査の出力に当たる反応の決まりだけを `action-policy.txt` から出し、 ok の行しか無い決まりは出さない
+startup/startup-status.sh              | -                                  | 起動の検査を束ねて 1 ブロックで出し、 末尾に当たる行の反応の指針だけを出す
 startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | 常時読み込みか skill の一覧が溢れたら赤になる
 startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | サブプロジェクトが何段続いても、 どの段の常時読み込みと skill の一覧が溢れても、 その階層の名前で赤になる
 startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | commit の検査 (`--commit`) は、 git に載る階層が溢れたら止め、 git に載らない階層だけが溢れた時は `WARN <階層>:` を出して通す (= 別のタブの commit を止めない)。 引数なしの起動の検査は載らない階層でも赤にする
@@ -88,7 +89,7 @@ lib/tier_paths.py                      | -                                  | �
 # --- commit と hook ---
 commit/precommit-conflict-check.sh     | -                                  | commit する rule file が既存の rule と重なれば、 止めずに警告する
 commit/setup-hooks.sh                  | -                                  | hook の導入を何度回しても同じ状態になる
-lib/client_openings.py                 | -                                  | client が打つ発話の 1 行目は番人の口 (= `order.py --openings`) から取り、 番人が何も返さない間は `orders.txt` の `>` 行を読む
+lib/client_openings.py                 | tests/test-client-openings.sh      | client が打つ発話の 1 行目は番人の口 (= `order.py --openings`) から取り、 番人が何も返さない間は `orders.txt` の `>` 行を読む
 lib/client_openings.py                 | tests/test-extract-operator-words.sh | 締めで操作者の言葉を拾う時も同じ表で、 client が打った発話 (= 別のタブの連絡・client の知らせ・入れ替え・立てたタブ) を除く。 表を取れなければ stderr に 1 行出す
 ?hooks/ci_duplicate_guard.py           | tests/test-ci-duplicate-guard.sh   | 公開の repo (= `task ci` を呼ぶ workflow があり、 gh が PUBLIC と答える) で `task ci` を打つ Bash の呼び出しだけを、 Actions が流すという理由で止め、 private の repo・別の task・文字として含むだけの命令・読めない時は通す
 ?hooks/commit_paths_guard.py           | tests/test-commit-paths-guard.sh   | エージェントの checkout (= `AGENT_ROOT` と hook を持つエージェントの根) で、 `--` の後に path の無い `git commit` と `-a` / `--all` の commit だけを止め、 複数行の message・`-C`・前の段の `cd` も読み、 別の repo・自分の .git を持つ階層・文字として含むだけの命令・読めない時は通す
@@ -96,11 +97,11 @@ lib/client_openings.py                 | tests/test-extract-operator-words.sh | 
 ?lib/test_time.py                     | tests/test-test-time-gate.sh       | 試験の命令 (= pytest・task test・npm test・go test など) と閉じる手を、 前の段の cd と -C を含めて見分け、 鳴る線・基準の更新・pytest の遅い 10 本の行を file に触らず計算する
 ?lib/test_time_store.py               | tests/test-test-time-gate.sh       | 基準・流している最中の記録・鳴っている物・受け入れの記録を、 この機械の状態の置き場 (`$AGENT_PLATFORM_ROOT/state/test-times/`、 無ければ `~/.local/state/agent-test-times/`) に書き、 壊れていれば何も無かった事にして読む。 基準・鳴り・記録の取り出しは機械の中の全 session で 1 本ずつ通し (= file の lock)、 同じ時に終わった試験の行を互いに消さない
 ?work/test-time.py                    | tests/test-test-time-gate.sh       | 鳴っている試験の時間を `accept --tried --before --after` で受け入れる。 --tried が空・--before か --after が無い・鳴っていない時は断り、 受け入れると鳴りを消して基準を最後の時間に上げ、 `accepted.jsonl` に 1 行足す
-?hooks/skill_gate.py                   | tests/test-skill-gate.sh           | 表の操作に当たり、 その session (= サブエージェントは自分) の会話の記録に読んだ跡の無い skill か、 最後に読んだ後に SKILL.md が書き換わった skill がある時だけ、 道具を 1 回止めて (= 発話と起動は 1 行の注意で) 全部まとめて名指し、 読んだ後・当たらない操作・表が無い時は黙る
+?hooks/skill_gate.py                   | tests/test-skill-gate.sh           | 表の操作に当たり、 その session (= サブエージェントは自分) の会話の記録に読んだ跡の無い skill か、 最後に読んだ後に SKILL.md が書き換わった skill がある時だけ、 道具は止めずに通して全部まとめて名指し (= 書き換わった skill は読んだ版からの差分を見せる)、 読んだ後・当たらない操作・表が無い時は黙る
 ?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | 表の条件 (= 道具・path・命令・作業の folder・体の種類・発話・環境・code の file) が全部当たる行の skill を返す
 ?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | 型の表 (= skill-triggers.base.toml) の上にエージェントの表を重ね、 同じ name の行は条件を足し、 `off = true` は型の行を外し、 エージェントに SKILL.md の無い型の行は黙る
 ?hooks/skill_triggers.py               | tests/test-skill-gate.sh           | Bash の命令の条件は heredoc の中身 (= 命令が書き込む連絡の本文) を除いて照らし、 heredoc を開く行と後に続く命令は照らす
-?hooks/skill_reads.py                  | tests/test-skill-gate.sh           | 会話の記録から、 skill を呼んだ跡か SKILL.md を読んだ跡を名前ごとに最後の時刻つきで拾う (= 読んだ後に自分で Edit・Write した版も読んだ物に数える)
+?hooks/skill_reads.py                  | tests/test-skill-gate.sh           | 会話の記録から、 skill を呼んだ跡か SKILL.md を読んだ跡を名前ごとに最後の時刻つきで拾う (= 読んだ後に自分で Edit・Write した版と、 差分を見せられた版も読んだ物に数える)
 ?hooks/subagent_gate.py                | tests/test-subagent-gate.sh        | Agent の道具 (旧名 Task) と Workflow の道具は、 model・種類・fork を問わず全部止まり、 理由に子のタブ (`tabs capacity` と `tabs new`) を返す。 ほかの道具と読めない入力では黙る
 ?hooks/bypass_prompt_gate.py           | tests/test-bypass-prompt-gate.sh   | 全部通すモードで Claude Code が Bash の確認を出しかけた時だけ、 窓を出さずに断って書き直し方を返し (= rm には消す先の書き方)、 ほかのモード・ほかの道具・読めない入力では黙る
 
