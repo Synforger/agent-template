@@ -165,7 +165,7 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 
 見分けは環境変数 `AGENT_CHILD=1`。手順に次のエージェントの決まりを足す。
 
-- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
+- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。票を渡されていれば `tabs ticket mine` も読む。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る
 - **着手の前に 3 行を出す**: 1. 私の役割 2. 触る範囲 (自分の scope の path) 3. 読むだけの範囲。認識が親の本文とずれていたら、推測で進めずに親に確かめる
 - **git は `git add <path>` と `git commit` の 2 つだけ**。巻き戻しと退避の命令 (checkout で file を戻す・stash・reset・revert・restore) は使わない。例外は rebase と merge の衝突を解く時の `--theirs`・`--ours` で、自分の scope の file に限り報告に書く。add は path を名指し、`-A` と `.` は付けない。write は自分の scope の中だけで、並列の子の編集はそのまま置く。同期は `git fetch origin <base> && git rebase origin/<base>` だけ (reset で合わせると分岐点が古いまま残り、base が進んだ後の merge がその間の PR を巻き戻す。実測 8 本)
