@@ -3,6 +3,7 @@ title: 外部実装を組み込む / 直すときの規律
 description: 外部の実装を組み込む時は公式を先に読む
 updated: "2026-10-26"
 when_to_use: third_party / 公式 repo / 配布パッケージ / Claude Code の plugin・marketplace などの外の仕組みを組み込む・更新する時 / その組み込みが落ちた原因を追う時
+owner: template
 ---
 
 # 外部実装を組み込む / 直すとき

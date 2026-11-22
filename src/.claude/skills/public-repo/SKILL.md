@@ -3,6 +3,7 @@ title: 公開の repo の作法 (利用者視点の文書と、検査の置き�
 description: 公開 repo の README・docs・PR の読者像と OK・NG のトーン、docs の 2 層構造、検査は local が真値で CI はその入口を呼ぶだけ
 updated: "2026-10-26"
 when_to_use: 公開 repo の README・docs を書く・直す直前 / 公開 PR の body を書く直前 / 公開 repo に検査や CI の workflow を足す・変える直前
+owner: template
 ---
 
 # 公開の repo の作法

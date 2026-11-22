@@ -4,6 +4,7 @@ description: 自動化 script の発火経路 / 出力 / 反応規律 (機構改
 updated: "2026-10-26"
 stable: true
 when_to_use: 自動化機構 (`.tooling/*`) を改修する直前 / settings.json の hook 配列を編集する直前
+owner: normal
 ---
 
 # 自動化機構運用

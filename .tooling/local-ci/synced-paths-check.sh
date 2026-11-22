@@ -11,6 +11,7 @@ set -uo pipefail
 #
 #   A. 死に entry     = 列挙されているが src/ に実体が無い (= 退役時の消し忘れ)
 #   B. 宣言漏れ       = src/ に出荷しているのに列挙も除外宣言もされていない
+#   C. 持ち主の印     = 列挙した skill の frontmatter が owner: template でない、 `!` の skill が owner: template を持つ
 #
 # B の判定には「意図的に降ろさない」 の宣言が要る (= `.synced-paths.txt` の
 # `!path` 行)。 宣言があるものは B から除外され、 コメントでなく機械が読む形で
@@ -103,11 +104,34 @@ for glob in "${ENFORCED_GLOBS[@]}"; do
     done
 done
 
+# ---- C. skill の持ち主の印 (= 列挙した skill は `owner: template`、 `!` の skill はその印を持たない) ----
+# 持ち主の真値は .synced-paths.txt。 frontmatter の印は、 派生の docs-check が型の一覧を知らずに読むための写し
+skill_owner() { awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } /^owner:/ { sub(/^owner:[[:space:]]*/, ""); print; exit }' "$1"; }
+for f in src/.claude/skills/*/SKILL.md; do
+    [ -e "$f" ] || continue
+    rel="${f#src/}"
+    owner="$(skill_owner "$f")"
+    for item in "${excluded[@]}"; do
+        if [ "$item" = "$rel" ]; then
+            if [ "$owner" = template ]; then
+                echo "  FAIL: owner mismatch: $rel (declared '!', yet its frontmatter says owner: template)"
+                fails=$((fails + 1))
+            fi
+            continue 2
+        fi
+    done
+    if in_list "$rel" && [ "$owner" != template ]; then
+        echo "  FAIL: owner mismatch: $rel (listed, so its frontmatter needs owner: template)"
+        fails=$((fails + 1))
+    fi
+done
+
 if [ "$fails" -gt 0 ]; then
     echo ""
     echo "synced-paths-check: $fails problem(s)."
     echo "  dead entry  -> drop the line (the payload retired it)"
     echo "  undeclared  -> list it to ship it, or declare '!<path>  # why' to keep it derivation-owned"
+    echo "  owner       -> a listed skill says owner: template, a '!' skill does not"
     exit 1
 fi
 
