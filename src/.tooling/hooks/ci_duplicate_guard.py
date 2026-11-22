@@ -4,8 +4,8 @@
 重い機械をさらに重くする。 決まりは skill `sub-agent § 中央 merge の責務` (エージェントによっては常時の決まりにも在る) で、 これはその止め。
 settings の PreToolUse (matcher Bash) から呼ぶ。 試験 = tests/test-ci-duplicate-guard.sh
 
-- 見る命令: `;`・`&&`・`||`・`|`・改行で区切った段ごとに、 `task ci` (= `task -d <dir> ci` / `--dir` も) を探す。
-  前の段の `cd <dir>` は、 後の段の作業の folder として数える
+- 見る命令: 引用の外の `;`・`&&`・`||`・`|`・`&`・改行で区切った段ごとに、 `task ci` (= `task -d <dir> ci` / `--dir` も) を探す。
+  前の段の `cd <dir>` は、 後の段の作業の folder として数える。 引用・heredoc・注釈の中身は命令に数えない
 - 止める線: その repo の `.github/workflows/` に `task ci` を呼ぶ workflow があり、 `gh repo view` が PUBLIC と
   答えた時だけ。 private の repo は Actions の workflow が走らないので通す
 - 読めない時 (git の外・gh が無い・答えない・入力が壊れている) は通す (= fail-open)
@@ -15,12 +15,21 @@ settings の PreToolUse (matcher Bash) から呼ぶ。 試験 = tests/test-ci-du
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-SEGMENT_SPLIT = re.compile(r"\|\||&&|[;|\n]")
+from commit_paths_guard import segments
+
+#: 命令の中の引用・逃がした字・注釈・heredoc・裸の `#` (= 前から順に 1 つずつ当たる)
+SHELL_TEXT = re.compile(
+    r"""'[^']*'|"(?:\\.|[^"\\])*"|\\."""
+    r"|(?P<comment>(?<![^\s;&|()])\#[^\n]*)"
+    r"""|(?<!<)<<(?!<)-?[ \t]*(?P<quote>['"]?)(?P<end>[A-Za-z_][\w.-]*)(?P=quote)(?P<rest>[^\n]*)"""
+    r"\n(?:.*?\n)??[ \t]*(?P=end)(?=\n|$)"
+    r"|(?P<hash>\#)",
+    re.DOTALL,
+)
 WORKFLOW_CALLS_CI = re.compile(r"\btask\s+(?:-\S+\s+\S+\s+)*ci\b")
 GH_TIMEOUT_SECONDS = 8
 GIT_TIMEOUT_SECONDS = 5
@@ -32,15 +41,25 @@ REASON = (
 )
 
 
+def without_text(command: str) -> str:
+    """注釈と heredoc の中身を落とし、 行の継ぎをつないだ命令 (= `segments` が段を読み違えない形)。"""
+    def kept(match: re.Match[str]) -> str:
+        if match["comment"] is not None or match.group(0) == "\\\n":
+            return ""
+        if match["end"] is not None:
+            return without_text(match["rest"])
+        if match["hash"] is not None:
+            return "\\#"
+        return match.group(0)
+
+    return SHELL_TEXT.sub(kept, command)
+
+
 def ci_folders(command: str, cwd: Path) -> list[Path]:
     """命令の中で `task ci` を打つ段ごとに、 その作業の folder を返す (= 無ければ空)。"""
     folders: list[Path] = []
     current = cwd
-    for segment in SEGMENT_SPLIT.split(command):
-        try:
-            words = shlex.split(segment)
-        except ValueError:
-            continue
+    for words in segments(without_text(command)):
         while words and "=" in words[0] and not words[0].startswith("-"):
             words = words[1:]
         if len(words) >= 2 and words[0] == "cd":

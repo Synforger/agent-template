@@ -50,6 +50,25 @@ check "task ci を呼ぶ workflow の無い repo は通す" passed PUBLIC "${T}/
 check "公開の repo でも直した file の試験は通す" passed PUBLIC "${T}/pub" "task test"
 check "task ci で始まる別の task は通す" passed PUBLIC "${T}/pub" "task ci:lint"
 check "文字として task ci を含むだけの命令は通す" passed PUBLIC "${T}/pub" "grep -n 'task ci' Taskfile.yml"
+NL=$'\n'
+for command in "gh pr create --body \"checks pass; task ci runs in Actions.; done\"" \
+    "git commit -m \"checks pass${NL}task ci runs in Actions${NL}done\"" \
+    "gh pr create --body 'checks pass && task ci && done'" \
+    "cat > notes <<'EOF'${NL}it's here${NL}task ci${NL}EOF" \
+    "git commit -F - -- f <<-EOF${NL}task ci${NL}EOF" \
+    "ls # then; task ci"; do
+    check "文章の中の task ci は通す: ${command}" passed PUBLIC "${T}/pub" "${command}"
+done
+for command in "echo ok # don't${NL}task ci" \
+    "echo \${#HOME} && task ci" \
+    "cat > notes <<'EOF'${NL}it's here${NL}EOF${NL}task ci" \
+    "cat > notes <<EOF && task ci${NL}text${NL}EOF" \
+    "echo 'a; b' ; task ci" \
+    "task \\${NL} ci" \
+    "task ci 2>&1 | tail -5" \
+    "FOO=1 task ci"; do
+    check "命令の task ci は止める: ${command}" denied PUBLIC "${T}/pub" "${command}"
+done
 check "git の外は通す" passed PUBLIC "${T}/elsewhere" "task ci"
 check "Bash 以外の道具は通す" passed PUBLIC "${T}/pub" "task ci" Read
 
