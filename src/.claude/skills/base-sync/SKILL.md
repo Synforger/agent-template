@@ -3,6 +3,7 @@ title: 型と器の取り込み (型との同期と、新しい機械での立�
 description: 型 (agent-template) と `.tooling` を同期する正規経路と、新しい機械で器を建ててエージェントを動かすまでの順番
 updated: "2026-10-26"
 when_to_use: 型から取り込む・型へ上げる直前 / 型に file を足した直後 / 新しい機械でエージェントを初期構築する時
+owner: template
 ---
 
 # 型と器の取り込み

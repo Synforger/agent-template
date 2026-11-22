@@ -3,6 +3,7 @@ title: session の締め (終了手順 Step 0〜3)
 description: 終了発話か入れ替えの引き金から push (引き金なら起動し直し) までの手順
 updated: 2026-11-22
 when_to_use: 操作者が断定形で終了を示した直後 (「終わり」「締めよう」「寝る」) / `<session-rollover phase="close">` が届いた時
+owner: template
 ---
 
 # session の締め

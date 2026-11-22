@@ -22,7 +22,7 @@ capacity: 3KB
 
 ## 持ち主
 
-**直すのは持ち主のタブで、ほかのタブは持ち主へ `tabs send` で渡す**。型から降りる skill の持ち主は型 (直したら `base-sync` で上げる)、ほかは frontmatter の `owner`。
+**直すのは持ち主のタブで、ほかのタブは持ち主へ `tabs send` で渡す**。持ち主は frontmatter の `owner` で、型から降りる skill は `template` (直したら `base-sync` で上げる)。
 
 ## 命名
 
