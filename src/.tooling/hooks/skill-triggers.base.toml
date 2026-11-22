@@ -16,8 +16,8 @@ tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"]
 code = true
 [[skill.when]]
 tools = ["Bash"]
-# 連絡の本文や報告を置く _scratch/ と session の一時の置き場 scratchpad/ を作るだけの mkdir は、 code の置き場を決める操作ではないので当てない
-command = '\bmkdir\b(?!(\s+-\S+)*\s+"?\S*(_scratch|/scratchpad)/)'
+# 連絡の本文や報告を置く _scratch/ と session の一時の置き場 scratchpad/ を作るだけの mkdir は、 code の置き場を決める操作ではないので当てない (= 引数のどれか 1 つでもその外なら当てる。 旗・redirect・注釈は引数に数えない)
+command = '\bmkdir\b(?:[ \t]+[^\s;&|<>#][^\s;&|<>]*)*?[ \t]+(?!-|\d*[<>]|[^\s;&|<>]*(?:_scratch|/scratchpad)(?:/|[\x22\x27]?(?:[\s;&|<>)]|$)))[^\s;&|<>#]'
 
 [[skill]]
 name = "sub-agent"
