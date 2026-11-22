@@ -1,11 +1,13 @@
 ---
 title: session の締め (終了手順 Step 0〜3)
 description: 終了発話か入れ替えの引き金から push (引き金なら起動し直し) までの手順
-updated: 2026-11-16
+updated: 2026-11-22
 when_to_use: 操作者が断定形で終了を示した直後 (「終わり」「締めよう」「寝る」) / `<session-rollover phase="close">` が届いた時
 ---
 
 # session の締め
+
+**子のタブ (環境変数 `AGENT_CHILD=1`) は、この手順の代わりに skill `sub-agent § 子の側の決まり` で締める**。この手順は親のタブの物で、子は journal を書かずにタブのメモへ引き継ぎを書く。
 
 Step 0〜3 を全部、この順で踏む。発動の判断 (断定形の終了発話か) は `CLAUDE.md § 終了時` が真値。
 
