@@ -32,9 +32,12 @@
 .tooling/hooks/ci_duplicate_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/commit_paths_guard.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/hooks/bypass_prompt_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/hooks/test_time_gate.py   # @machine-wide 口座の設定の hook が呼ぶ
 .tooling/commit/precommit-conflict-check.sh
 .tooling/commit/setup-hooks.sh
 .tooling/startup/startup-status.sh
+.tooling/startup/action_policy.py   # startup-status が呼ぶ (= 当たる反応の決まりだけを出す)
+.tooling/startup/action-policy.txt   # action_policy が読む反応の決まりの本文
 .tooling/startup/audit-known.sh
 .tooling/startup/audit_findings.py
 .tooling/startup/check-launch-pins.py
@@ -68,9 +71,12 @@
 .tooling/lib/session_transcript.py
 .tooling/lib/session_scope.py
 .tooling/lib/client_openings.py
+.tooling/lib/test_time.py   # @machine-wide test_time_gate が読む
+.tooling/lib/test_time_store.py   # @machine-wide test_time_gate が読む
 
 # 検査が通るのを待ってから merge する道具 (= skill base-sync が、 型へ上げた PR をこれで merge させる。 無いと手順が存在しない script を指す)
 .tooling/work/pr-land.sh
+.tooling/work/test-time.py
 
 # 起動の検査 pages_orphans (= startup-status.sh が呼ぶ。 階層の pages/ に残った、 生きているタブの物でない folder を出す)
 .tooling/startup/pages_orphans.py
@@ -107,6 +113,7 @@
 .tooling/tests/test-deployed-clones.sh
 .tooling/tests/test-claude-launch.sh
 .tooling/tests/test-pr-land.sh
+.tooling/tests/test-test-time-gate.sh   # @machine-wide test_time_gate の試験
 .tooling/tests/test-docs-scan.sh
 .tooling/tests/test-guard-update.sh
 .tooling/tests/test-platform-check.sh
@@ -126,6 +133,8 @@
 .tooling/tests/test-commit-paths-guard.sh   # @machine-wide commit_paths_guard の試験
 .tooling/tests/test-bypass-prompt-gate.sh   # @machine-wide bypass_prompt_gate の試験
 .tooling/tests/test-extract-operator-words.sh
+.tooling/tests/test-client-openings.sh
+.tooling/tests/test-action-policy.sh
 .tooling/tests/test-pages-orphans.sh
 .tooling/tests/test-startup-owners.sh
 .tooling/tests/test-peer-health.sh

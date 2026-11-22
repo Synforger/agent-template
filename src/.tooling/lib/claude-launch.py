@@ -26,6 +26,10 @@ model / effort / fastMode の既定もここが持つ。 /model・/fast・/effor
 fast の付けっぱなしに気づけない)。 model と effort は起動ごとの引数で渡し (= settings.json に
 触れない)、 fastMode は引数が無いので起動の直前に settings.json へ書き戻す。 配布の
 `sync-claude-settings.sh` は 3 つとも機械ごとの鍵として触らない。
+
+子のタブの model と effort の既定、 親が `<child-start>` の `model=`・`effort=` の行で選べる値、 子にだけ足す
+環境変数・設定・外す道具は、 エージェントの `templates/claude-child.json` が持つ (= 子が呼ぶたびに読み直す
+起動の固定分を削る口)。 file が無ければ子は `CHILD_MODEL` と `EFFORT` で、 何も足さずに起動する。
 """
 
 from __future__ import annotations
@@ -44,6 +48,9 @@ MODEL = "opus"
 CHILD_MODEL = "sonnet"
 EFFORT = "high"
 FAST_MODE = False
+#: 子のタブの起動の設定 (= エージェントの folder からの置き場)。 鍵は `model`・`effort` (= 既定)、 `models`・`efforts`
+#: (= 親が選べる値)、 `env` (= 子にだけ足す環境変数)、 `settings` (= `--settings` で足す設定)、 `disallowed_tools`
+CHILD_PROFILE = Path("templates") / "claude-child.json"
 #: 起動の前の pull が網を待つ上限の秒。 普段の fetch は 1 秒前後で、 返らない ssh を待つと Claude が立たない。
 #: 試験は環境変数で縮める
 PULL_TIMEOUT_SECONDS = float(os.environ.get("AGENT_PULL_TIMEOUT", "20"))
@@ -159,6 +166,82 @@ def handed_tier(message: str) -> str | None:
     if not found:
         return None
     return next((line[5:].strip() for line in found.group(1).splitlines() if line.startswith("tier=")), "")
+
+
+def child_fields(message: str) -> dict[str, str]:
+    """子のタブの最初の発話の `<child-start>` の塊 (= 入れ替えで起き直した子は `<session-rollover>` の封筒) に
+    ある `<名前>=<値>` の行。 塊が無ければ空。"""
+    found = CHILD_START.search(message) or ROLLOVER.search(message)
+    if not found:
+        return {}
+    pairs = (line.partition("=") for line in found.group(1).splitlines())
+    return {key.strip(): value.strip() for key, sep, value in pairs if sep}
+
+
+def load_child_profile() -> dict:
+    """子のタブの起動の設定。 file が無いか読めなければ空 (= 読めない時は 1 行で言う)。"""
+    path = AGENT / CHILD_PROFILE
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        say(f"{path} を読めません (= 子は既定で起動します): {error}")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+#: 子の起動の設定の鍵と、 その値の形 (= 形の違う値は 1 行で言って使わない)
+PROFILE_SHAPES = {"model": str, "effort": str, "models": list, "efforts": list, "env": dict, "settings": dict,
+                  "disallowed_tools": list}
+#: 子の設定の `env` では書けない名前の頭。 起動の script が階層・番人の folder・口座・タブを渡す変数と、 外す API の鍵で、
+#: 設定から書けると番人の入力や鍵の除去を上書きできる
+RESERVED_ENV_PREFIXES = ("AGENT_", "GUARD_", "ANTHROPIC_", "PWA_", "CLAUDE_CONFIG_DIR")
+
+
+def checked_profile(profile: dict, notes: list[str]) -> dict:
+    """設定のうち、 知っている鍵で形の合う値だけ (= 外した鍵は `notes` に 1 行ずつ足す)。"""
+    kept = {}
+    for key, value in profile.items():
+        shape = PROFILE_SHAPES.get(key)
+        if shape is None:
+            notes.append(f"{CHILD_PROFILE} の知らない鍵 {key} を使いません")
+        elif not isinstance(value, shape) or (shape is list and not all(isinstance(v, str) for v in value)) \
+                or (shape is str and not value):
+            notes.append(f"{CHILD_PROFILE} の {key} の形が違うので使いません")
+        else:
+            kept[key] = value
+    env = kept.get("env", {})
+    for name in [n for n in env if not isinstance(env[n], str) or n.startswith(RESERVED_ENV_PREFIXES)]:
+        notes.append(f"{CHILD_PROFILE} の env の {name} は書けないので使いません")
+        del env[name]
+    return kept
+
+
+def child_launch(message: str, profile: dict) -> tuple[str, str, list[str], dict[str, str], list[str]]:
+    """子のタブの (model, effort, claude へ足す引数, 足す環境変数, 子に知らせる行)。
+
+    親が `<child-start>` の行で選んだ model と effort は、 設定の file の `models`・`efforts` に在る時だけ採る
+    (= 無い値は既定で起動し、 そのことを知らせる行に足す)。"""
+    notes: list[str] = []
+    profile = checked_profile(profile, notes)
+    chosen = {"model": profile.get("model", CHILD_MODEL), "effort": profile.get("effort", EFFORT)}
+    fields = child_fields(message)
+    for key, allowed_key in (("model", "models"), ("effort", "efforts")):
+        asked = fields.get(key)
+        if not asked:
+            continue
+        if asked in profile.get(allowed_key, [chosen[key]]):
+            chosen[key] = asked
+        else:
+            notes.append(f"子の {key}={asked} は {CHILD_PROFILE} の {allowed_key} に無いので、 {chosen[key]} で起動します")
+    args: list[str] = []
+    if profile.get("settings"):
+        args += ["--settings", json.dumps(profile["settings"], ensure_ascii=False)]
+    if profile.get("disallowed_tools"):
+        args += ["--disallowedTools", ",".join(profile["disallowed_tools"])]
+    env = {str(k): str(v) for k, v in profile.get("env", {}).items()}
+    return chosen["model"], chosen["effort"], args, env, notes
 
 
 def tier_of(message: str) -> tuple[str, Path]:
@@ -385,7 +468,8 @@ def main() -> int:
         account = record_account(resume) or account_dir()
         claude_args = ["--resume", resume, *rest]
         # 階層は最初の発話から決め直す (= 番人の folder・PWA の 📋 と一覧が、 同じ階層を見る)
-        tier, folder = tier_of(first_message(account, resume))
+        message = first_message(account, resume)
+        tier, folder = tier_of(message)
         extra = skill_dirs(folder) if tier != "normal" else []
     else:
         if message_file is not None:
@@ -423,9 +507,17 @@ def main() -> int:
     else:
         os.environ["CLAUDE_CONFIG_DIR"] = str(account)
     drop_caller_environment()
-    # --add-dir は後ろの引数をいくつでも取るので、 --model より前に置いて発話を吸わせない
-    model = CHILD_MODEL if os.environ.get("AGENT_CHILD") else MODEL
-    command = [CLAUDE, *extra, "--model", model, "--effort", EFFORT, *claude_args]
+    model, effort, child_args = MODEL, EFFORT, []
+    if os.environ.get("AGENT_CHILD"):
+        model, effort, child_args, child_env, notes = child_launch(message, load_child_profile())
+        os.environ.update(child_env)
+        for note in notes:
+            say(note)
+        # 起動の知らせは画面が Claude に替わると消えるので、 子の最初の発話の末尾にも足す (= 子が親へ報告できる)
+        if notes and claude_args and not resume:
+            claude_args[-1] += "\n\n[起動の知らせ] " + " / ".join(notes)
+    # --add-dir と --disallowedTools は後ろの引数をいくつでも取るので、 --model より前に置いて発話を吸わせない
+    command = [CLAUDE, *extra, *child_args, "--model", model, "--effort", effort, *claude_args]
     os.execvp(command[0], command)
     return 1
 
