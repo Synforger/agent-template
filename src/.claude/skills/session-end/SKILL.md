@@ -24,7 +24,7 @@ Step 0〜3 を全部、この順で踏む。発動の判断 (断定形の終了�
   - `python3 .tooling/startup/detect-duplicates.py` (重複 section cache 更新)
 - **型へ返していない物の洗い出し** (必須): この session で作った形・道具の足りない所の回避・手順のうち、他でも使う物を 1 つずつ挙げ、型 (道具・テンプレ・親の skill) へ返したか、持ち主のタブへ依頼を出し切ったかを見る。どちらでもない物は締める前に出し切る。別のタブとの連絡の決めは、そのエージェントの `rules/always.md` が持つ
 - **plan の棚卸し** (必須、触れた階層全部): `plans/` の生きている file を 1 本ずつ見て、**plan として終わった物だけ `_archive/` へ移す**。操作者待ちが plan の最後なら移し、途中なら残す。判断軸と手順は `rules/always.md § git` が持つ。残す file は最新化する。完了マークの付与、新規の残タスクの追加、state snapshot (develop/main の tip・open PR・branch) の更新、古い時点の記述の掃除をする。横断は `plans/` 直下、プロジェクト固有は `projects/<P>/plans/` に置く
-- **説明のページの木の確かめ** (必須、触れた階層全部): skill `explainer-pages` の「続けて保つ」の 3 つを見て、抜けをこの session で直す。リンクの抜け・枝の外に置いたページ・階層の `pages/` の下の生きていないタブの folder が当たる
+- **説明のページの木の確かめ** (必須、触れた階層全部): skill `explainer-pages` の「続けて保つ」の確かめを全部行い、抜けをこの session で直す。何を片付けて何を残すかも同じ節が持つ
 - **操作者の言葉を見本へ積む** (必須、触れた階層全部): 操作者が作った物 (ページ・スライド・図・表・文) について言った言葉を、その形を持つ道具の skill の「見本」の節へ書き足す。journal を書く前に行う
   1. `python3 .tooling/session-end/extract-operator-words.py <journal-dir> --nn <NN>` を階層ごとに 1 回流す (NN は Step 0 の採番)。書かれた `journal/<日付>/session-NN-operator-words.jsonl` の行を全部読む。行の `artifacts` は、その言葉の直前に出た作った物の path。`"source": "review"` の行は、操作者が PowerPoint で自分の手で直した頁で (文言の前後と、直す前と後の版の path つき)、一番強い「直し」として扱う
   2. 作った物の形に関わる言葉だけを選ぶ。段取り・質問・作った物の話でない発話は積まない
