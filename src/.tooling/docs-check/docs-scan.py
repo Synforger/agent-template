@@ -44,6 +44,7 @@ JA_CHARS = re.compile(r"[一-龯ぁ-んァ-ヶ]")
 
 REF_PATTERN = re.compile(r"`([a-zA-Z0-9_/.~-]+\.md)`")
 PLACEHOLDER_PATTERN = re.compile(r"\{\{[^}]+\}\}|<[^>]{1,80}>")
+OWNER_LINE = re.compile(r"owner:\s*\S")
 ROOT_SKILL = re.compile(r"^(\./)?\.claude/skills/[^/]+/SKILL\.md$")
 INDEX_HEADING = re.compile(r"^##\s*(エントリ|ファイル|索引|各環境ファイル|エントリポイント)")
 
@@ -189,7 +190,7 @@ def main():
         if "/_archive/" not in f and not any(line.startswith("description:") for line in fm):
             emit(1, "warn", f"{f}: frontmatter description missing (recommended)")
         # 親の skill は全階層のタブが読むので、 直すタブを名乗らせる (= 階層の中の skill は置き場が持ち主を決める)
-        if ROOT_SKILL.match(f) and not any(line.startswith("owner:") for line in fm):
+        if ROOT_SKILL.match(f) and not any(OWNER_LINE.match(line) for line in fm):
             emit(1, "fail", f"{f}: frontmatter owner missing (a skill every tier reads names the tab that fixes it)")
         passes += 1
     emit(1, "pass", passes)
