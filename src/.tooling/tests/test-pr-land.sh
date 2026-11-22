@@ -51,7 +51,14 @@ case "$1 $2" in
     "api -X")
         if [ -f "${S}/rest.err" ]; then cat "${S}/rest.err" >&2; exit 1; fi
         [ -f "${S}/merges" ] && cp "${S}/state.after" "${S}/state"; exit 0 ;;
-    "pr view") [ -f "${S}/missing" ] && exit 1; cat "${S}/state" ;;
+    "pr view")
+        [ -f "${S}/missing" ] && exit 1
+        if [[ "$*" == *"--json headRefOid "* ]]; then
+            # the head moves once a check was asked for, when the scene says so
+            if [ -f "${S}/moves" ] && [ -f "${S}/n" ]; then cat "${S}/moves"; else cut -d' ' -f4 "${S}/state"; fi
+        else
+            cat "${S}/state"
+        fi ;;
     "repo view") if [[ "$*" == *nameWithOwner* ]]; then echo o/r; else [ -f "${S}/visibility" ] && cat "${S}/visibility"; fi ;;
     "api repos/{owner}/{repo}/actions/workflows") [ -f "${S}/workflows" ] && cat "${S}/workflows" ;;
 esac
@@ -77,7 +84,7 @@ PENDING='[{"bucket":"pending","name":"gates"}]'
 scene late yes '[]' '[]' "${PENDING}" "${PASS}"
 out="$(land 7)"; code=$?
 check "検査が後から登録されても、 通るまで待ってから merge する (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [ "$(merged)" = 1 ]; echo $?)"
-check "merge の前に検査を 4 回見ている" "$([ "$(sed '/^pr merge/,$d' "${FAKE_GH}/calls" | grep -c '^pr checks')" = 4 ] && [ "$(grep -m1 '^pr merge' "${FAKE_GH}/calls")" = 'pr merge 7 --squash --delete-branch' ]; echo $?)"
+check "merge の前に検査を 4 回見ている" "$([ "$(sed '/^pr merge/,$d' "${FAKE_GH}/calls" | grep -c '^pr checks')" = 4 ] && [ "$(grep -m1 '^pr merge' "${FAKE_GH}/calls")" = "pr merge 7 --squash --delete-branch --match-head-commit ${OLD}" ]; echo $?)"
 check "着地した PR と commit を言う" "$([[ "${out}" == *"#7 merged into main (${MERGE:0:7})"* ]]; echo $?)"
 
 # --- 検査が 1 つも登録されないまま: merge しない ---
@@ -175,7 +182,7 @@ check "着地したら、 origin に残っていた元の branch を消す" "$([
 # --- 元の branch: 残す指定 / PR の後に動いていたら触らない / merge されなかったら触らない ---
 scene keep yes "${PASS}"
 land 7 --keep-branch >/dev/null
-check "--keep-branch では branch を消す指定を付けない" "$(grep -q '^pr merge 7 --squash$' "${FAKE_GH}/calls"; echo $?)"
+check "--keep-branch では branch を消す指定を付けない" "$(grep -qxF "pr merge 7 --squash --match-head-commit ${OLD}" "${FAKE_GH}/calls"; echo $?)"
 check "--keep-branch では origin の branch も残す" "$([ -n "$(git ls-remote --heads origin topic)" ]; echo $?)"
 HEAD_AT="${MERGE}" scene moved yes "${PASS}"
 out="$(land 7)"; code=$?
@@ -184,9 +191,31 @@ scene unmerged no "${PASS}"
 land 7 >/dev/null
 check "merge されなかった PR の branch は消さない" "$([ -n "$(git ls-remote --heads origin topic)" ]; echo $?)"
 
+# --- the head that is merged is the head whose checks were awaited ---
+scene head-moves yes "${PENDING}" "${PASS}"
+echo "${MERGE}" > "${FAKE_GH}/moves"
+out="$(land 7 --tag v4.0.0)"; code=$?
+check "a head that moved during the wait is not merged (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"the head of #7 moved"* ]] && [ -z "$(git tag -l v4.0.0)" ]; echo $?)"
+scene head-named-wrong yes "${PASS}"
+out="$(land 7 --match-head "${MERGE}")"; code=$?
+check "another head than the named one is refused before the wait (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && ! grep -q '^pr checks' "${FAKE_GH}/calls" && [[ "${out}" == *"not the named"* ]]; echo $?)"
+scene head-named yes "${PASS}"
+out="$(land 7 --match-head "${OLD}")"; code=$?
+check "the named head is merged (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && [ "$(merged)" = 1 ]; echo $?)"
+
+# --- the subject and the body reach both ways of merging ---
+printf '%s\n' "the body" > "${WORK}/body.md"
+scene text yes "${PASS}"
+land 7 --subject "fix: a title" --body-file "${WORK}/body.md" >/dev/null
+check "gh pr merge gets the subject and the body file" "$(grep -qxF "pr merge 7 --squash --delete-branch --match-head-commit ${OLD} --subject fix: a title --body-file ${WORK}/body.md" "${FAKE_GH}/calls"; echo $?)"
+scene text-rest yes "${PASS}"
+echo "GraphQL: Merge already in progress (mergePullRequest)" > "${FAKE_GH}/merge.err"
+land 7 --subject "fix: a title" --body-file "${WORK}/body.md" >/dev/null
+check "the REST merge gets the same text and head" "$(grep -qxF "api -X PUT repos/{owner}/{repo}/pulls/7/merge -f merge_method=squash -f sha=${OLD} -f commit_title=fix: a title -F commit_message=@${WORK}/body.md" "${FAKE_GH}/calls"; echo $?)"
+
 # --- 使い方の誤り ---
 scene usage yes "${PASS}"
-for args in "" "--squash" "seven" "7 --rebase" "7 --tag"; do
+for args in "" "--squash" "seven" "7 --rebase" "7 --tag" "7 --subject" "7 --body-file" "7 --body-file /nonexistent/body" "7 --match-head" "7 --match-head abc123"; do
     # shellcheck disable=SC2086
     land ${args} >/dev/null; code=$?
     check "使い方の誤りは何もせずに返す: '${args}' (exit ${code})" "$([ "${code}" -eq 2 ] && [ "$(merged)" = 0 ]; echo $?)"
