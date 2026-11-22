@@ -22,7 +22,7 @@ capacity: 3KB
 
 ## 持ち主
 
-**直すのは持ち主のタブで、ほかのタブは持ち主へ `tabs send` で渡す**。持ち主は frontmatter の `owner` で、型から降りる skill は `template` (直したら `base-sync` で上げる)。親の `.claude/skills` の skill に `owner` が無いと docs-check が赤にし、型の CI は `template` の印と `.synced-paths.txt` の列挙の食い違いを赤にする。階層の中の skill は置き場の階層が持ち主で、`owner` は書かなくてよい。
+**直すのは持ち主のタブで、ほかのタブは持ち主へ `tabs send` で渡す**。持ち主は frontmatter の `owner` で、型から降りる skill は `template` (直したら `base-sync` で上げる)。
 
 ## 命名
 
