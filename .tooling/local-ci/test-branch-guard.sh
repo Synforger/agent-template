@@ -54,6 +54,11 @@ expect main detached refuse
 expect develop detached refuse
 expect main on refuse
 expect feature/work on pass
+expect feature/domain on pass
+expect feature/redevelop on pass
+expect domain detached pass
+expect feature/main on refuse
+expect feature/develop on refuse
 
 echo "branch-guard: failed=${failed}"
 exit "${failed}"
