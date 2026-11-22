@@ -135,6 +135,23 @@ check "install: _archive/ の下の行の無いページには足さない" "" "
 out="$(python3 -I "${CHECK}" "${P_PAGES}/ses_tab" 2>&1)"
 check "check: _archive/ を直すと 0 件に戻る" "0 ok: ${P_PAGES}/ses_tab のトップページから全部辿れる" "$? ${out}"
 
+# --- 雛形: 埋め字 {{pages_root}} を client と同じ値 (= ページの folder から根の pages への相対) で埋めると、 どの深さでも正しい ---
+mkdir -p "${ROOT_PAGES}/_template-tab"
+cp "${SRC}/pages/_template-tab/index.html" "${ROOT_PAGES}/_template-tab/index.html"
+page "${S_PAGES}/index.html"
+filled() { # <階層の pages> <pages_root の値>
+    mkdir -p "$1/ses_new"
+    sed -e "s#{{pages_root}}#$2#g" -e "s#{{title}}#t#g" -e "s#{{tier}}#x#g" "${SRC}/pages/_template-tab/index.html" > "$1/ses_new/index.html"
+    python3 -I "${CHECK}" "$1/ses_new" 2>&1
+    echo "exit $?"
+}
+check "雛形: 根のタブは最初から正しい path" "exit 0" "$(filled "${ROOT_PAGES}" ".." | tail -1)"
+check "雛形: プロジェクトのタブは最初から正しい path" "exit 0" "$(filled "${P_PAGES}" "../../../../pages" | tail -1)"
+check "雛形: サブプロジェクトのタブは最初から正しい path" "exit 0" "$(filled "${S_PAGES}" "../../../../../../pages" | tail -1)"
+# install_toc.py を pages/ ごと流しても、 雛形の埋め字を根の path に書き戻さない
+python3 -I "${INSTALL}" "${ROOT_PAGES}" > /dev/null 2>&1
+check "install: 雛形の埋め字に触らない" "{{pages_root}}/_common/toc-sidebar.js" "$(loaded "${ROOT_PAGES}/_template-tab/index.html")"
+
 # --- 部品: タブのトップをページ自身の URL から決める (= 部品の置き場に依らない) ---
 if command -v node > /dev/null 2>&1; then
     out="$(node - "${COMPONENT}" <<'JS'

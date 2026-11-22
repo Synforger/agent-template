@@ -32,8 +32,10 @@ journal/**/session-*-friction.jsonl
 # anon-words 実体 (= 派生先で各自書く、 .example のみ追跡)
 .tooling/local-ci/anon-words.txt
 
+# Local secrets
+.env
+secrets/
+
 # 派生固有: 必要なら追加
 # 例:
-# .env
-# secrets/
 # .company/

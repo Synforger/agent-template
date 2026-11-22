@@ -178,6 +178,8 @@ H2/H3 section 単位で全 rule の LCS 比較、 真値分散の集約候補を
 
 base 側は具体的なエージェント名・運用者個人情報ゼロで出荷。 スキャンの実体はマシン常駐の guard-dispatcher (= 別リポ) が持ち、 commit / push 境界で全リポ強制される (= word list はマシン config `~/.config/anon-words/` に置き、 リポには commit しない)。
 
+本 template が配る hook は、協力的なエージェントのための手すりであり、セキュリティの境界ではない。guard や hook の呼ぶ道具が無い時に、操作を通す物がある。
+
 ## ライセンス
 
 [Apache License 2.0](./LICENSE)

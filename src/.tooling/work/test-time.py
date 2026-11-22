@@ -3,7 +3,7 @@
 
 打つのは、 hook `hooks/test_time_gate.py` が「いつもの時間を越えた」と鳴らした session の本人。 既定は縮める事で、
 縮める手を試しても縮まらなかった時だけ、 試した手と、 何秒が何秒になったかを書いて受け入れる。
-受け入れると、 鳴っている物のうち一番新しい 1 件の基準を最後の elapsed に上げ、 鳴りを消し、 `accepted.jsonl` に 1 行足す。
+受け入れると、 鳴っている物のうち一番新しい 1 件の基準を、 測った秒と --after の短い方にし、 鳴りを消し、 `accepted.jsonl` に 1 行足す。
 使い方: python3 .tooling/work/test-time.py accept --tried "<試した手>" --before <秒> --after <秒>
 session は環境変数 `CLAUDE_CODE_SESSION_ID`。 無ければ、 鳴っている物を持つ一番新しい session に倒す。
 試験 = tests/test-test-time-gate.sh
@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from test_time import baseline_key  # noqa: E402
+from test_time import accepted_base, baseline_key, is_seconds  # noqa: E402
 from test_time_store import TestTimeStore, current_time  # noqa: E402
 
 
@@ -25,19 +25,24 @@ def accept(tried: str, before: float | None, after: float | None) -> int:
     if not tried.strip() or before is None or after is None:
         print("断ります: --tried (試した手)・--before・--after の 3 つが要ります。 縮める手を試してから、 その手と秒数を書いてください。", file=sys.stderr)
         return 1
+    if not is_seconds(after):
+        print(f"断ります: --after は縮める手を試した後の秒数 (0 より大きい数) です: {after}", file=sys.stderr)
+        return 1
     store = TestTimeStore()
     session = os.environ.get("CLAUDE_CODE_SESSION_ID") or store.newest_ringing_session() or ""
     ring = store.pop_latest_ring(session) if session else None
     if ring is None:
         print("断ります: この session で鳴っている試験の時間がありません。", file=sys.stderr)
         return 1
-    store.save_base(baseline_key(ring["repo"], ring["command"]), ring["elapsed"])
+    base = accepted_base(ring["elapsed"], after)
+    store.save_base(baseline_key(ring["repo"], ring["command"]), base)
     written = store.append_accepted({
         "at": datetime.fromtimestamp(current_time(), timezone.utc).isoformat(), "session": session,
         "repo": ring["repo"], "command": ring["command"], "before": before, "after": after, "tried": tried.strip(),
     })
     left = len(store.ringing(session))
-    print(f"受け入れました: {Path(ring['repo']).name} `{ring['command'][:80]}` 基準を {ring['elapsed']:.1f}秒 に上げました。"
+    print(f"受け入れました: {Path(ring['repo']).name} `{ring['command'][:80]}` 基準を {base:.1f}秒 にしました"
+          + f" (測った {ring['elapsed']:.1f}秒 と --after {after:.1f}秒 の短い方)。"
           + ("" if written else " (記録の file には書けませんでした)")
           + (f" まだ鳴っている物が {left} 件あります。" if left else ""))
     return 0

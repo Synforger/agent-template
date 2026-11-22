@@ -74,6 +74,51 @@ reset
 hook PreToolUse sA id1 "pytest" 1000 0 "" "${T}/plain" > /dev/null
 check "git の外は記録しない" [ "$(running_count)" = 0 ]
 
+# --- 命令の読み方: 引用・heredoc・注釈の中は命令でなく、 包みの命令 (= direnv exec・env など) の中は命令 ----------------
+NOT_A_TEST=('gh issue comment 1 --body "checks pass; task ci runs in Actions.; done"'
+    $'echo "checks pass\npytest -q\ndone"'
+    $'cat > note.md <<\'X\'\nit\'s a note\npytest -q\ngit commit -m x\nX'
+    'ls # then; pytest -q')
+for command in "${NOT_A_TEST[@]}"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 > /dev/null
+    check "文の中の試験の名前は記録しない: ${command}" [ "$(running_count)" = 0 ]
+done
+for command in "direnv exec ${REPO} pytest -q" "env -u PWA_SID pytest -q" "timeout 60 pytest -q" "pytest -q 2>&1 | tail -1"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 > /dev/null
+    check "包みの中の試験は記録する: ${command}" [ "$(running_count)" = 1 ]
+done
+REAL_CLOSING=('git commit -m "a; b" -- f'
+    $'git commit -q -m "subject\n\nbody; with | marks\n\nCo-Authored-By: x" -- f'
+    $'git diff --stat && git commit -q -m "subject\n\nbody" -- f'
+    'direnv exec /tools gh pr create --title t'
+    $'direnv exec /tools gh pr create --title t --body "$(cat <<\'X\'\nit is a body; with marks\nX\n)" 2>&1 | tail -1'
+    'direnv exec /tools /agent/.tooling/work/pr-land.sh 5 --squash > land.log 2>&1'
+    'env -u GH_TOKEN gh pr merge 5 --squash')
+REAL_CLOSING+=($'gh pr create --body "$(cat <<\'X\'\nit\'s a "body; with an odd quote\nX\n)"')
+NOT_CLOSING=($'echo "steps\ngit commit -m x\ndone"'
+    $'cat > note.md <<\'X\'\ngit commit -m x\ntabs report done f.md\nX'
+    'ls # then; git commit -m x')
+reset
+ran sA r1 "pytest -q" 1000 1002 > /dev/null
+ran sA r2 "pytest -q" 2000 2030 > /dev/null
+for command in "${REAL_CLOSING[@]}"; do
+    out="$(hook PreToolUse sA c1 "${command}" 2100)"
+    check "実際の形の閉じる手を止める: ${command}" denied <<< "${out}"
+done
+for command in "${NOT_CLOSING[@]}"; do
+    out="$(hook PreToolUse sA c2 "${command}" 2100)"
+    check "文の中の閉じる手は止めない: ${command}" silent <<< "${out}"
+done
+
+# --- folder を変数で渡す形 (= `W=<worktree>; cd "$W" && pytest`) も、 その folder の試験として数える ---------------------
+for command in "W=${REPO}/sub; cd \"\$W\" && pytest -q" "export W=${REPO}"$'\n'"cd \"\${W}/sub\" && pytest -q" "R=${REPO}; W=\$R/sub; task -d \"\$W\" test"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 0 "" "${T}/plain" > /dev/null
+    check "変数の folder の試験を記録する: ${command}" [ "$(running_count)" = 1 ]
+done
+
 # --- vitest の報告の遅い所も読む ---------------------------------------------------------------------------------
 reset
 ran sA v1 "npx vitest run" 1000 1002 > /dev/null
@@ -113,6 +158,8 @@ OUT="$(ran sA a5 'pytest -q' 5000 5020)"
 check "線を越えたら鳴る (いつもの秒数と今回の秒数)" bash -c "echo '${OUT}' | grep -q '8.0秒' && echo '${OUT}' | grep -q '20.0秒'"
 check "名前が出力に無ければ --durations=10 を勧める" mentions '--durations=10' <<< "${OUT}"
 check "縮める道と受け入れの道の 2 つを書く" bash -c "echo '${OUT}' | grep -q '縮める' && echo '${OUT}' | grep -q 'test-time.py accept'"
+check "鳴りの文は受け入れの命令を、 どの folder からでも打てる path で名指す" grep -qF "python3 ${ACCEPT} accept" <<< "${OUT}"
+check "止める文も受け入れの命令を、 どの folder からでも打てる path で名指す" grep -qF "python3 ${ACCEPT} accept" <<< "$(hook PreToolUse sA x1 'git commit -m x' 5100)"
 check "鳴った時は基準を動かさない" [ "$(base_value)" = "8.0" ]
 for command in "${CLOSING[@]}"; do
     check "鳴っている間、 閉じる手を止める: ${command}" bash -c "$(declare -f hook denied); HOOK='${HOOK}' REPO='${REPO}'; hook PreToolUse sA x1 '${command}' 5100 | denied"
@@ -149,6 +196,32 @@ check "受け入れで基準を最後の elapsed に上げる" [ "$(base_value)"
 check "受け入れを accepted.jsonl に 1 行書く" bash -c "[ \$(wc -l < '${STATE}/accepted.jsonl') = 1 ] && grep -q '時計待ち' '${STATE}/accepted.jsonl' && grep -q '\"before\": 10' '${STATE}/accepted.jsonl' && grep -q '\"session\": \"sA\"' '${STATE}/accepted.jsonl'"
 check "鳴っていない時の受け入れは断る" bash -c "$(declare -f accept); ACCEPT='${ACCEPT}'; ! accept --tried x --before 1 --after 2 2>/dev/null"
 check "上げた基準では 31 秒が線の内" bash -c "$(declare -f ran hook silent); HOOK='${HOOK}' REPO='${REPO}'; ran sA b3 'pytest -q' 4000 4031 | silent"
+
+# --- 1 つの命令に試験が複数在れば、 秒は束の物 (= 1 本目の基準に付けない) -------------------------------------------
+reset
+ran sA m1 'pytest -q a.py' 1000 1012 > /dev/null
+out="$(ran sA m2 'pytest -q a.py > a.log; echo a; pytest -q b.py' 2000 2050)"
+check "束の秒で 1 本目の基準を鳴らさない" silent <<< "${out}"
+check "束の秒は 1 本目の基準を動かさない" [ "$(base_value)" = "12.0" ]
+out="$(ran sA m3 'pytest -q a.py; pytest -q b.py' 3000 3080)"
+check "束は束の基準で鳴り、 全部の試験を名指す" mentions 'pytest -q a.py; pytest -q b.py' <<< "${out}"
+
+# --- 受け入れの基準は、 測った秒と --after の短い方 (= 別の旗で流し直しても膨らまず、 書いた値では上がらない) ---------
+refused() { ! "$@" > /dev/null 2>&1; }
+rung() { reset; ran sA o1 'pytest -q' 1000 1012 > /dev/null; ran sA o2 'pytest -q' 2000 2050 > /dev/null; }
+rung
+check "鳴りの文は --after を試した後の秒として訊く" mentions '--after <縮める手を試した後の秒>' <<< "$(ran sA o4 'pytest -q' 2100 2150)"
+ran sA o3 'pytest -q --durations=10' 2200 2219.5 > /dev/null
+accept --tried '旗を足して流し直した' --before 50 --after 19.5 > /dev/null
+check "--after が短ければ基準は --after" [ "$(base_value)" = "19.5" ]
+rung
+accept --tried x --before 12 --after 900 > /dev/null
+check "--after が測った秒より長くても基準は測った秒" [ "$(base_value)" = "50.0" ]
+for seconds in 0 -3 nan inf; do
+    rung
+    check "秒でない --after は断る: ${seconds}" refused accept --tried x --before 12 "--after=${seconds}"
+    check "断った時は基準を動かさない: ${seconds}" [ "$(base_value)" = "12.0" ]
+done
 
 # --- background の命令は、 会話の記録に残る知らせの行で終わりにする -------------------------------------------------
 # 知らせは UserPromptSubmit を通らず、 記録の `queue-operation` の行に残る。 次に呼ばれた hook (どの session でも) が行を見つけて終わりにする
@@ -224,6 +297,33 @@ hook PreToolUse sA e1 'pytest -q' 1000 > /dev/null
 hook PostToolUseFailure sA e1 'pytest -q' 1005 > /dev/null
 check "失敗した試験の記録は捨てて、 基準にもしない" bash -c "[ \$(find '${STATE}' -name '*.json' | wc -l) = 0 ]"
 check "失敗の後は別の session も流せる" bash -c "$(declare -f hook silent); HOOK='${HOOK}' REPO='${REPO}'; hook PreToolUse sB e2 'pytest -q' 1010 | silent"
+
+# --- ほかの hook が断った呼び出しは終わりの hook が来ない。 会話の記録の結果の行で、 ぶつかりに数えない -------------------
+# 道具の結果の行を足す: <記録> <tool-use-id> <誤りなら 1>
+result_row() {
+    python3 -c 'import json,sys
+f,i,e=sys.argv[1:4]
+open(f,"a").write(json.dumps({"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":i,"is_error":e=="1","content":"x"}]}})+"\n")' "$1" "$2" "$3"
+}
+TS_D="${T}/ts-d.jsonl"
+for background in 0 1; do
+    reset
+    : > "${TS_D}"
+    hook PreToolUse sA h1 'pytest -q' 1000 "${background}" "" "${REPO}" "${TS_D}" > /dev/null
+    result_row "${TS_D}" other 1
+    out="$(hook PreToolUse sB h2 'pytest -q tests' 1100)"
+    check "別の呼び出しの結果では、 ぶつかりを解かない (background=${background})" denied <<< "${out}"
+    result_row "${TS_D}" h1 1
+    out="$(hook PreToolUse sB h3 'pytest -q tests' 1200)"
+    check "断られた呼び出しの記録とはぶつからない (background=${background})" silent <<< "${out}"
+    check "断られた呼び出しの記録は消える (background=${background})" [ ! -e "${STATE}/running/h1.json" ]
+done
+reset
+: > "${TS_D}"
+hook PreToolUse sA h4 'pytest -q' 1000 1 "" "${REPO}" "${TS_D}" > /dev/null
+result_row "${TS_D}" h4 0
+out="$(hook PreToolUse sB h5 'pytest -q tests' 1100)"
+check "background の起動の返りは終わりに数えない" denied <<< "${out}"
 
 # --- 壊れた状態・入力は通す (= fail-open) --------------------------------------------------------------------
 reset

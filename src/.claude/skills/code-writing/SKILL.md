@@ -4,6 +4,7 @@ description: file 1 本に何を入れるか / 部品の分け方 / 名前 / 説
 updated: "2026-10-26"
 version: 2
 when_to_use: code の file を新しく作る・書く・直す直前 / folder を作る・file の置き場を決める直前 / 子のタブや体にコードの仕事を渡す直前
+owner: template
 ---
 
 # コードの書き方

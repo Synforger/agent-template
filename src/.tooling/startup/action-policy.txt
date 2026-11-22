@@ -108,10 +108,11 @@
     (merge / remove its worktree), then 'tabs close <id>', and say it in the briefing. 作業中 children keep
     running on their own (= 'tabs children' lists them); the steps are skill sub-agent § 子のタブ
 
-@ pages_orphans: | ^pages_orphans: (?!0\s*$)
+@ pages_orphans: | ^pages_orphans: (?!0(\s|$))
   - pages_orphans >= 1 -> folders under this tier's pages/ belong to no live tab (中身あり = it holds pages or
     data, 雛形だけ = only the client's top page and memo), belong to a live tab that now works in another tier
     (別の階層のタブ: move its pages to that tab's folder in its tier), or the tier's top pages/index.html does
     not reach a tab of this tier that holds pages or links to nothing (階層のトップから辿れない / 無いリンク先):
     say it in the briefing and settle every one in this session by the rules of pages/_README.md and skill
-    explainer-pages (UNKNOWN -> say the check did not run)
+    explainer-pages (UNKNOWN -> say the check did not run). Leave 別の機械のタブか不明 alone: it is outside the count,
+    tracked, and never seen on this machine, so it may be a live tab of another machine

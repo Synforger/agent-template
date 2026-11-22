@@ -149,6 +149,13 @@ check "理由の無い !@machine-wide は止まる" [ $? -ne 0 ]
 check "理由の無い !@machine-wide を名指す" grep -qxF "    !@machine-wide" "${T}/out"
 check "理由の無い !@machine-wide では何も写さない" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
 
+# 本物の宣言: 約束の表の `?` (= 機械全体の物) の対象とテストは全部印を持つ (= 欠けると、 外した派生に部品の無い物だけが降りる)
+REAL="$(cd "$(dirname "${SYNC}")/../.." && pwd)"
+machine_wide="$(sed -nE 's/^\?([^[:space:]|]+)[^|]*\|[[:space:]]*([^[:space:]|]+).*/\1 \2/p' "${REAL}/src/.tooling/contracts.base.txt" | tr ' ' '\n' | sort -u)"
+unmarked="$(for p in ${machine_wide}; do grep -qE "^\.tooling/${p}[[:space:]]+#.*@machine-wide" "${REAL}/.synced-paths.txt" || printf '%s ' "${p}"; done)"
+check "約束の表の機械全体の物を読めている" [ -n "${machine_wide}" ]
+check "約束の表の機械全体の物は全部印を持つ (無い: ${unmarked})" [ -z "${unmarked}" ]
+
 # --- 宣言を持たない古い base -------------------------------------------------------
 setup
 rm "${BASE}/.synced-paths.txt"
@@ -333,6 +340,16 @@ check "中身の同じ単体の file は更新時刻が動かない" [ "$(mtime 
 check "中身の同じ folder の中の file は更新時刻が動かない" [ "$(mtime "${AGENT}/.claude/skills/demo/SKILL.md")" = "${old}" ]
 check "中身の違う file は写す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh")" = "helper v3" ]
 check "base が folder から消した file は消える" [ ! -e "${AGENT}/.claude/skills/demo/old.md" ]
+
+# --- a declaration is a path relative to the agent's root ----------------------------
+for shape in "../sample" "/sample" "./sample" "a//b" "a/.git/b"; do
+    setup
+    printf '%s\n' "${shape}" > "${AGENT}/.synced-paths.txt"
+    sync
+    check "refuses the declaration ${shape}" [ $? -ne 0 ]
+    check "names the declaration ${shape}" grep -qF "'${shape}' is not a path relative" "${T}/out"
+    check "copies nothing for ${shape}" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
+done
 
 echo "test-sync-from-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

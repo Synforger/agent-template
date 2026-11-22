@@ -6,7 +6,9 @@ settings の PreToolUse (matcher Bash)・PostToolUse (matcher Bash)・PostToolUs
 試験 = tests/test-test-time-gate.sh。 受け入れの命令 = `work/test-time.py`
 
 - PreToolUse: まず終わった background の記録を終わりにする (下)。 閉じる手で鳴りが残っていれば deny。
-  試験の命令で、 同じ repo の別の session の終わっていない記録 (30 分以内) が在れば deny。 それ以外の試験の命令は、 始まりを記録する
+  試験の命令で、 同じ repo の別の session の終わっていない記録 (30 分以内) が在れば deny。 それ以外の試験の命令は、 始まりを記録する。
+  秒は命令の全体でしか測れないので、 試験が複数在る命令は束で 1 つの試験として数える
+  ほかの hook が断った呼び出しには終わりの hook が来ないので、 ぶつかる前にその会話の記録の結果の行を見て、 終わった物は捨てる
 - PostToolUse: まず終わった background の記録を終わりにする。 始まりと比べて秒数を出し、 基準と比べる。
   線を越えたら鳴りを残して文脈に文を足す。 収まれば基準を更新し、 同じ鍵の鳴りを消す。 `run_in_background` の命令は、 ここでは終わりにしない
 - PostToolUseFailure: 始まりの記録を捨てるだけ (= 失敗した試験の時間は基準にしない)
@@ -31,11 +33,12 @@ from test_time import (  # noqa: E402
     is_closing_hand,
     next_base,
     find_task_notification,
+    has_ended,
     ring_limit,
     ring_message,
     rings,
+    runs_label,
     slowest_lines,
-    test_label,
     test_runs,
 )
 from test_time_store import (  # noqa: E402
@@ -76,6 +79,20 @@ def call_id(payload: dict) -> str:
     return f"{payload.get('session_id') or ''}-{hashlib.sha1(command.encode()).hexdigest()[:12]}"
 
 
+def still_running(records: list[dict], store: TestTimeStore) -> list[dict]:
+    """会話の記録に結果の行が在る物を捨てた、 まだ流れている記録 (= 記録を読めない物は流れている物として残す)。"""
+    running: list[dict] = []
+    for record in records:
+        path, tool_use_id = record.get("transcript_path"), record.get("tool_use_id")
+        if path and tool_use_id:
+            transcript = read_tail(path, TRANSCRIPT_TAIL_BYTES)
+            if has_ended(transcript, tool_use_id, background=bool(record.get("background"))):
+                store.finish(tool_use_id)
+                continue
+        running.append(record)
+    return running
+
+
 def before_call(payload: dict, store: TestTimeStore, now: float) -> str | None:
     """PreToolUse: 閉じる手と試験のぶつかりを止める理由を返し (= 通す時は None)、 通す試験の始まりを記録する。"""
     tool_input = payload.get("tool_input") or {}
@@ -87,12 +104,12 @@ def before_call(payload: dict, store: TestTimeStore, now: float) -> str | None:
     root = repo_root(runs[0][0]) if runs else None
     if not root:
         return None
-    elsewhere = store.running_elsewhere(root, session, now, COLLISION_WINDOW_SECONDS)
+    elsewhere = still_running(store.running_elsewhere(root, session, now, COLLISION_WINDOW_SECONDS), store)
     if elsewhere:
         return collision_message(Path(root).name, now - min(record["started_at"] for record in elsewhere))
     tool_use_id = call_id(payload)
     store.start(tool_use_id, {
-        "session": session, "repo": root, "command": test_label(root, *runs[0]), "started_at": now,
+        "session": session, "repo": root, "command": runs_label(root, runs), "started_at": now,
         "background": bool(tool_input.get("run_in_background")), "tool_use_id": tool_use_id,
         "transcript_path": payload.get("transcript_path") or "",
     })

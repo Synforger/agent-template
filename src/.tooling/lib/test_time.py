@@ -3,12 +3,14 @@
 
 呼ぶのは `hooks/test_time_gate.py` (= 試験の時間を測って鳴らす hook) と `work/test-time.py` (= 受け入れの命令)。
 命令の見分け・鳴る線の計算・基準の更新・pytest の遅い所の行の読み・鳴らす文を作る。 状態の読み書きは `test_time_store.py`。
+段の割り方は `shell_segments.py`。 読まない形 = 文字列や置換の中で動く命令 (`bash -c`・`eval`・`$(…)`) と、 割れない命令 (= 通す)。
 試験 = tests/test-test-time-gate.sh
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shlex
@@ -16,6 +18,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from shell_segments import segments, without_text
+
+#: 受け入れの命令。 hook は 1 本の写しが機械の全部のタブで走るので、 打つ folder によらない path で名指す
+ACCEPT_COMMAND = f"python3 {shlex.quote(str(Path(__file__).resolve().parents[1] / 'work' / 'test-time.py'))}"
 #: 鳴る線の倍率と増え幅。 `elapsed > max(base × RING_RATIO, base + RING_EXTRA_SECONDS)` の時だけ鳴る
 RING_RATIO = 1.25
 RING_EXTRA_SECONDS = 5.0
@@ -23,7 +29,18 @@ RING_EXTRA_SECONDS = 5.0
 COLLISION_WINDOW_SECONDS = 30 * 60
 SLOWEST_COUNT = 10
 
-SEGMENT_SPLIT = re.compile(r"\|\||&&|[;|\n]")
+#: 命令の前に立つ shell の語 (= その後ろが命令)
+SHELL_LEADS = ("do", "then", "else", "elif", "if", "while", "until", "!", "{", "(")
+#: 後ろの命令をそのまま走らせる包み → (値を取る旗, 命令の前に置く値の数)
+WRAPPERS = {
+    "env": (("-u", "--unset"), 0),
+    "timeout": (("-k", "--kill-after", "-s", "--signal"), 1),
+    "gtimeout": (("-k", "--kill-after", "-s", "--signal"), 1),
+    "nohup": ((), 0),
+    "time": ((), 0),
+    "command": ((), 0),
+    "exec": ((), 0),
+}
 #: 出力と入力の向け先の字句 (= `2>&1`・`>log`・`&>/dev/null`・`<in`)。 向け先を次の字句に持つ形 (= `>`・`2>>`) は ALONE
 REDIRECTION = re.compile(r"^(\d*|&)(>>?|<)(&\d+|\S*)$")
 REDIRECTION_ALONE = re.compile(r"^(\d*|&)(>>?|<)$")
@@ -63,6 +80,9 @@ DURATION_LINE = re.compile(
     r"^\s*(\d+(?:\.\d+)?s\s+(?:call|setup|teardown)\s+\S+.*?|\d+\s+ms\s+\S+.*?)\s*$", re.MULTILINE)
 #: 遅い所の見出し = pytest の `slowest 10 durations` か、 vitest の報告の `slowest 10 tests`
 SLOWEST_MARK = re.compile(r"slowest\s+\d*\s*(?:durations|tests)", re.IGNORECASE)
+#: 同じ命令の中の代入 (= `W=/path`) と、 その値を指す `$W`・`${W}`
+ASSIGNMENT = re.compile(r"^([A-Za-z_]\w*)=(.*)$", re.DOTALL)
+VARIABLE = re.compile(r"\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))")
 TOOL_USE_ID = re.compile(r"<tool-use-id>\s*([^<\s]+)\s*</tool-use-id>")
 OUTPUT_FILE = re.compile(r"<output-file>\s*([^<\n]+?)\s*</output-file>")
 STATUS = re.compile(r"<status>\s*([^<\s]+)\s*</status>")
@@ -104,19 +124,41 @@ def next_base(base_seconds: float | None, elapsed_seconds: float) -> float:
     return base_seconds
 
 
+def is_seconds(value: float | None) -> bool:
+    """打たれた秒数が、 正の有限の数か。"""
+    return value is not None and math.isfinite(value) and value > 0
+
+
+def accepted_base(elapsed_seconds: float, after_seconds: float) -> float:
+    """受け入れた時の基準 = 測った秒と、 縮める手を試した後の秒の短い方。 流し直しは旗が違えば別の鍵になり測った秒を
+    置き換えないので書かれた秒を読むが、 書かれた値で基準が測った秒より上がると鳴りを黙らせられるので、 下げる向きだけ。"""
+    return min(elapsed_seconds, after_seconds)
+
+
 def _segments(command: str) -> list[list[str]]:
-    """命令を `;`・`&&`・`||`・`|`・改行で段に割り、 段ごとに字句に割る (= 割れない段は飛ばす)。"""
-    found: list[list[str]] = []
-    for segment in SEGMENT_SPLIT.split(command):
-        try:
-            words = shlex.split(segment)
-        except ValueError:
-            continue
-        while words and "=" in words[0] and not words[0].startswith("-"):
-            words = words[1:]
-        if words:
-            found.append(words)
-    return found
+    """命令を引用・heredoc・注釈の外の区切りで段に割り、 段ごとに実際に走る命令の字句にする (= 割れなければ空)。"""
+    found = (_unwrapped(words) for words in segments(without_text(command)))
+    return [words for words in found if words]
+
+
+def _unwrapped(words: list[str]) -> list[str]:
+    """段の頭の代入・shell の語・包みの命令 (= `direnv exec <dir>`・`env`・`timeout` など) を外した字句。"""
+    rest = list(words)
+    while rest:
+        head = os.path.basename(rest[0])
+        if rest[0] in SHELL_LEADS or ("=" in rest[0] and not rest[0].startswith("-")):
+            rest = rest[1:]
+        elif head == "direnv" and rest[1:2] == ["exec"]:
+            rest = rest[3:]
+        elif head in WRAPPERS:
+            flags_with_value, value_count = WRAPPERS[head]
+            rest = rest[1:]
+            while rest and rest[0].startswith("-"):
+                rest = rest[2 if rest[0] in flags_with_value else 1:]
+            rest = rest[value_count:]
+        else:
+            break
+    return rest
 
 
 def _positional(words: list[str]) -> list[str]:
@@ -163,16 +205,36 @@ def _folder_after(words: list[str], current: Path) -> Path:
 
 def test_runs(command: str, cwd: Path) -> list[tuple[Path, str]]:
     """命令の中で試験を流す段ごとに、 その作業の folder と、 その段だけの命令 (= 空白を詰めた物) を返す (= 無ければ空)。
-    前の段の `cd` と、 段の中の `-C`・`-d`・`--dir` も folder に数える。 前後の段 (`cd`・`| tail` など) は段の命令に入れない。"""
+    前の段の `cd` と、 段の中の `-C`・`-d`・`--dir` も folder に数え、 その値の変数は同じ命令の前の代入で展開する。 前後の段 (`cd`・`| tail` など) は段の命令に入れない。"""
     runs: list[tuple[Path, str]] = []
     current = cwd
-    for words in _segments(command):
+    variables = {"HOME": os.path.expanduser("~")}
+    for step in segments(without_text(command)):
+        variables.update(_assignments(step, variables))
+        words = _unwrapped(step)
         if len(words) >= 2 and words[0] == "cd":
-            current = (current / os.path.expanduser(words[1])).resolve()
+            current = (current / os.path.expanduser(_expanded(words[1], variables))).resolve()
             continue
         if _matches_head(words, TEST_HEADS):
-            runs.append((_folder_after(words, current), normalize(shlex.join(_without_redirections(words)))))
+            folder = _folder_after([_expanded(word, variables) for word in words], current)
+            runs.append((folder, normalize(shlex.join(_without_redirections(words)))))
     return runs
+
+
+def _assignments(step: list[str], variables: dict[str, str]) -> dict[str, str]:
+    """段の頭の代入 (= `W=/path`・`export W=/path`) の名前と値。 値の中の前の代入は展開する。"""
+    found: dict[str, str] = {}
+    for word in step[1:] if step[:1] == ["export"] else step:
+        match = ASSIGNMENT.match(word)
+        if not match:
+            break
+        found[match[1]] = _expanded(match[2], {**variables, **found})
+    return found
+
+
+def _expanded(word: str, variables: dict[str, str]) -> str:
+    """字句の中の `$名前`・`${名前}` を、 分かっている値に置く (= 知らない名前はそのまま)。"""
+    return VARIABLE.sub(lambda match: variables.get(match[1] or match[2], match[0]), word)
 
 
 def _without_redirections(words: list[str]) -> list[str]:
@@ -193,6 +255,11 @@ def test_label(repo_root: str, folder: Path, test_command: str) -> str:
     """基準の鍵と鳴らす文に使う試験の名前 = repo の根からの folder と、 段の命令 (= 根で流した時は命令だけ)。"""
     relative = os.path.relpath(Path(folder).resolve(), Path(repo_root).resolve())
     return test_command if relative == "." else f"{relative}: {test_command}"
+
+
+def runs_label(repo_root: str, runs: list[tuple[Path, str]]) -> str:
+    """命令 1 つが流す試験の名前。 測れる秒は命令の全体なので、 試験が複数なら束で 1 つの名前にする。"""
+    return "; ".join(test_label(repo_root, folder, test_command) for folder, test_command in runs)
 
 
 def is_closing_hand(command: str) -> bool:
@@ -237,6 +304,24 @@ def find_task_notification(transcript_text: str, tool_use_id: str) -> TaskNotifi
     return None
 
 
+def has_ended(transcript_text: str, tool_use_id: str, *, background: bool) -> bool:
+    """会話の記録に、 その呼び出しの結果の行が在れば真 (= 終わりの hook が来なかった呼び出しも終わっている)。
+    background は起動の返りも結果の行になるので、 誤りの結果 (= 起動しなかった) だけを数える。"""
+    for line in transcript_text.splitlines():
+        if tool_use_id not in line or "tool_result" not in line:
+            continue
+        try:
+            content = json.loads(line)["message"]["content"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        for part in content if isinstance(content, list) else []:
+            if not isinstance(part, dict) or part.get("type") != "tool_result" or part.get("tool_use_id") != tool_use_id:
+                continue
+            if not background or part.get("is_error"):
+                return True
+    return False
+
+
 def format_duration(seconds: float) -> str:
     """経過の秒数を人が読む形にする (= 90 秒未満は秒、 以上は分と秒)。"""
     if seconds < 90:
@@ -259,7 +344,7 @@ def ring_message(repo_name: str, command: str, base_seconds: float, elapsed_seco
         " 読む・直す・試験を流し直す手は止まらない。 消える道は 2 つ:\n"
         "  (a) 既定は縮める (並列・時計の待ち・重い準備の使い回し)。 縮めて同じ命令を流し直し、 線の内に収まれば消える\n"
         "  (b) 縮める手を試しても縮まらなかった時だけ、 試した手を書いて受け入れる:"
-        ' `python3 .tooling/work/test-time.py accept --tried "<試した手>" --before <いつもの秒> --after <今回の秒>`'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <縮める手を試した後の秒>`'
     )
 
 
@@ -273,7 +358,7 @@ def closing_deny_message(ringing: list[dict]) -> str:
         "試験の時間が、 いつもの時間を越えたまま閉じられません (commit・PR・報告・票の close と pass・rollover):\n"
         f"{lines}\n"
         "縮めて同じ命令を流し直し線の内に収める (既定)。 縮める手を試しても縮まらなかった時だけ、"
-        ' `python3 .tooling/work/test-time.py accept --tried "<試した手>" --before <秒> --after <秒>` で受け入れる'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <縮める手を試した後の秒>` で受け入れる'
         " (最後に載った 1 件ずつ受ける)。"
     )
 

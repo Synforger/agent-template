@@ -105,6 +105,13 @@ exclusions() {
     done < "$1"
 }
 
+# A path is relative to the agent's root, and has no empty, '.', '..' or '.git' segment
+plain_path() {
+    case "$1" in ""|/*|"~"*) return 1 ;; esac
+    case "/${1%/}/" in *//*|*/./*|*/../*|*/.git/*) return 1 ;; esac
+    return 0
+}
+
 # 印 `# @machine-wide` の付いた列挙の行の path (= 口座の設定が 1 本の写しを呼ぶ hook とその試験)
 machine_wide() {
     awk '/^[[:space:]]*[^[:space:]#!]/ && /#[[:space:]]*@machine-wide/ { sub(/#.*/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print }' "$1"
@@ -160,6 +167,13 @@ if [ "${#sync_paths[@]}" -eq 0 ]; then
     echo "error: no paths to sync (neither the base nor $SYNCED_PATHS_FILE lists any)" >&2
     exit 1
 fi
+
+for p in "${sync_paths[@]}"; do
+    if ! plain_path "$p"; then
+        echo "error: '$p' is not a path relative to the agent's root — nothing was synced" >&2
+        exit 1
+    fi
+done
 
 # --- 前の取り込みの後に、 派生だけが変えた file ------------------------------------------------
 
