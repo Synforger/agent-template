@@ -298,6 +298,33 @@ hook PostToolUseFailure sA e1 'pytest -q' 1005 > /dev/null
 check "失敗した試験の記録は捨てて、 基準にもしない" bash -c "[ \$(find '${STATE}' -name '*.json' | wc -l) = 0 ]"
 check "失敗の後は別の session も流せる" bash -c "$(declare -f hook silent); HOOK='${HOOK}' REPO='${REPO}'; hook PreToolUse sB e2 'pytest -q' 1010 | silent"
 
+# --- ほかの hook が断った呼び出しは終わりの hook が来ない。 会話の記録の結果の行で、 ぶつかりに数えない -------------------
+# 道具の結果の行を足す: <記録> <tool-use-id> <誤りなら 1>
+result_row() {
+    python3 -c 'import json,sys
+f,i,e=sys.argv[1:4]
+open(f,"a").write(json.dumps({"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":i,"is_error":e=="1","content":"x"}]}})+"\n")' "$1" "$2" "$3"
+}
+TS_D="${T}/ts-d.jsonl"
+for background in 0 1; do
+    reset
+    : > "${TS_D}"
+    hook PreToolUse sA h1 'pytest -q' 1000 "${background}" "" "${REPO}" "${TS_D}" > /dev/null
+    result_row "${TS_D}" other 1
+    out="$(hook PreToolUse sB h2 'pytest -q tests' 1100)"
+    check "別の呼び出しの結果では、 ぶつかりを解かない (background=${background})" denied <<< "${out}"
+    result_row "${TS_D}" h1 1
+    out="$(hook PreToolUse sB h3 'pytest -q tests' 1200)"
+    check "断られた呼び出しの記録とはぶつからない (background=${background})" silent <<< "${out}"
+    check "断られた呼び出しの記録は消える (background=${background})" [ ! -e "${STATE}/running/h1.json" ]
+done
+reset
+: > "${TS_D}"
+hook PreToolUse sA h4 'pytest -q' 1000 1 "" "${REPO}" "${TS_D}" > /dev/null
+result_row "${TS_D}" h4 0
+out="$(hook PreToolUse sB h5 'pytest -q tests' 1100)"
+check "background の起動の返りは終わりに数えない" denied <<< "${out}"
+
 # --- 壊れた状態・入力は通す (= fail-open) --------------------------------------------------------------------
 reset
 mkdir -p "${STATE}/ringing" "${STATE}/running"

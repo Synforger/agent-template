@@ -304,6 +304,24 @@ def find_task_notification(transcript_text: str, tool_use_id: str) -> TaskNotifi
     return None
 
 
+def has_ended(transcript_text: str, tool_use_id: str, *, background: bool) -> bool:
+    """会話の記録に、 その呼び出しの結果の行が在れば真 (= 終わりの hook が来なかった呼び出しも終わっている)。
+    background は起動の返りも結果の行になるので、 誤りの結果 (= 起動しなかった) だけを数える。"""
+    for line in transcript_text.splitlines():
+        if tool_use_id not in line or "tool_result" not in line:
+            continue
+        try:
+            content = json.loads(line)["message"]["content"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        for part in content if isinstance(content, list) else []:
+            if not isinstance(part, dict) or part.get("type") != "tool_result" or part.get("tool_use_id") != tool_use_id:
+                continue
+            if not background or part.get("is_error"):
+                return True
+    return False
+
+
 def format_duration(seconds: float) -> str:
     """経過の秒数を人が読む形にする (= 90 秒未満は秒、 以上は分と秒)。"""
     if seconds < 90:
