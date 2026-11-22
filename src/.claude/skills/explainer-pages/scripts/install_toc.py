@@ -10,7 +10,8 @@
 2. 既に部品を読む行が在れば、path だけを根の部品への path に直す (fixed)。階層の写しを指していた古い行
    (`../_common/toc-sidebar.js` など) もこれで直る。写しの file は消さず、残りは `check-tab-links.py` が名指す
 3. 2 回流しても増えない。file ごとに added / fixed / ok を 1 行ずつ出す
-4. 組み立ての元は触らずに skipped と出す。元とみなすのは、階層から見て `src/` の下の file と、名前に `template` を
+4. 組み立ての元は触らずに skipped と出す。元とみなすのは、階層から見て `src/` の下の file、タブのトップページの雛形の
+   folder `_template-tab/` の下の file (path は client が埋め字で書く)、名前に `template` を
    含む `.html`。書き出し先から見た path は、
    この file の置き場からは決まらないので、元には人が書き出し先から見た path で 1 行を入れる
 
@@ -31,6 +32,7 @@ BODY_END = re.compile(r"</body\s*>", re.IGNORECASE)
 SKIPPED_FOLDER = "_archive"
 BUILD_SOURCE_FOLDER = "src"
 BUILD_TEMPLATE_WORD = "template"
+TAB_TEMPLATE_FOLDER = "_template-tab"
 
 
 def tier_of(page: Path) -> Path:
@@ -78,9 +80,10 @@ def is_archived(page: Path) -> bool:
 
 
 def is_build_source(page: Path) -> bool:
-    """組み立ての元か。`src/` は階層から見た相対の path で見る (根が `src/` の下に在る repo でも全部を飛ばさない)。"""
+    """組み立ての元か。folder は階層から見た相対の path で見る (根が `src/` の下に在る repo でも全部を飛ばさない)。"""
     inside_tier = page.resolve().relative_to(tier_of(page)).parts[:-1]
-    return BUILD_SOURCE_FOLDER in inside_tier or BUILD_TEMPLATE_WORD in page.name.lower()
+    is_in_source_folder = BUILD_SOURCE_FOLDER in inside_tier or TAB_TEMPLATE_FOLDER in inside_tier
+    return is_in_source_folder or BUILD_TEMPLATE_WORD in page.name.lower()
 
 
 def install(page: Path) -> str:
