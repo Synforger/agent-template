@@ -30,6 +30,9 @@ check "決まりの {root} はエージェントの folder を ~ の形で埋め
 check "peer( の行も頭で当てる" grep -q 'peer(<name>) DOWN' <<< "${out}"
 check "0 でない pages_orphans は出す" grep -q 'pages_orphans >= 1' <<< "${out}"
 
+out="$(run 'pages_orphans: 0 (別の機械のタブか不明 1: ses_a)')"
+check "不明だけの pages_orphans は出さない" bash -c '! grep -q "pages_orphans >= 1" <<< "$1"' _ "${out}"
+
 out="$(run 'git_guard: DISARMED repo-a' 'company_terms: 0 (clean)' 'unchecked_repos: none (written 2026-11-15)')"
 check "armed でない git_guard は出す" grep -q "git_guard not 'armed'" <<< "${out}"
 check "0 の company_terms は出さない" bash -c '! grep -q "company_terms LEAK" <<< "$1"' _ "${out}"
