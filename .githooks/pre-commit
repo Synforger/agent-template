@@ -4,7 +4,7 @@ set -eu
 # -----------------------------------------------------------------------------
 # 1. Branch-name guard: refuse direct commits on main / develop (personal habit).
 # -----------------------------------------------------------------------------
-branch="$(git symbolic-ref HEAD 2>/dev/null)" || "$(git describe --contains --all HEAD)"
+branch="$(git symbolic-ref HEAD 2>/dev/null || git describe --contains --all HEAD)"
 
 if [[ ${branch} =~ \/*main$ ]] || [[ ${branch} =~ \/*develop$ ]]; then
     echo "Can't commit on branch whose name contains main or develop (use a feature branch + PR)."
