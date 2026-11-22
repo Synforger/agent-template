@@ -179,5 +179,18 @@ AGENT_PLATFORM_ROOT="${T}" BASE_REPO_PATH="${BASE}" FEATURE_BRANCH=feature/test 
 check "BASE_REPO_PATH は手元の clone より先に効く" grep -qF "using local base: ${BASE}" "${T}/out"
 check "BASE_REPO_PATH の時は worktree を切らない" [ ! -d "${WT}" ]
 
+# --- what is promoted is named by a path relative to the agent's root -----------------
+for shape in "../sample" "/sample" ".tooling/startup/../sample"; do
+    setup
+    printf '%s\n' ".tooling/startup/" > "${AGENT}/.synced-paths.txt"
+    promote --file "${shape}"
+    check "refuses --file ${shape}" grep -qF "'${shape}' is not a path relative" "${T}/out"
+    check "cuts no branch for --file ${shape}" no_test_branch
+    setup
+    printf '%s\n' "${shape}" > "${AGENT}/.synced-paths.txt"
+    promote "chore: promote"
+    check "refuses the declaration ${shape}" grep -qF "'${shape}' is not a path relative" "${T}/out"
+done
+
 echo "test-promote-to-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

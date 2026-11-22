@@ -57,6 +57,19 @@ done < "$SYNCED_PATHS_FILE"
 
 fails=0
 
+# A path is relative to the agent's root, and has no empty, '.', '..' or '.git' segment
+plain_path() {
+    case "$1" in ""|/*|"~"*) return 1 ;; esac
+    case "/${1%/}/" in *//*|*/./*|*/../*|*/.git/*) return 1 ;; esac
+    return 0
+}
+for p in ${listed[@]+"${listed[@]}"} ${excluded[@]+"${excluded[@]}"}; do
+    if ! plain_path "$p"; then
+        echo "  FAIL: not a relative path: $p"
+        fails=$((fails + 1))
+    fi
+done
+
 # ---- A. 死に entry (= 列挙されているが src/ に無い) ----
 for p in "${listed[@]}"; do
     if [ ! -e "src/$p" ]; then

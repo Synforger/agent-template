@@ -341,5 +341,15 @@ check "中身の同じ folder の中の file は更新時刻が動かない" [ "
 check "中身の違う file は写す" [ "$(cat "${AGENT}/.tooling/lib/helper.sh")" = "helper v3" ]
 check "base が folder から消した file は消える" [ ! -e "${AGENT}/.claude/skills/demo/old.md" ]
 
+# --- a declaration is a path relative to the agent's root ----------------------------
+for shape in "../sample" "/sample" "./sample" "a//b" "a/.git/b"; do
+    setup
+    printf '%s\n' "${shape}" > "${AGENT}/.synced-paths.txt"
+    sync
+    check "refuses the declaration ${shape}" [ $? -ne 0 ]
+    check "names the declaration ${shape}" grep -qF "'${shape}' is not a path relative" "${T}/out"
+    check "copies nothing for ${shape}" [ ! -e "${AGENT}/.tooling/startup/status.sh" ]
+done
+
 echo "test-sync-from-base: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]
