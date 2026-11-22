@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shlex
@@ -121,6 +122,17 @@ def next_base(base_seconds: float | None, elapsed_seconds: float) -> float:
     if base_seconds is None or elapsed_seconds < base_seconds:
         return elapsed_seconds
     return base_seconds
+
+
+def is_seconds(value: float | None) -> bool:
+    """打たれた秒数が、 正の有限の数か。"""
+    return value is not None and math.isfinite(value) and value > 0
+
+
+def accepted_base(elapsed_seconds: float, after_seconds: float) -> float:
+    """受け入れた時の基準 = 測った秒と、 縮める手を試した後の秒の短い方。 流し直しは旗が違えば別の鍵になり測った秒を
+    置き換えないので書かれた秒を読むが、 書かれた値で基準が測った秒より上がると鳴りを黙らせられるので、 下げる向きだけ。"""
+    return min(elapsed_seconds, after_seconds)
 
 
 def _segments(command: str) -> list[list[str]]:
@@ -245,6 +257,11 @@ def test_label(repo_root: str, folder: Path, test_command: str) -> str:
     return test_command if relative == "." else f"{relative}: {test_command}"
 
 
+def runs_label(repo_root: str, runs: list[tuple[Path, str]]) -> str:
+    """命令 1 つが流す試験の名前。 測れる秒は命令の全体なので、 試験が複数なら束で 1 つの名前にする。"""
+    return "; ".join(test_label(repo_root, folder, test_command) for folder, test_command in runs)
+
+
 def is_closing_hand(command: str) -> bool:
     """命令の中に、 作業を閉じる手 (= commit・PR の作成と merge・`pr-land.sh`・`tabs report` ほか) が 1 つでも在れば真。"""
     for words in _segments(command):
@@ -309,7 +326,7 @@ def ring_message(repo_name: str, command: str, base_seconds: float, elapsed_seco
         " 読む・直す・試験を流し直す手は止まらない。 消える道は 2 つ:\n"
         "  (a) 既定は縮める (並列・時計の待ち・重い準備の使い回し)。 縮めて同じ命令を流し直し、 線の内に収まれば消える\n"
         "  (b) 縮める手を試しても縮まらなかった時だけ、 試した手を書いて受け入れる:"
-        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <今回の秒>`'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <縮める手を試した後の秒>`'
     )
 
 
@@ -323,7 +340,7 @@ def closing_deny_message(ringing: list[dict]) -> str:
         "試験の時間が、 いつもの時間を越えたまま閉じられません (commit・PR・報告・票の close と pass・rollover):\n"
         f"{lines}\n"
         "縮めて同じ命令を流し直し線の内に収める (既定)。 縮める手を試しても縮まらなかった時だけ、"
-        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <秒> --after <秒>` で受け入れる'
+        f' `{ACCEPT_COMMAND} accept --tried "<試した手>" --before <いつもの秒> --after <縮める手を試した後の秒>` で受け入れる'
         " (最後に載った 1 件ずつ受ける)。"
     )
 
