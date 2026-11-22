@@ -197,6 +197,32 @@ check "受け入れを accepted.jsonl に 1 行書く" bash -c "[ \$(wc -l < '${
 check "鳴っていない時の受け入れは断る" bash -c "$(declare -f accept); ACCEPT='${ACCEPT}'; ! accept --tried x --before 1 --after 2 2>/dev/null"
 check "上げた基準では 31 秒が線の内" bash -c "$(declare -f ran hook silent); HOOK='${HOOK}' REPO='${REPO}'; ran sA b3 'pytest -q' 4000 4031 | silent"
 
+# --- 1 つの命令に試験が複数在れば、 秒は束の物 (= 1 本目の基準に付けない) -------------------------------------------
+reset
+ran sA m1 'pytest -q a.py' 1000 1012 > /dev/null
+out="$(ran sA m2 'pytest -q a.py > a.log; echo a; pytest -q b.py' 2000 2050)"
+check "束の秒で 1 本目の基準を鳴らさない" silent <<< "${out}"
+check "束の秒は 1 本目の基準を動かさない" [ "$(base_value)" = "12.0" ]
+out="$(ran sA m3 'pytest -q a.py; pytest -q b.py' 3000 3080)"
+check "束は束の基準で鳴り、 全部の試験を名指す" mentions 'pytest -q a.py; pytest -q b.py' <<< "${out}"
+
+# --- 受け入れの基準は、 測った秒と --after の短い方 (= 別の旗で流し直しても膨らまず、 書いた値では上がらない) ---------
+refused() { ! "$@" > /dev/null 2>&1; }
+rung() { reset; ran sA o1 'pytest -q' 1000 1012 > /dev/null; ran sA o2 'pytest -q' 2000 2050 > /dev/null; }
+rung
+check "鳴りの文は --after を試した後の秒として訊く" mentions '--after <縮める手を試した後の秒>' <<< "$(ran sA o4 'pytest -q' 2100 2150)"
+ran sA o3 'pytest -q --durations=10' 2200 2219.5 > /dev/null
+accept --tried '旗を足して流し直した' --before 50 --after 19.5 > /dev/null
+check "--after が短ければ基準は --after" [ "$(base_value)" = "19.5" ]
+rung
+accept --tried x --before 12 --after 900 > /dev/null
+check "--after が測った秒より長くても基準は測った秒" [ "$(base_value)" = "50.0" ]
+for seconds in 0 -3 nan inf; do
+    rung
+    check "秒でない --after は断る: ${seconds}" refused accept --tried x --before 12 "--after=${seconds}"
+    check "断った時は基準を動かさない: ${seconds}" [ "$(base_value)" = "12.0" ]
+done
+
 # --- background の命令は、 会話の記録に残る知らせの行で終わりにする -------------------------------------------------
 # 知らせは UserPromptSubmit を通らず、 記録の `queue-operation` の行に残る。 次に呼ばれた hook (どの session でも) が行を見つけて終わりにする
 TS_A="${T}/ts-a.jsonl"; TS_B="${T}/ts-b.jsonl"
