@@ -4,7 +4,8 @@
 # git に載っていない folder にだけ経過日数 (= 中の一番新しい file の時刻から) が付く事と、
 # 生きているが別の階層のタブの folder を数える事と、 階層のトップが、 説明のページを持つこの階層のタブを指していない時と
 # 先の無いリンクを持つ時に数える事 (= 階層の伏せてあるタブは数えない) と、
-# タブの一覧が読めない時に UNKNOWN になる事を確かめる。
+# タブの一覧が読めない時に UNKNOWN になる事と、 git に載っていて一度もこの機械で見ていない id の folder を
+# 残り物に数えず「別の機械のタブか不明」に出す事を確かめる。
 #
 #   bash .tooling/tests/test-pages-orphans.sh
 set -uo pipefail
@@ -19,6 +20,8 @@ pass=0
 fail=0
 
 ROOT="${T}/agent"
+# 見た id の状態は作り物の器の根へ書かせる (本物の状態に触らない)
+export AGENT_PLATFORM_ROOT="${T}/platform"
 BIN="${T}/bin"
 mkdir -p "${BIN}"
 ln -s "$(command -v git)" "${BIN}/git"
@@ -81,6 +84,19 @@ make_pages "${T}/nogit/pages"
 LIST=$'ses_live  normal  口座=personal  busy  境界=なし  main  (= このタブ)\nhome:ses_home  別の機械  main'
 
 fake_tabs "${LIST}" 0
+NEVER_SEEN="pages_orphans: 2 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 0: - / 別の機械のタブか不明 1: ses_bare)"
+check "git に載っていて一度も見ていない id は、数から外して不明に出す" "$(run --tier normal)" "${NEVER_SEEN}"
+fake_tabs "${LIST}"$'\nhome:ses_bare  別の機械  bare' 0
+run --tier normal > /dev/null
+fake_tabs "${LIST}" 0
+check "別の機械の行で見た id は、この機械で見た物に数えない" "$(run --tier normal)" "${NEVER_SEEN}"
+printf 'ses_live\nses_home\nses_withpage\nses_withdata\n' > "${T}/only-unknown.txt"
+check "不明だけなら 0 と出す" "$(run --tier normal --live-ids "${T}/only-unknown.txt")" \
+    "pages_orphans: 0 (別の機械のタブか不明 1: ses_bare)"
+fake_tabs "${LIST}"$'\nses_bare  normal  口座=personal  idle  境界=なし  bare' 0
+run --tier normal > /dev/null
+fake_tabs "${LIST}" 0
+# ここから下の ses_bare は、この機械で見た後に居なくなったタブ
 check "normal の pages/ を、生きているタブ・別の機械のタブ・_ 始まりを外して分け、git に載る物には日数を付けない" \
     "$(run --tier normal)" \
     "pages_orphans: 3 (中身あり 2: ses_withdata(5日) ses_withpage(0日) / 雛形だけ 1: ses_bare)"
