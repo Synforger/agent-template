@@ -185,8 +185,8 @@ class TestTimeStore:
         except OSError:
             return False
 
-    def accepted_since(self, since: datetime) -> list[dict]:
-        """since 以後の受け入れの行 (= 古い順。 読めなければ空)。"""
+    def accepted_since(self, since: datetime, session: str) -> list[dict]:
+        """session が since 以後に受け入れた行 (= 古い順。 読めなければ空)。 状態の置き場は機械の全 session で 1 つなので session で絞る。"""
         rows: list[dict] = []
         try:
             lines = (self.directory / "accepted.jsonl").read_text(encoding="utf-8").splitlines()
@@ -200,7 +200,7 @@ class TestTimeStore:
                 continue
             if at.tzinfo is None:
                 at = at.replace(tzinfo=timezone.utc)
-            if at >= since:
+            if at >= since and row.get("session") == session:
                 rows.append(row)
         return rows
 
