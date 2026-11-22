@@ -158,6 +158,8 @@ OUT="$(ran sA a5 'pytest -q' 5000 5020)"
 check "線を越えたら鳴る (いつもの秒数と今回の秒数)" bash -c "echo '${OUT}' | grep -q '8.0秒' && echo '${OUT}' | grep -q '20.0秒'"
 check "名前が出力に無ければ --durations=10 を勧める" mentions '--durations=10' <<< "${OUT}"
 check "縮める道と受け入れの道の 2 つを書く" bash -c "echo '${OUT}' | grep -q '縮める' && echo '${OUT}' | grep -q 'test-time.py accept'"
+check "鳴りの文は受け入れの命令を、 どの folder からでも打てる path で名指す" grep -qF "python3 ${ACCEPT} accept" <<< "${OUT}"
+check "止める文も受け入れの命令を、 どの folder からでも打てる path で名指す" grep -qF "python3 ${ACCEPT} accept" <<< "$(hook PreToolUse sA x1 'git commit -m x' 5100)"
 check "鳴った時は基準を動かさない" [ "$(base_value)" = "8.0" ]
 for command in "${CLOSING[@]}"; do
     check "鳴っている間、 閉じる手を止める: ${command}" bash -c "$(declare -f hook denied); HOOK='${HOOK}' REPO='${REPO}'; hook PreToolUse sA x1 '${command}' 5100 | denied"
