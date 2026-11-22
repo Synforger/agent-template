@@ -316,6 +316,10 @@ check "型の表だけで、 子の起動は client の tabs の skill を名指
 check "型の表だけで、 子でない起動は黙る" silent "$(shipped "${START}" -u AGENT_CHILD)"
 check "型の表だけで、 子への入れ替えの引き金は子の決まりの skill を名指す" names "$(shipped "${CLOSE}" AGENT_CHILD=1)" sub-agent
 check "子でないタブへの入れ替えの引き金は子の決まりを名指さない" bash -c '! grep -q "\`sub-agent\`" <<< "$1"' _ "$(shipped "${CLOSE}" -u AGENT_CHILD)"
+for command in 'claude -p q' 'tabs ask ses_x q.txt' 'run --key secrets/bot/anthropic-api-key' 'ANTHROPIC_API_KEY=x run' 'curl https://api.anthropic.com/v1/messages'; do
+    check "型の表だけで、 model を呼ぶ命令は API とサブスクの使い分けの skill を名指す: ${command}" names "$(shipped "$(tool Bash "{\"command\":\"${command}\"}")" -u AGENT_CHILD)" sub-agent
+done
+check "型の表だけで、 model を呼ばない命令は黙る" silent "$(shipped "$(tool Bash '{"command":"claude --version && tabs list"}')" -u AGENT_CHILD)"
 
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]
