@@ -299,5 +299,23 @@ check "引用符の付いた終わりの印の heredoc も中身を見ない" si
 check "heredoc の後に続く命令では当てる" names "$(both "${W}/missing.toml" "$(tool Bash '{"command":"cat > m.md <<EOF\nhello\nEOF\nmkdir x"}')")" code-writing
 check "heredoc を開く行の命令では当てる" names "$(both "${W}/missing.toml" "$(tool Bash '{"command":"mkdir x && cat > m.md <<EOF\nhello\nEOF"}')")" code-writing
 
+# 配る型の表そのもので、 派生の表に行が無くても、 子のタブは起動と入れ替えの引き金で子の手順を名指される
+CHILD="${W}/child-agent"; CHILD_PLATFORM="${W}/child-platform"
+mkdir -p "${CHILD}/.claude/skills/sub-agent" "${CHILD}/.claude/skills/session-end" "${CHILD_PLATFORM}/tools/claude-pwa-client/skills/tabs"
+touch "${CHILD}/.claude/skills/sub-agent/SKILL.md" "${CHILD}/.claude/skills/session-end/SKILL.md" "${CHILD_PLATFORM}/tools/claude-pwa-client/skills/tabs/SKILL.md"
+shipped() { # <payload の JSON> [env の引数...]
+    local payload="$1"; shift
+    printf '{%s}' "${payload}" | env "$@" SKILL_GATE_BASE_TABLE="${HOOKS}/skill-triggers.base.toml" SKILL_GATE_TABLE="${W}/missing.toml" \
+        AGENT_ROOT="${CHILD}" AGENT_PLATFORM_ROOT="${CHILD_PLATFORM}" python3 "${HOOKS}/skill_gate.py"
+}
+START='"hook_event_name":"SessionStart","source":"startup"'
+CLOSE='"hook_event_name":"UserPromptSubmit","prompt":"Automatic session rollover, sent by the client:\n<session-rollover phase=\"close\">\n</session-rollover>"'
+out="$(shipped "${START}" AGENT_CHILD=1)"
+check "型の表だけで、 子の起動は子の決まりの skill を名指す" names "${out}" sub-agent
+check "型の表だけで、 子の起動は client の tabs の skill を名指す" names "${out}" pwa-client:tabs
+check "型の表だけで、 子でない起動は黙る" silent "$(shipped "${START}" -u AGENT_CHILD)"
+check "型の表だけで、 子への入れ替えの引き金は子の決まりの skill を名指す" names "$(shipped "${CLOSE}" AGENT_CHILD=1)" sub-agent
+check "子でないタブへの入れ替えの引き金は子の決まりを名指さない" bash -c '! grep -q "\`sub-agent\`" <<< "$1"' _ "$(shipped "${CLOSE}" -u AGENT_CHILD)"
+
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

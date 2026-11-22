@@ -25,6 +25,22 @@ name = "sub-agent"
 [[skill.when]]
 tools = ["Bash"]
 command = '\btabs\s+new\b'
+# 子のタブ (= AGENT_CHILD=1) の起動と締めは、 CLAUDE.md の手順の代わりに § 子の側の決まり で行う
+[[skill.when]]
+event = "SessionStart"
+env = ["AGENT_CHILD=1"]
+[[skill.when]]
+event = "UserPromptSubmit"
+env = ["AGENT_CHILD=1"]
+prompt = '<session-rollover phase="close">'
+
+[[skill]]
+name = "pwa-client:tabs"
+# 子の側の手順の本体は client の plugin が持つ (= client の無い器では黙る)
+file = "{platform}/tools/claude-pwa-client/skills/tabs/SKILL.md"
+[[skill.when]]
+event = "SessionStart"
+env = ["AGENT_CHILD=1"]
 
 [[skill]]
 name = "explainer-pages"
