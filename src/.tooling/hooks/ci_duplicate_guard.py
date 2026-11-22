@@ -19,17 +19,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from commit_paths_guard import segments
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-#: 命令の中の引用・逃がした字・注釈・heredoc・裸の `#` (= 前から順に 1 つずつ当たる)
-SHELL_TEXT = re.compile(
-    r"""'[^']*'|"(?:\\.|[^"\\])*"|\\."""
-    r"|(?P<comment>(?<![^\s;&|()])\#[^\n]*)"
-    r"""|(?<!<)<<(?!<)-?[ \t]*(?P<quote>['"]?)(?P<end>[A-Za-z_][\w.-]*)(?P=quote)(?P<rest>[^\n]*)"""
-    r"\n(?:.*?\n)??[ \t]*(?P=end)(?=\n|$)"
-    r"|(?P<hash>\#)",
-    re.DOTALL,
-)
+from shell_segments import segments, without_text  # noqa: E402
+
 WORKFLOW_CALLS_CI = re.compile(r"\btask\s+(?:-\S+\s+\S+\s+)*ci\b")
 GH_TIMEOUT_SECONDS = 8
 GIT_TIMEOUT_SECONDS = 5
@@ -39,20 +32,6 @@ REASON = (
     "公開の repo ({repo}) の全体の試験は、 PR で GitHub の Actions が同じ `task ci` を流すので、 その結果で判定します。"
     " 手元では直した file の試験だけを流してください (skill `sub-agent` § 中央 merge の責務)。"
 )
-
-
-def without_text(command: str) -> str:
-    """注釈と heredoc の中身を落とし、 行の継ぎをつないだ命令 (= `segments` が段を読み違えない形)。"""
-    def kept(match: re.Match[str]) -> str:
-        if match["comment"] is not None or match.group(0) == "\\\n":
-            return ""
-        if match["end"] is not None:
-            return without_text(match["rest"])
-        if match["hash"] is not None:
-            return "\\#"
-        return match.group(0)
-
-    return SHELL_TEXT.sub(kept, command)
 
 
 def ci_folders(command: str, cwd: Path) -> list[Path]:

@@ -74,6 +74,51 @@ reset
 hook PreToolUse sA id1 "pytest" 1000 0 "" "${T}/plain" > /dev/null
 check "git の外は記録しない" [ "$(running_count)" = 0 ]
 
+# --- 命令の読み方: 引用・heredoc・注釈の中は命令でなく、 包みの命令 (= direnv exec・env など) の中は命令 ----------------
+NOT_A_TEST=('gh issue comment 1 --body "checks pass; task ci runs in Actions.; done"'
+    $'echo "checks pass\npytest -q\ndone"'
+    $'cat > note.md <<\'X\'\nit\'s a note\npytest -q\ngit commit -m x\nX'
+    'ls # then; pytest -q')
+for command in "${NOT_A_TEST[@]}"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 > /dev/null
+    check "文の中の試験の名前は記録しない: ${command}" [ "$(running_count)" = 0 ]
+done
+for command in "direnv exec ${REPO} pytest -q" "env -u PWA_SID pytest -q" "timeout 60 pytest -q" "pytest -q 2>&1 | tail -1"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 > /dev/null
+    check "包みの中の試験は記録する: ${command}" [ "$(running_count)" = 1 ]
+done
+REAL_CLOSING=('git commit -m "a; b" -- f'
+    $'git commit -q -m "subject\n\nbody; with | marks\n\nCo-Authored-By: x" -- f'
+    $'git diff --stat && git commit -q -m "subject\n\nbody" -- f'
+    'direnv exec /tools gh pr create --title t'
+    $'direnv exec /tools gh pr create --title t --body "$(cat <<\'X\'\nit is a body; with marks\nX\n)" 2>&1 | tail -1'
+    'direnv exec /tools /agent/.tooling/work/pr-land.sh 5 --squash > land.log 2>&1'
+    'env -u GH_TOKEN gh pr merge 5 --squash')
+REAL_CLOSING+=($'gh pr create --body "$(cat <<\'X\'\nit\'s a "body; with an odd quote\nX\n)"')
+NOT_CLOSING=($'echo "steps\ngit commit -m x\ndone"'
+    $'cat > note.md <<\'X\'\ngit commit -m x\ntabs report done f.md\nX'
+    'ls # then; git commit -m x')
+reset
+ran sA r1 "pytest -q" 1000 1002 > /dev/null
+ran sA r2 "pytest -q" 2000 2030 > /dev/null
+for command in "${REAL_CLOSING[@]}"; do
+    out="$(hook PreToolUse sA c1 "${command}" 2100)"
+    check "実際の形の閉じる手を止める: ${command}" denied <<< "${out}"
+done
+for command in "${NOT_CLOSING[@]}"; do
+    out="$(hook PreToolUse sA c2 "${command}" 2100)"
+    check "文の中の閉じる手は止めない: ${command}" silent <<< "${out}"
+done
+
+# --- folder を変数で渡す形 (= `W=<worktree>; cd "$W" && pytest`) も、 その folder の試験として数える ---------------------
+for command in "W=${REPO}/sub; cd \"\$W\" && pytest -q" "export W=${REPO}"$'\n'"cd \"\${W}/sub\" && pytest -q" "R=${REPO}; W=\$R/sub; task -d \"\$W\" test"; do
+    reset
+    hook PreToolUse sA id1 "${command}" 1000 0 "" "${T}/plain" > /dev/null
+    check "変数の folder の試験を記録する: ${command}" [ "$(running_count)" = 1 ]
+done
+
 # --- vitest の報告の遅い所も読む ---------------------------------------------------------------------------------
 reset
 ran sA v1 "npx vitest run" 1000 1002 > /dev/null

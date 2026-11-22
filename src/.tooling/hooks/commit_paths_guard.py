@@ -15,12 +15,14 @@ settings の PreToolUse (matcher Bash) から呼ぶ。 試験 = tests/test-commi
 """
 import json
 import os
-import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-SEGMENT_TOKENS = {";", "&&", "||", "|", "&", "\n"}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from shell_segments import segments  # noqa: E402
+
 GIT_TIMEOUT_SECONDS = 5
 GIT_OPTIONS_WITH_VALUE = {"-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
 SHORT_OPTIONS_WITH_VALUE = set("mFCctS")
@@ -30,24 +32,6 @@ REASON = (
     " `git commit -m <message> -- <自分が書いた path>...` の形で打ってください (`-a` も同じ理由で使いません。"
     " merge を閉じる時は `git merge --continue`)。"
 )
-
-
-def segments(command: str) -> list[list[str]]:
-    """命令を引用符ごと字句に割り、 区切りの記号と改行で段に分ける (= 割れない時は空)。"""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n")
-    lexer.whitespace = " \t\r"
-    lexer.whitespace_split = True
-    try:
-        tokens = list(lexer)
-    except ValueError:
-        return []
-    found: list[list[str]] = [[]]
-    for token in tokens:
-        if token in SEGMENT_TOKENS or set(token) <= set(";&|\n"):
-            found.append([])
-        else:
-            found[-1].append(token)
-    return [words for words in found if words]
 
 
 def commit_calls(command: str, cwd: Path) -> list[tuple[Path, list[str]]]:

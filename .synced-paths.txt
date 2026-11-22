@@ -71,6 +71,7 @@
 .tooling/lib/session_transcript.py
 .tooling/lib/session_scope.py
 .tooling/lib/client_openings.py
+.tooling/lib/shell_segments.py   # @machine-wide ci_duplicate_guard・commit_paths_guard・test_time が読む
 .tooling/lib/test_time.py   # @machine-wide test_time_gate が読む
 .tooling/lib/test_time_store.py   # @machine-wide test_time_gate が読む
 

@@ -3,6 +3,7 @@
 
 呼ぶのは `hooks/test_time_gate.py` (= 試験の時間を測って鳴らす hook) と `work/test-time.py` (= 受け入れの命令)。
 命令の見分け・鳴る線の計算・基準の更新・pytest の遅い所の行の読み・鳴らす文を作る。 状態の読み書きは `test_time_store.py`。
+段の割り方は `shell_segments.py`。 読まない形 = 文字列や置換の中で動く命令 (`bash -c`・`eval`・`$(…)`) と、 割れない命令 (= 通す)。
 試験 = tests/test-test-time-gate.sh
 """
 
@@ -16,6 +17,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from shell_segments import segments, without_text
+
 #: 鳴る線の倍率と増え幅。 `elapsed > max(base × RING_RATIO, base + RING_EXTRA_SECONDS)` の時だけ鳴る
 RING_RATIO = 1.25
 RING_EXTRA_SECONDS = 5.0
@@ -23,7 +26,18 @@ RING_EXTRA_SECONDS = 5.0
 COLLISION_WINDOW_SECONDS = 30 * 60
 SLOWEST_COUNT = 10
 
-SEGMENT_SPLIT = re.compile(r"\|\||&&|[;|\n]")
+#: 命令の前に立つ shell の語 (= その後ろが命令)
+SHELL_LEADS = ("do", "then", "else", "elif", "if", "while", "until", "!", "{", "(")
+#: 後ろの命令をそのまま走らせる包み → (値を取る旗, 命令の前に置く値の数)
+WRAPPERS = {
+    "env": (("-u", "--unset"), 0),
+    "timeout": (("-k", "--kill-after", "-s", "--signal"), 1),
+    "gtimeout": (("-k", "--kill-after", "-s", "--signal"), 1),
+    "nohup": ((), 0),
+    "time": ((), 0),
+    "command": ((), 0),
+    "exec": ((), 0),
+}
 #: 出力と入力の向け先の字句 (= `2>&1`・`>log`・`&>/dev/null`・`<in`)。 向け先を次の字句に持つ形 (= `>`・`2>>`) は ALONE
 REDIRECTION = re.compile(r"^(\d*|&)(>>?|<)(&\d+|\S*)$")
 REDIRECTION_ALONE = re.compile(r"^(\d*|&)(>>?|<)$")
@@ -63,6 +77,9 @@ DURATION_LINE = re.compile(
     r"^\s*(\d+(?:\.\d+)?s\s+(?:call|setup|teardown)\s+\S+.*?|\d+\s+ms\s+\S+.*?)\s*$", re.MULTILINE)
 #: 遅い所の見出し = pytest の `slowest 10 durations` か、 vitest の報告の `slowest 10 tests`
 SLOWEST_MARK = re.compile(r"slowest\s+\d*\s*(?:durations|tests)", re.IGNORECASE)
+#: 同じ命令の中の代入 (= `W=/path`) と、 その値を指す `$W`・`${W}`
+ASSIGNMENT = re.compile(r"^([A-Za-z_]\w*)=(.*)$", re.DOTALL)
+VARIABLE = re.compile(r"\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))")
 TOOL_USE_ID = re.compile(r"<tool-use-id>\s*([^<\s]+)\s*</tool-use-id>")
 OUTPUT_FILE = re.compile(r"<output-file>\s*([^<\n]+?)\s*</output-file>")
 STATUS = re.compile(r"<status>\s*([^<\s]+)\s*</status>")
@@ -105,18 +122,29 @@ def next_base(base_seconds: float | None, elapsed_seconds: float) -> float:
 
 
 def _segments(command: str) -> list[list[str]]:
-    """命令を `;`・`&&`・`||`・`|`・改行で段に割り、 段ごとに字句に割る (= 割れない段は飛ばす)。"""
-    found: list[list[str]] = []
-    for segment in SEGMENT_SPLIT.split(command):
-        try:
-            words = shlex.split(segment)
-        except ValueError:
-            continue
-        while words and "=" in words[0] and not words[0].startswith("-"):
-            words = words[1:]
-        if words:
-            found.append(words)
-    return found
+    """命令を引用・heredoc・注釈の外の区切りで段に割り、 段ごとに実際に走る命令の字句にする (= 割れなければ空)。"""
+    found = (_unwrapped(words) for words in segments(without_text(command)))
+    return [words for words in found if words]
+
+
+def _unwrapped(words: list[str]) -> list[str]:
+    """段の頭の代入・shell の語・包みの命令 (= `direnv exec <dir>`・`env`・`timeout` など) を外した字句。"""
+    rest = list(words)
+    while rest:
+        head = os.path.basename(rest[0])
+        if rest[0] in SHELL_LEADS or ("=" in rest[0] and not rest[0].startswith("-")):
+            rest = rest[1:]
+        elif head == "direnv" and rest[1:2] == ["exec"]:
+            rest = rest[3:]
+        elif head in WRAPPERS:
+            flags_with_value, value_count = WRAPPERS[head]
+            rest = rest[1:]
+            while rest and rest[0].startswith("-"):
+                rest = rest[2 if rest[0] in flags_with_value else 1:]
+            rest = rest[value_count:]
+        else:
+            break
+    return rest
 
 
 def _positional(words: list[str]) -> list[str]:
@@ -163,16 +191,36 @@ def _folder_after(words: list[str], current: Path) -> Path:
 
 def test_runs(command: str, cwd: Path) -> list[tuple[Path, str]]:
     """命令の中で試験を流す段ごとに、 その作業の folder と、 その段だけの命令 (= 空白を詰めた物) を返す (= 無ければ空)。
-    前の段の `cd` と、 段の中の `-C`・`-d`・`--dir` も folder に数える。 前後の段 (`cd`・`| tail` など) は段の命令に入れない。"""
+    前の段の `cd` と、 段の中の `-C`・`-d`・`--dir` も folder に数え、 その値の変数は同じ命令の前の代入で展開する。 前後の段 (`cd`・`| tail` など) は段の命令に入れない。"""
     runs: list[tuple[Path, str]] = []
     current = cwd
-    for words in _segments(command):
+    variables = {"HOME": os.path.expanduser("~")}
+    for step in segments(without_text(command)):
+        variables.update(_assignments(step, variables))
+        words = _unwrapped(step)
         if len(words) >= 2 and words[0] == "cd":
-            current = (current / os.path.expanduser(words[1])).resolve()
+            current = (current / os.path.expanduser(_expanded(words[1], variables))).resolve()
             continue
         if _matches_head(words, TEST_HEADS):
-            runs.append((_folder_after(words, current), normalize(shlex.join(_without_redirections(words)))))
+            folder = _folder_after([_expanded(word, variables) for word in words], current)
+            runs.append((folder, normalize(shlex.join(_without_redirections(words)))))
     return runs
+
+
+def _assignments(step: list[str], variables: dict[str, str]) -> dict[str, str]:
+    """段の頭の代入 (= `W=/path`・`export W=/path`) の名前と値。 値の中の前の代入は展開する。"""
+    found: dict[str, str] = {}
+    for word in step[1:] if step[:1] == ["export"] else step:
+        match = ASSIGNMENT.match(word)
+        if not match:
+            break
+        found[match[1]] = _expanded(match[2], {**variables, **found})
+    return found
+
+
+def _expanded(word: str, variables: dict[str, str]) -> str:
+    """字句の中の `$名前`・`${名前}` を、 分かっている値に置く (= 知らない名前はそのまま)。"""
+    return VARIABLE.sub(lambda match: variables.get(match[1] or match[2], match[0]), word)
 
 
 def _without_redirections(words: list[str]) -> list[str]:
