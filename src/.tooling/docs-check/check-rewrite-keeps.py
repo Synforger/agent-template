@@ -12,6 +12,7 @@
 使い方:
   check-rewrite-keeps.py [--ref <git の ref>] [--update-registry] <file>...   既定の ref は HEAD
   check-rewrite-keeps.py --selftest
+  check-rewrite-keeps.py -h | --help
 
 出力は file ごとに、減った物と増えた物と、文を直した見出しを 1 行ずつ。
 減った物か増えた物が 1 件でも在れば exit 1。
@@ -36,6 +37,7 @@ PATTERNS = {
     "speaker": re.compile(r"\[[^\]\s`]{1,24}\](?!\()"),
 }
 # 句読点と括弧の前後の空白は書き方の違いなので数えない
+USAGE = "usage: check-rewrite-keeps.py [--ref <ref>] [--update-registry] <file>..."
 SPACING = re.compile(r"(?<=[、。「」（）])\s+|\s+(?=[、。「」（）])")
 
 
@@ -186,12 +188,18 @@ def main(argv: list[str]) -> int:
     ref = "HEAD"
     write = "--update-registry" in argv
     argv = [a for a in argv if a != "--update-registry"]
+    if "-h" in argv or "--help" in argv:
+        print(__doc__)
+        return 0
     if "--ref" in argv:
         i = argv.index("--ref")
+        if i + 1 == len(argv):
+            print(USAGE, file=sys.stderr)
+            return 2
         ref = argv[i + 1]
         del argv[i:i + 2]
-    if not argv:
-        print("usage: check-rewrite-keeps.py [--ref <ref>] [--update-registry] <file>...", file=sys.stderr)
+    if not argv or any(a.startswith("-") for a in argv):
+        print(USAGE, file=sys.stderr)
         return 2
     bad = 0
     for name in argv:
