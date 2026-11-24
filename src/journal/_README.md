@@ -1,7 +1,7 @@
 ---
 title: journal/ の運用 (= 全階層共通の真値)
 description: session の記録の置き場。 file 名 / 書き方 / 追記のみの原則 / _archive の基準
-updated: 2026-10-14
+updated: 2026-11-21
 capacity: 3KB
 ---
 
@@ -18,7 +18,7 @@ capacity: 3KB
 
 - `YYYY-MM-DD/session-NN.md` (= 日付フォルダは**締めた日**、 作業期間が跨るなら本文の見出しに書く)
 - NN は階層ごとに独立、 採番は終了時 Step 0 の出力をそのまま使う
-- **続きが在る時は先頭に `## 生きている依頼` を書く** (= ユーザの「やって」 を言葉のまま・範囲・次の 1 手。 終わるかユーザが取り下げるまで、 次の journal へ毎回運ぶ。 自動の入れ替えで起動した session はこの節から続ける)
+- **続きのある仕事は journal に書かない**。 タブが持つ仕事は票 (client の `tabs ticket`) が真値で、 締めで持つ票それぞれに今を書き足す (= 手順は skill `session-end`)。 自動の入れ替えで締めた時だけ `## 入れ替えの時点` を書き、 新しい session がそれを読み上げて、 `tabs ticket mine` の次の 1 手から続ける。 client の外の session (= `PWA_SID` が無い) だけは、 前の形の `## 生きている依頼` を先頭に書く
 - 書式 = `_template.md`。 発火記録は隣に `session-NN-rule-hits.jsonl` (= 書式 = `.claude/skills/rule-registry/SKILL.md`)
 - 機械が作る触跡は `session-NN-auto-index.jsonl` (= PC ローカル、 `git` に載せる階層と載せない階層がある)
 
