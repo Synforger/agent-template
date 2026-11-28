@@ -44,6 +44,9 @@ from pathlib import Path
 # model は **alias 1 語だけで書く** (= 版も文脈の変種も名指ししない)。 alias は CLI が持つ表で
 # 毎回その時点の最新へ解決される。 版つき id も変種の接尾辞 (= [1m]) も、 既定が変わった日に古い形へ貼り付く。
 MODEL = "opus"
+#: 階層ごとに既定と違う model で起動するタブ (= 階層 → alias)。 `normal` は操作者との接点で、 操作者の言葉を読んで
+#: ほかのタブを動かす決めを持つので、 判断の強い model で起動する。 ここに無い階層は `MODEL`
+TIER_MODELS = {"normal": "fable"}
 #: 子のタブ (= `--child`) の model。 子は親が渡した持ち場を commit まで書く体で、 判断は親が持つ
 CHILD_MODEL = "sonnet"
 EFFORT = "high"
@@ -507,7 +510,7 @@ def main() -> int:
     else:
         os.environ["CLAUDE_CONFIG_DIR"] = str(account)
     drop_caller_environment()
-    model, effort, child_args = MODEL, EFFORT, []
+    model, effort, child_args = TIER_MODELS.get(tier, MODEL), EFFORT, []
     if os.environ.get("AGENT_CHILD"):
         model, effort, child_args, child_env, notes = child_launch(message, load_child_profile())
         os.environ.update(child_env)

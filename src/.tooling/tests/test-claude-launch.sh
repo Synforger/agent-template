@@ -483,7 +483,7 @@ printf 'おはよう' > "${T}/msg"
 env -u CLAUDE_CONFIG_DIR -u PWA_SID -u AGENT_TIER -u GUARD_WORK_FOLDER AGENT_CHILD=1 HOME="${T}/home" AGENT_ROOT="${T}/elsewhere" \
     AGENT_CLAUDE_BIN="${T}/claude" OUT="${T}/out" python3 "${LAUNCH}" --first-message-file "${T}/msg" 2> "${T}/out/stderr"
 check "--child の無い起動は、 受け継いだ子の印を session に渡さない" has "${T}/out/env" "AGENT_CHILD=unset"
-check "子でない起動は MODEL (= opus) のまま" [ "$(grep -A1 -xF -- --model "${T}/out/args" | tail -1)" = "opus" ]
+check "子でない normal の起動は TIER_MODELS の model (= fable。 子の sonnet にならない)" [ "$(grep -A1 -xF -- --model "${T}/out/args" | tail -1)" = "fable" ]
 
 # --- 子のタブの起動の設定 (= templates/claude-child.json) ----------------------------------
 

@@ -305,6 +305,34 @@ step_children() {
     fi
 }
 
+step_fixed_cost() {
+    # 起動と締めの固定費 (= hooks/fixed_cost.py が全部のタブで書く記録) の、 この階層と全体の 1 行
+    if [ -f .tooling/startup/fixed_cost_summary.py ]; then
+        python3 .tooling/startup/fixed_cost_summary.py
+    fi
+}
+
+# 回している計画の予算と、 repo に開いたまま残る物の数 (= work/plan_run.py の 1 行ずつ。 設定が無ければ何も出さない。
+# どちらも線は引かず、 素の値だけ)
+step_plan_budget() {
+    if [ -f .tooling/work/plan_run.py ] && [ -f .tooling/work/plan-run.toml ]; then
+        python3 .tooling/work/plan_run.py budget 2>/dev/null | grep '^plan_budget('
+    fi
+}
+
+step_leftovers() {
+    if [ -f .tooling/work/plan_run.py ] && [ -f .tooling/work/plan-run.toml ]; then
+        python3 .tooling/work/plan_run.py leftovers --no-pr 2>/dev/null | grep '^leftovers:'
+    fi
+}
+
+step_tab_health() {
+    # この機械の client のタブの土台 (= tmux の server が 1 本か・一覧に無い session) を見る
+    if [ -f .tooling/startup/tab_health.py ]; then
+        python3 .tooling/startup/tab_health.py
+    fi
+}
+
 step_pages_orphans() {
     # 起動した階層の pages/ に残った、生きているタブの物でない folder (= 閉じたタブのページを誰も拾わずに残さないため)
     if [ -f .tooling/startup/pages_orphans.py ]; then
@@ -364,6 +392,10 @@ step_pending_approvals > "$TMPD/8i-pending" &
 step_platform_check   > "$TMPD/8g-platform" &
 step_children         > "$TMPD/8f-children" &
 step_pages_orphans    > "$TMPD/8h-pages"    &
+step_tab_health       > "$TMPD/8k-tabs"     &
+step_fixed_cost       > "$TMPD/8l-cost"     &
+step_plan_budget      > "$TMPD/8m-budget"   &
+step_leftovers        > "$TMPD/8n-left"     &
 step_anon_words       > "$TMPD/9-anon"       &
 wait
 
@@ -371,7 +403,7 @@ wait
 python3 .tooling/startup/route_by_owner.py --root "$ROOT" \
     "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/6c-unchecked" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
-    "$TMPD/8e2-tools" "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages" "$TMPD/8i-pending" "$TMPD/8j-peers" | tee "$TMPD/status"
+    "$TMPD/8e2-tools" "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages" "$TMPD/8k-tabs" "$TMPD/8l-cost" "$TMPD/8m-budget" "$TMPD/8n-left" "$TMPD/8i-pending" "$TMPD/8j-peers" | tee "$TMPD/status"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 

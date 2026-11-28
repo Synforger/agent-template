@@ -85,6 +85,17 @@
 .tooling/startup/owner_routing.py
 .tooling/startup/owner_table.py
 .tooling/startup/tool_actions.py
+# 固定費と計画を測る道具 (= startup-status.sh の tab_health・fixed_cost・plan_budget・leftovers の行。 設定 plan-run.toml は派生が見本から作る)
+.tooling/startup/tab_health.py
+.tooling/hooks/fixed_cost.py   # @machine-wide 口座の設定の hook が呼ぶ
+.tooling/startup/fixed_cost_summary.py
+.tooling/work/plan_run.py
+.tooling/work/plan-run.toml.example
+.tooling/lib/usage_window.py
+.tooling/lib/usage_records.py
+.tooling/lib/repo_leftovers.py
+.tooling/lib/plan_units.py
+.tooling/lib/yardstick_store.py
 .tooling/startup/actions_verdict.py
 .tooling/startup/pending_approvals.py
 .tooling/startup/peer_health.py
@@ -115,6 +126,10 @@
 .tooling/tests/test-claude-launch.sh
 .tooling/tests/test-pr-land.sh
 .tooling/tests/test-test-time-gate.sh   # @machine-wide test_time_gate の試験
+.tooling/tests/test-tab-health.sh
+.tooling/tests/test-fixed-cost.sh   # @machine-wide fixed_cost の hook の試験
+.tooling/tests/test-fixed-cost-summary.sh
+.tooling/tests/test-plan-run.sh
 .tooling/tests/test-docs-scan.sh
 .tooling/tests/test-guard-update.sh
 .tooling/tests/test-platform-check.sh
