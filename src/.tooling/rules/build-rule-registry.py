@@ -119,23 +119,30 @@ def sections(relpath):
     return out
 
 
+def first_commit_of(relpath, heading):
+    """その見出しの行が最初に現れた commit (= 本文の同じ語は数えない)。 履歴に無ければ None。"""
+    # git の拡張正規表現なので、 re.escape でなく効く記号だけを逃がす
+    line = r"^#{2,3}[[:space:]]+" + re.sub(r"([\\.^$*+?()\[{|])", r"\\\1", heading) + r"[[:space:]]*$"
+    args = ["git", "log", "--diff-filter=AM", "--format=%h\t%ad\t%s", "--date=short",
+            "--pickaxe-regex", "-S", line, "--", relpath]
+    try:
+        r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    lines = [ln for ln in r.stdout.strip().split("\n") if ln.strip()]
+    parts = lines[-1].split("\t", 2) if lines else []
+    if len(parts) != 3:
+        return None
+    return {"born_commit": parts[0], "born_date": parts[1], "born_subject": parts[2]}
+
+
 def born_of(relpath, heading):
-    """その見出しが最初に現れた commit を git log -S で引く。 追えなければ file の誕生で代替。"""
-    for args in (
-        ["git", "log", "--diff-filter=AM", "--format=%h\t%ad\t%s", "--date=short",
-         "-S", heading, "--", relpath],
-        ["git", "log", "--diff-filter=A", "--format=%h\t%ad\t%s", "--date=short", "--", relpath],
-    ):
-        try:
-            r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=20)
-        except Exception:
-            continue
-        lines = [ln for ln in r.stdout.strip().split("\n") if ln.strip()]
-        if lines:
-            parts = lines[-1].split("\t")
-            if len(parts) == 3:
-                return {"born_commit": parts[0], "born_date": parts[1], "born_subject": parts[2]}
-    return {"born_commit": "", "born_date": "", "born_subject": ""}
+    """節の生まれ。 履歴に無い節 (= 台帳と同じ commit に入る) は今日の日付で、 commit は次の組み直しが埋める。
+
+    file の誕生では代替しない (= 新しい節が古く出て、 rule-hits-summary.py --drift の比べが狂う)。
+    """
+    return first_commit_of(relpath, heading) or {
+        "born_commit": "", "born_date": datetime.date.today().isoformat(), "born_subject": ""}
 
 
 def load_registry(path):
@@ -189,6 +196,8 @@ def main():
                     row["path"] = crumb
                     row["level"] = level
                     row["retired"] = False
+                    if not check_only and not row.get("born_commit") and (born := first_commit_of(rel, text)):
+                        row.update(born)
 
         for key, row in by_key.items():
             if key not in seen and not row.get("retired"):

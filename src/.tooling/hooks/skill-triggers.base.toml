@@ -39,9 +39,9 @@ env = ["AGENT_CHILD=1"]
 prompt = '<session-rollover phase="close">'
 
 [[skill]]
-name = "pwa-client:tabs"
+name = "pwa-client:tabs-children"
 # 子の側の手順の本体は client の plugin が持つ (= client の無い器では黙る)
-file = "{platform}/tools/claude-pwa-client/skills/tabs/SKILL.md"
+file = "{platform}/tools/claude-pwa-client/skills/tabs-children/SKILL.md"
 [[skill.when]]
 event = "SessionStart"
 env = ["AGENT_CHILD=1"]
@@ -52,6 +52,13 @@ name = "explainer-pages"
 [[skill.when]]
 tools = ["Write", "Edit", "MultiEdit"]
 path = '{root}/.*(\.html$|/pages/)'
+
+[[skill]]
+name = "explainer-shape"
+# 説明のページ (.html) を書く時だけ (= タブのメモを書くだけなら読まない)
+[[skill.when]]
+tools = ["Write", "Edit", "MultiEdit"]
+path = '{root}/.*\.html$'
 
 [[skill]]
 name = "automation-machinery"

@@ -3,6 +3,7 @@
 # pr-land.sh — PR を、 検査が通ったのを確かめてから merge し、 merge されたのを確かめてから tag を打つ
 # =============================================================================
 #   bash <エージェントの folder>/.tooling/work/pr-land.sh <PR 番号> [--squash|--merge] [--tag <名前>] [--keep-branch]
+#       [--match-head <sha>] [--subject <text>] [--body-file <file>] [--author-email <住所>]
 #   (= その PR の repo の中で打つ。 型へ上げた PR なら型の worktree の中。 merge の仕方の既定は --squash)
 #
 # 何のために在るか (= 手で続けて打って 2 種類の誤りが出た):
@@ -17,6 +18,9 @@
 #      試験が検査で、 それを流してから打つ)。 公開の repo は Actions の結果で判定するので、 workflow が無ければ止まる。
 #      gh が repo の公開・非公開を読めない時は、 待たずに止まる (= 使っている口座がその repo を見られないので、
 #      検査も読めず、 待っても必ず時間切れになる)
+#      The head is read before the wait, and only that head is merged: a head that moved during the wait was
+#      not checked, so the script stops (--match-head names the head the caller read). --subject and --body-file
+#      set the merge commit's text on both ways of merging
 #   2. merge して、 PR の状態が MERGED になったのを読んで確かめる。 なっていなければ、 gh が最後に出した 1 行を
 #      添えて止まる。 GraphQL の口が「Merge already in progress」 と答えた時は、 GitHub の側に処理中の merge が
 #      残っていて同じ口では通らないので、 REST の口へ PR の先頭の sha を付けて 1 回だけ頼み直す。
@@ -30,13 +34,17 @@
 # =============================================================================
 set -uo pipefail
 
-usage() { echo "usage: pr-land.sh <PR number> [--squash|--merge] [--tag <name>] [--keep-branch]" >&2; exit 2; }
-how="--squash"; tag=""; keep=0; pr=""
+usage() { echo "usage: pr-land.sh <PR number> [--squash|--merge] [--tag <name>] [--keep-branch] [--match-head <sha>] [--subject <text>] [--body-file <file>] [--author-email <address>]" >&2; exit 2; }
+how="--squash"; tag=""; keep=0; pr=""; named=""; subject=""; body_file=""; author=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --squash|--merge) how="$1" ;;
         --tag) [ -n "${2:-}" ] || usage; tag="$2"; shift ;;
         --keep-branch) keep=1 ;;
+        --match-head) [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || usage; named="$2"; shift ;;
+        --subject) [ -n "${2:-}" ] || usage; subject="$2"; shift ;;
+        --body-file) [ -f "${2:-}" ] && [ -r "$2" ] || usage; body_file="$2"; shift ;;
+        --author-email) [ -n "${2:-}" ] || usage; author="$2"; shift ;;   # 公開の repo で merge の author を noreply に固定する
         [0-9]*) pr="$1" ;;
         *) usage ;;
     esac
@@ -59,21 +67,26 @@ stop() { echo "pr-land: stopped — $1" >&2; exit 1; }
 # 1. 検査: 1 つ以上在って、 全部終わるまで待つ
 visibility="$(gh_ repo view --json visibility -q .visibility)"
 workflows="$(gh_ api 'repos/{owner}/{repo}/actions/workflows' -q .total_count)"
+pinned="$(gh_ pr view "${pr}" --json headRefOid -q .headRefOid)"
 if [ -z "${visibility}" ]; then
     stop "gh could not read the repository of #${pr} (not merged). The account it uses may not see this repository:
   run it with GH_TOKEN, or PR_LAND_GH, set to an account that can"
-elif [ -z "$(gh_ pr view "${pr}" --json number -q .number)" ]; then
+elif [ -z "${pinned}" ]; then
     # 検査を待つ前に確かめる: 無い番号では `gh pr checks` が空を返し続け、 上限まで「検査なし」 で待つ
     stop "this repository ($(gh_ repo view --json nameWithOwner -q .nameWithOwner)) has no #${pr} (not merged).
   Run pr-land inside the repository the PR belongs to"
+elif [ -n "${named}" ] && [ "${named}" != "${pinned}" ]; then
+    stop "the head of #${pr} is ${pinned:0:7}, not the named ${named:0:7} (not merged)"
 elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PRIVATE" ]; then
     echo "pr-land: #${pr} is in a private repo with no workflow; its check is the local whole test run, so nothing is awaited"
 elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PUBLIC" ]; then
     stop "#${pr} is in a public repo with no workflow; a public repo is judged by its Actions (not merged)"
 fi
 waited=0
+checks_err="$(mktemp)"
+trap 'rm -f "${checks_err}"' EXIT
 while [ "${workflows}" != "0" ] || [ "${visibility}" != "PRIVATE" ]; do
-    verdict="$(gh_ pr checks "${pr}" --json name,bucket | python3 -c '
+    verdict="$("${GH[@]}" pr checks "${pr}" --json name,bucket 2>"${checks_err}" | python3 -c '
 import json, sys
 try:
     checks = json.load(sys.stdin)
@@ -94,9 +107,19 @@ else:
         pass*) echo "pr-land: #${pr} checks passed (${verdict#pass })"; break ;;
         fail*) stop "a check failed on #${pr}: ${verdict#fail } (not merged)" ;;
     esac
+    # 読めない token は待っても読めない (= 「検査なし」 として上限まで待たない)
+    if grep -q "Resource not accessible" "${checks_err}"; then
+        stop "gh could not read the checks of #${pr} (not merged): this account's token may not read them.
+  Run it with PR_LAND_GH (e.g. PR_LAND_GH=gh with GH_TOKEN) set to an account that can"
+    fi
     if [ "${waited}" -ge "${TIMEOUT}" ]; then
+        # 衝突のある PR には GitHub が pull_request の run を立てない (= Actions の切り替えでは直らない)
+        if [ "${verdict}" = "none" ] && [ "$("${GH[@]}" pr view "${pr}" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null)" = "DIRTY" ]; then
+            stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged): the PR conflicts with its base,
+  and GitHub starts no pull_request run for a conflicting PR. Merge the base into the branch, resolve, push again"
+        fi
         [ "${verdict}" = "none" ] && stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged).
-  If a workflow here listens to pull_request and GitHub created no run for this PR at all, GitHub's
+  If the PR has no conflict and a workflow here listens to pull_request and GitHub created no run for this PR at all, GitHub's
   record of which workflow starts on which event is stale for this repository: turn the repository's
   Actions off and on again ('gh api -X PUT repos/{owner}/{repo}/actions/permissions -F enabled=false',
   then the same with '-F enabled=true' and the allowed_actions it had), then push to the PR again"
@@ -115,13 +138,21 @@ read_state() {
 }
 # gh の stderr の最後の 1 行 (= direnv が出す読み込みの行は除く)
 last_error_line() { printf '%s\n' "$1" | grep -v 'direnv: ' | sed '/^[[:space:]]*$/d' | tail -n 1; }
+now="$(gh_ pr view "${pr}" --json headRefOid -q .headRefOid)"
+[ "${now}" = "${pinned}" ] || stop "the head of #${pr} moved from ${pinned:0:7} to ${now:0:7} during the wait (not merged).
+  Run pr-land again to await the checks of the new head"
 merge_args=(pr merge "${pr}" "${how}")
 [ "${keep}" -eq 1 ] || merge_args+=(--delete-branch)
+merge_args+=(--match-head-commit "${pinned}")
+rest_args=(-f merge_method="${how#--}" -f sha="${pinned}")
+if [ -n "${subject}" ]; then merge_args+=(--subject "${subject}"); rest_args+=(-f commit_title="${subject}"); fi
+if [ -n "${body_file}" ]; then merge_args+=(--body-file "${body_file}"); rest_args+=(-F commit_message="@${body_file}"); fi
+[ -n "${author}" ] && merge_args+=(--author-email "${author}")
 merge_err="$("${GH[@]}" "${merge_args[@]}" 2>&1 >/dev/null)"
 read_state
-if [ "${state:-}" != "MERGED" ] && [[ "${merge_err}" == *"Merge already in progress"* ]] && [ -n "${head_at:-}" ]; then
-    echo "pr-land: GitHub answered 'Merge already in progress' on #${pr}; asking again through the REST merge with the head ${head_at:0:7}"
-    rest_err="$("${GH[@]}" api -X PUT "repos/{owner}/{repo}/pulls/${pr}/merge" -f merge_method="${how#--}" -f sha="${head_at}" 2>&1 >/dev/null)"
+if [ "${state:-}" != "MERGED" ] && [[ "${merge_err}" == *"Merge already in progress"* ]] && [ -z "${author}" ]; then   # REST の merge は author を決められない
+    echo "pr-land: GitHub answered 'Merge already in progress' on #${pr}; asking again through the REST merge with the head ${pinned:0:7}"
+    rest_err="$("${GH[@]}" api -X PUT "repos/{owner}/{repo}/pulls/${pr}/merge" "${rest_args[@]}" 2>&1 >/dev/null)"
     merge_err="${rest_err:-${merge_err}}"
     read_state
 fi

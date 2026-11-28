@@ -2,7 +2,8 @@
 # .tooling/rules/build-rule-registry.py の test。 作り物の階層 (= 親 / project / subproject) で、
 # ID の頭の文字が階層の深さで決まること (= 親 R- / project P- / 1 段目の subproject S- / 2 段目 S2- / 3 段目 S3-)、 文字を分ける前に
 # R- で振られた階層の番号が、 番号はそのままで文字だけ直ること、 直した時刻が台帳の隣に 1 度だけ
-# 書かれること、 検査だけの時は何も書かずに食い違いを報告することを確かめる。 FAIL 1 行ずつ。
+# 書かれること、 検査だけの時は何も書かずに食い違いを報告すること、 まだ commit の無い節の生まれが
+# file の生まれにならないことを確かめる。 FAIL 1 行ずつ。
 #
 #   bash .tooling/tests/test-build-rule-registry.sh
 set -u
@@ -88,6 +89,49 @@ python3 "${RUN}" > /dev/null 2>&1
 ok "2 回目に回しても、 直した時刻は書き換わらない" "$([ "$(cat "${PROJ}/rules/hits-since.json")" = "${stamp}" ]; echo $?)"
 out="$(python3 "${RUN}" --check 2>&1)"; rc=$?
 ok "直した後の検査は緑" "$([ "${rc}" -eq 0 ] && grep -q 'in sync' <<< "${out}"; echo $?)"
+
+# 節と台帳を同じ commit に入れる形: 台帳を作る時点の履歴に、 その節はまだ無い
+B="${T}/born"
+mkdir -p "${B}/.tooling/rules" "${B}/rules"
+cp -R "${T}/.tooling/lib" "${B}/.tooling/lib"
+cp "${RUN}" "${B}/.tooling/rules/"
+bgit() {
+    GIT_CONFIG_GLOBAL="${T}/gitconfig" GIT_CONFIG_NOSYSTEM=1 \
+        git -C "${B}" -c user.name=test -c user.email=test@example.invalid "$@"
+}
+: > "${T}/gitconfig"
+bgit init -q
+printf '# rules\n\n## 昔からの節\n\n- 決まり\n' > "${B}/rules/always.md"
+bgit add rules/always.md
+GIT_AUTHOR_DATE="2026-01-02T12:00:00+00:00" GIT_COMMITTER_DATE="2026-01-02T12:00:00+00:00" bgit commit -q -m "first"
+printf '\n## 今日の節\n\n- 追記\n' >> "${B}/rules/always.md"
+python3 "${B}/.tooling/rules/build-rule-registry.py" > /dev/null 2>&1
+holds "履歴に在る節は、 それが入った commit が生まれ" "${B}/rules/registry.jsonl" \
+    '"heading": "昔からの節".*"born_date": "2026-01-02", "born_subject": "first"'
+holds "まだ commit の無い節は、 今日の日付で commit は空" "${B}/rules/registry.jsonl" \
+    "\"heading\": \"今日の節\".*\"born_commit\": \"\", \"born_date\": \"$(date +%Y-%m-%d)\""
+bgit add rules/always.md rules/registry.jsonl
+bgit commit -q -m "section and registry"
+out="$(python3 "${B}/.tooling/rules/build-rule-registry.py" --check 2>&1)"; rc=$?
+ok "空の commit は検査を赤にしない" "$([ "${rc}" -eq 0 ]; echo $?)"
+python3 "${B}/.tooling/rules/build-rule-registry.py" > /dev/null 2>&1
+holds "次に組み直した時に、 節が入った commit で埋まる" "${B}/rules/registry.jsonl" \
+    "\"heading\": \"今日の節\".*\"born_commit\": \"$(bgit rev-parse --short HEAD)\".*\"born_subject\": \"section and registry\""
+
+# 見出しと同じ語が昔の本文に在っても、 生まれにしない。 生まれの空いた行は次の組み直しが埋める
+printf '\n- 子を立てる時の決まり (= a.b の式)\n' >> "${B}/rules/always.md"
+bgit add rules/always.md
+bgit commit -q -m "words in the body"
+printf '\n## 立てる\n\n- 追記\n\n### 式 (a.b) [x]\n\n- 追記\n' >> "${B}/rules/always.md"
+python3 "${B}/.tooling/rules/build-rule-registry.py" > /dev/null 2>&1
+holds "昔の本文の語は、 節の生まれにならない" "${B}/rules/registry.jsonl" '"heading": "立てる".*"born_commit": ""'
+bgit add rules/always.md rules/registry.jsonl
+bgit commit -q -m "two sections"
+python3 "${B}/.tooling/rules/build-rule-registry.py" > /dev/null 2>&1
+holds "記号を含む見出しも、 見出しの行が入った commit で埋まる" "${B}/rules/registry.jsonl" '"heading": "式 \(a\.b\) \[x\]".*"born_subject": "two sections"'
+sed -i.bak -E 's/("heading": "昔からの節".*"born_commit": ")[^"]*(", "born_date": ")[^"]*(", "born_subject": ")[^"]*"/\1\2\3"/' "${B}/rules/registry.jsonl"
+python3 "${B}/.tooling/rules/build-rule-registry.py" > /dev/null 2>&1
+holds "3 欄とも空の行も、 履歴に在れば埋まる" "${B}/rules/registry.jsonl" '"heading": "昔からの節".*"born_date": "2026-01-02", "born_subject": "first"'
 
 echo "build-rule-registry: ${pass} ok, ${fail} FAIL"
 [ "${fail}" -eq 0 ]

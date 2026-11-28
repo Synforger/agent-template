@@ -25,6 +25,8 @@ lib/claude-launch.py                   | tests/test-claude-launch.sh        | �
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | 自動の入れ替えで起動し直された時と、 client が階層ごとに立てたタブ (= `<tab-open>`) は、 封筒が運ぶ階層で起動する
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | `--child` の起動は子のタブとして、 最初の発話の `<child-start>` の階層で起動し、 エージェントを pull しない。 `--child` の無い起動は子の印を受け継がない
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの folder は起動の file の置き場で決まり (= 受け継いだ `AGENT_ROOT` では決めない)、 `AGENT_ROOT` で session に渡る
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | 階層ごとの model の表 (`TIER_MODELS`) に在る階層は表の model で起動し (= `normal` は fable)、 表に無い階層は `MODEL` で起動する
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの `templates/claude-tiers.json` の `models` が在ればそれが `TIER_MODELS` に代わり、 alias 1 語でない値や読めない file は使わずに型の既定で起動して 1 行言う
 startup/action_policy.py               | tests/test-action-policy.sh        | 起動の検査の出力に当たる反応の決まりだけを `action-policy.txt` から出し、 ok の行しか無い決まりは出さない
 startup/startup-status.sh              | -                                  | 起動の検査を束ねて 1 ブロックで出し、 末尾に当たる行の反応の指針だけを出す
 startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | 常時読み込みか skill の一覧が溢れたら赤になる
@@ -42,6 +44,15 @@ startup/route_by_owner.py            | tests/test-startup-owners.sh       | 起�
 startup/owner_routing.py             | tests/test-startup-owners.sh       | docs-check の FAIL は本文の path を含む一番深い階層 (= 実在しない階層は近い親、 path が無ければ normal) に振られ、 `FAIL: 0` と読める形で自分の階層の分だけを数え直す。 溢れた階層は名前で振られ、 自分の階層の削減候補だけが出る
 startup/owner_table.py               | tests/test-startup-owners.sh       | 持ち主が normal の行は、 この表の定数だけで決まる (道具ごとの持ち主は deployed-clones.txt の 4 列目)
 startup/tool_actions.py              | tests/test-startup-owners.sh       | 配備している道具の repo ごとに、 develop の最新の commit と開いている PR の Actions の結果を 1 行 (`ok` / `RED develop` / `RED PR #N` / `UNKNOWN`) にし、 gh が動かない・20 秒を超えた時は UNKNOWN、 宣言の file が無ければ何も出さない
+startup/tab_health.py                | tests/test-tab-health.sh           | client の tmux の server が同じ名前で 2 本以上の時と、 タブの一覧に無い `pwa-` の session が在る時だけ WARN を出し、 タブの数・24 時間で作られた数・server の開いた file の数と天井は素の値で並べ、 一覧が読めない時は UNKNOWN
+?hooks/fixed_cost.py                 | tests/test-fixed-cost.sh           | 起動は session の最初の Stop で 1 回だけ、 締めは締めの封筒が来た時の長さから後だけを、 種類・context・重みつきの量・階層つきで 1 行書き、 印の無い Stop は重い読みをしない
+startup/fixed_cost_summary.py        | tests/test-fixed-cost-summary.sh   | 入れ替えと階層のタブの起動と締めだけを数え (子は外す)、 この階層と全体の 1 行と、 agent と階層ごとの表を素の値で出し、 記録が無い時は no record yet
+work/plan_run.py                     | tests/test-plan-run.sh             | budget は口座ごとに、 起点の前なら今の窓の % を、 後なら計画の % と上限までの残りと物差しの出どころを 1 行で出し、 会話はその口座の記録の根の物だけを数え、 cost は起点から後の会話を重い順に並べ、 leftovers は repo ごとの開いたままの物を 1 行ずつと数の 1 行で出し、 status は計画の単位の表を波ごとの木と数で出し、 書くのは物差しの覚えだけ
+lib/plan_units.py                    | tests/test-plan-run.sh             | 単位の表を列の名前で読み、 状態の頭が ✅ の行だけを済みに数え、 波ごとに済みの数と ✅/⬜ の木を出し、 まだの行に持つタブ・見積もり・何の後かを添える
+lib/yardstick_store.py               | tests/test-plan-run.sh             | 物差しを口座・窓の戻る時刻・% の鍵で 1 つ覚え、 鍵が同じ間は覚えた値を返し、 読めない・書けない時は覚えずに済ませる
+lib/usage_window.py                  | tests/test-plan-run.sh             | 7 日枠の % は窓の中の最大で読み (= 古い値を持つ行に引かれない)、 窓は戻る時刻の最大で決め、 物差しは 10% 以上進んだ一番新しい窓だけから取る
+lib/usage_records.py                 | tests/test-plan-run.sh             | 会話の記録の応答は id ごとに 1 回だけ、 時刻の範囲の中だけを数え、 link で同じ実体を指す記録は 1 本に数える
+lib/repo_leftovers.py                | tests/test-plan-run.sh             | 基準の branch 以外の手元の branch・2 本目からの worktree・stash・書きかけ・branch の上に居ない HEAD を並べ、 fetch も checkout もしない
 startup/actions_verdict.py           | tests/test-startup-owners.sh       | 同じ commit で流し直した run は新しい方が決め、 失敗・時間切れ・error が赤で、 取り消し・走行中・skip は赤にしない。 run の無い develop は、 その commit を作った PR の検査で見る
 startup/pending_approvals.py         | tests/test-startup-owners.sh       | 自分の `.git` を持つ階層のうち、 番人の `detect_repo_kind` が名乗りの検査をかける種類と答えた物だけを `pending_approval: guard.scope <階層>` と名指し、 当たる物が無ければ `pending_approval: none`
 startup/peer_health.py               | tests/test-peer-health.sh          | client の見張りの記録から、 別の機械ごとに ok / DOWN (30 分以上答えない) / WAITING (置かれた連絡が在る) / UNKNOWN (見張りの記録が 15 分以上古い) を 1 行で出し、 記録の無い機械では黙る。 読むだけで client を叩かない
@@ -113,4 +124,4 @@ distribute/guard-update.sh             | -                                  | �
 distribute/guard-update.sh             | tests/test-guard-update.sh         | 追う branch の無い repo では pull を飛ばしてそう名乗り、 番人の導入まで進む。 pull が止まれば導入へ進まずに止まる。 1 回断られた fetch は打ち直して通る
 
 # --- 作業中に手で呼ぶ ---
-work/pr-land.sh                        | tests/test-pr-land.sh              | 検査が通るまで merge せず、 merge されるまで tag を打たない
+work/pr-land.sh                        | tests/test-pr-land.sh              | 検査が通るまで merge せず、 検査を待った先頭だけを merge し、 merge されるまで tag を打たない
