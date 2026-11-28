@@ -1,7 +1,7 @@
 """使用量の元になる記録を読む: 7 日枠の行、会話の記録の応答ごとの量、会話がどのタブの物か。
 
-読むだけで何も書かない。呼ぶのは work/plan_run.py。中身の文は読まず、usage の数と時刻とタブの題だけを取る。
-重みは hooks/fixed_cost.py と同じ API の単価の比で、7 日枠の本当の重みではない。
+読むだけで何も書かない。呼ぶのは work/plan_run.py。中身の文は読まず、usage の数と model と時刻とタブの題だけを取る。
+量は model ごとの API の単価で $ に直す (lib/usage_cost.py。単価の表は呼ぶ側が渡す)。
 """
 
 import glob
@@ -10,7 +10,8 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 
-WEIGHTS = {"input_tokens": 1.0, "cache_creation_input_tokens": 1.25, "cache_read_input_tokens": 0.1, "output_tokens": 5.0}
+from usage_cost import PriceTable, message_cost, token_count
+
 AGENT_MARK = "-agents-"
 
 
@@ -26,7 +27,8 @@ class SessionUse:
     tier: str
     is_child: bool
     answers: int
-    weighted: float
+    cost: float
+    unpriced_tokens: int
 
 
 def platform_root() -> str:
@@ -98,8 +100,11 @@ def _account_of(path: str, account_roots: dict[str, str]) -> str:
     return ""
 
 
-def load_session_uses(since: float, until: float | None = None, account_roots: dict[str, str] | None = None) -> list[SessionUse]:
-    """全部の口座の会話の記録から、`since` から `until` (epoch 秒。無ければ今) までの応答の量を会話ごとに返す。
+def load_session_uses(
+    since: float, prices: PriceTable, until: float | None = None, account_roots: dict[str, str] | None = None
+) -> list[SessionUse]:
+    """全部の口座の会話の記録から、`since` から `until` (epoch 秒。無ければ今) までの応答の $ を会話ごとに返す。
+    単価の表に無い model の応答は $ に入れず、その token の数を `unpriced_tokens` に数える。
 
     口座は記録の根で決まる (`account_roots` は 口座 → 根の folder。folder の名前では分けられない)。
     口座の記録の folder が link で同じ実体を指す時は 1 本に数える。
@@ -113,7 +118,7 @@ def load_session_uses(since: float, until: float | None = None, account_roots: d
         if real in seen_files or os.path.getmtime(path) < since:
             continue
         seen_files.add(real)
-        answers, weighted = _measure(path, since, until)
+        answers, cost, unpriced_tokens = _measure(path, since, until, prices)
         if not answers:
             continue
         session = os.path.basename(path)[: -len(".jsonl")]
@@ -128,15 +133,17 @@ def load_session_uses(since: float, until: float | None = None, account_roots: d
                 tier=entry.get("tier", ""),
                 is_child=bool(entry.get("child")),
                 answers=answers,
-                weighted=weighted,
+                cost=cost,
+                unpriced_tokens=unpriced_tokens,
             )
         )
     return uses
 
 
-def _measure(path: str, since: float, until: float | None) -> tuple[int, float]:
+def _measure(path: str, since: float, until: float | None, prices: PriceTable) -> tuple[int, float, int]:
     seen: set[str] = set()
-    weighted = 0.0
+    cost = 0.0
+    unpriced_tokens = 0
     try:
         with open(path, encoding="utf-8") as handle:
             for line in handle:
@@ -152,10 +159,14 @@ def _measure(path: str, since: float, until: float | None) -> tuple[int, float]:
                     continue
                 seen.add(message.get("id"))
                 usage = message.get("usage") or {}
-                weighted += sum((usage.get(key) or 0) * weight for key, weight in WEIGHTS.items())
+                priced = message_cost(usage, message.get("model") or "", prices)
+                if priced is None:
+                    unpriced_tokens += token_count(usage)
+                else:
+                    cost += priced
     except OSError:
-        return 0, 0.0
-    return len(seen), weighted
+        return 0, 0.0, 0
+    return len(seen), cost, unpriced_tokens
 
 
 def _epoch(stamp: str | None) -> float:

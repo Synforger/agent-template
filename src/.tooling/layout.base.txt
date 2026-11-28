@@ -52,4 +52,4 @@ projects/**/rules : always.md ?registry.jsonl ?hits-since.json ?_archive/**
 .tooling/session-end : *.sh *.py
 .tooling/startup : *.sh *.py action-policy.txt ?pc-labels.txt ?pc-labels.example.txt ?deployed-clones.txt ?deployed-clones.example.txt duplicates-allowlist.txt
 .tooling/tests : test-*.sh
-.tooling/work : *.sh *.py plan-run.toml.example ?plan-run.toml
+.tooling/work : *.sh *.py plan-run.toml.example model-prices.toml ?plan-run.toml

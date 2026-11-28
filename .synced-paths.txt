@@ -91,8 +91,10 @@
 .tooling/startup/fixed_cost_summary.py
 .tooling/work/plan_run.py
 .tooling/work/plan-run.toml.example
+.tooling/work/model-prices.toml
 .tooling/lib/usage_window.py
 .tooling/lib/usage_records.py
+.tooling/lib/usage_cost.py
 .tooling/lib/repo_leftovers.py
 .tooling/lib/plan_units.py
 .tooling/lib/yardstick_store.py
