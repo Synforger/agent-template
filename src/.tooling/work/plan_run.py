@@ -100,6 +100,17 @@ def print_budget(config: dict, prices: usage_cost.PriceTable) -> None:
         unpriced = sum(item.unpriced_tokens for item in mine)
         unpriced_note = f"・単価の無い model の {unpriced / 1e6:.1f}M token は数えていない" if unpriced else ""
         print(f"  この機械の会話の計 {local_pct:.1f}% ({shares or 'なし'})・{stick}{unpriced_note}")
+        if apart:
+            print(f"  離れた時の内訳: model ごとの会話から {_model_shares(mine, yardstick)}")
+
+
+def _model_shares(uses: list[usage_records.SessionUse], yardstick: float) -> str:
+    """会話から積んだ % を model ごとに大きい順に並べた 1 文 (= どの model の量で公式と離れたかを読むため)。"""
+    by_model: dict[str, float] = defaultdict(float)
+    for item in uses:
+        for model, cost in item.cost_by_model.items():
+            by_model[model] += cost
+    return " / ".join(f"{model} {cost / yardstick:.1f}%" for model, cost in sorted(by_model.items(), key=lambda kv: -kv[1])) or "なし"
 
 
 def _window_notes(rows: list[dict], account: str, start: float, use: usage_window.WindowUse, official: float) -> str:
