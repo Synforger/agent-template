@@ -29,6 +29,7 @@ class SessionUse:
     answers: int
     cost: float
     unpriced_tokens: int
+    cost_by_model: dict[str, float]
 
 
 def platform_root() -> str:
@@ -118,7 +119,7 @@ def load_session_uses(
         if real in seen_files or os.path.getmtime(path) < since:
             continue
         seen_files.add(real)
-        answers, cost, unpriced_tokens = _measure(path, since, until, prices)
+        answers, cost, unpriced_tokens, cost_by_model = _measure(path, since, until, prices)
         if not answers:
             continue
         session = os.path.basename(path)[: -len(".jsonl")]
@@ -135,15 +136,17 @@ def load_session_uses(
                 answers=answers,
                 cost=cost,
                 unpriced_tokens=unpriced_tokens,
+                cost_by_model=cost_by_model,
             )
         )
     return uses
 
 
-def _measure(path: str, since: float, until: float | None, prices: PriceTable) -> tuple[int, float, int]:
+def _measure(path: str, since: float, until: float | None, prices: PriceTable) -> tuple[int, float, int, dict[str, float]]:
     seen: set[str] = set()
     cost = 0.0
     unpriced_tokens = 0
+    cost_by_model: dict[str, float] = {}
     try:
         with open(path, encoding="utf-8") as handle:
             for line in handle:
@@ -159,14 +162,17 @@ def _measure(path: str, since: float, until: float | None, prices: PriceTable) -
                     continue
                 seen.add(message.get("id"))
                 usage = message.get("usage") or {}
-                priced = message_cost(usage, message.get("model") or "", prices)
+                model = message.get("model") or ""
+                priced = message_cost(usage, model, prices)
                 if priced is None:
                     unpriced_tokens += token_count(usage)
                 else:
                     cost += priced
+                    if priced:
+                        cost_by_model[model] = cost_by_model.get(model, 0.0) + priced
     except OSError:
-        return 0, 0.0, 0
-    return len(seen), cost, unpriced_tokens
+        return 0, 0.0, 0, {}
+    return len(seen), cost, unpriced_tokens, cost_by_model
 
 
 def _epoch(stamp: str | None) -> float:

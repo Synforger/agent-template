@@ -14,7 +14,7 @@ WEEK_S = 7 * 24 * 3600
 RESIZE_DROP_PCT = 10.0
 BUCKET_S = 3600
 #: 公式の値と会話からの値が離れたと言う倍率と、公式の値が整数に丸められている分の幅 (% の点)
-DIVERGE_RATIO = 1.25
+DIVERGE_RATIO = 1.1
 ROUNDING_PCT = 1.0
 
 
