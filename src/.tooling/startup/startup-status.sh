@@ -319,8 +319,8 @@ step_fixed_cost() {
     fi
 }
 
-# 回している計画の予算と、 repo に開いたまま残る物の数 (= work/plan_run.py の 1 行ずつ。 設定が無ければ何も出さない。
-# どちらも線は引かず、 素の値だけ)
+# 回している計画の予算 (= 公式の % が頭、 会話からの見当が内訳) と、 repo に開いたまま残る物の数 (= work/plan_run.py の 1 行ずつ。
+# 設定が無ければ何も出さない。 どちらも止めず、 値と離れた印だけ)
 step_plan_budget() {
     if [ -f .tooling/work/plan_run.py ] && [ -f .tooling/work/plan-run.toml ]; then
         python3 .tooling/work/plan_run.py budget 2>/dev/null | grep '^plan_budget('
