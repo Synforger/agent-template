@@ -1,7 +1,7 @@
 ---
 title: 体の使い方 (子のタブを立てて受け取る手順)
 description: 子のタブを立てる時に必要なもの一式 (本文の型・git の許可範囲・配り方・受け取り)。サブエージェントと Workflow は使わない
-updated: "2026-11-22"
+updated: "2026-11-28"
 when_to_use: 子のタブを立てる直前 (当 session 既読なら skip 可) / 子のタブの成果を統括で受け取る直前 / 別の model の読み手や書き直しの書き手を立てる直前 / 言語 model を呼ぶ試験の直前
 owner: template
 ---
@@ -125,22 +125,20 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 - **子は親と同じ階層に立つ**。立てる命令が親の階層を渡す。本文の検査は「子は親と同じ境界を読む」前提で通るので、違う階層の子には親だけが読んだ物が通ってしまう
 - **子の model は client の起動設定が決める**。既定は小さい model で、親は大きい model のまま
 - **子に渡すのは、決め方 (値・形・合格の条件) が操作者と決まっている仕事だけにする**。決まっていない仕事は、親が操作者と決めてから渡す。決まる前に配ると、決まった後に配り直す分が 2 度手間になる (2026-11-12 [操作者]「なんかあんまりなんも決まってないのにバンバンこたぶ動かさないで欲しいわ。普通に無駄になりそう。」)
-- **子の数は仕事の分け方だけで決める**。持ち場の重ならない仕事ごとに 1 体を立て、いちばん早く閉じる形に広げる。報告なしで止まった子は、client の見張りが親へ `<child-stopped>` で知らせる。子は同じ口座の使用量を分け合う
 - **子は自分の worktree と branch で作業する**。「同時作業 branch 1 本」の例外は子の分だけ。エージェント自身の file を直す子にも worktree を切って渡す。親と同じ checkout の主 branch に 2 本が同時に書かないようにするためだ
 
 ### 立てる
 
-0. `tabs capacity` で、この機械の空きメモリと口座の使用量を見る。子は親と同じ口座の使用量を分け合う。数の上限は無く、線も引かれていないので、読んで決めるのは統括
+0. `tabs capacity` で、この機械の空きメモリと口座の使用量を見る。子は親と同じ口座の使用量を分け合う。数の上限は無く、線も引かれていないので、読んで決めるのは統括。立てる子の分も `rules/always.md § 着手前の見積もり` の 7 日枠の見積もりに入れて出す
 1. `git fetch origin <base>` の後に worktree を切る (base の今の先端から切る。古い木から切った子が持ち場の外の file の今を読み違えた、2026-11-15)。work repo は `git worktree add <path> -b feature/<scope> origin/<base>` で、エージェント自身の repo は同じ形で `child/<scope>` を切る。**子が書く file を持つ repo で切る**: 階層の folder が自前の `.git` を持つ別の repo なら (`git -C <書く file の folder> rev-parse --show-toplevel` で確かめる)、エージェントの根ではなくその repo で切る。根で切ると、書く先が worktree に入らない (2026-11-08、会社の階層の file を書く子に根の worktree を渡し、子が会社の階層の主 branch に直に commit した)。**その repo の試験の環境が worktree の中で立つことを確かめてから渡す**。準備の命令を持つ repo はそれを流してから渡す。`uv run` と `pnpm` で組む repo は準備が要らないので、軽い試験を 1 本流して通ることを見る
    - Why: 環境の無い worktree を渡すと子がそれぞれ別の python で環境を作り、統括が重ねた準備で `python` と `pip` が別の版を指して、全体の試験を 2 回流し直した。主の checkout の環境で流すと、試験が主の checkout の code を読むので代わりにならない
 2. 本文を file に書く。§ prompt テンプレを埋め、worktree の path と branch、完了の定義、返し方 `tabs report done|stuck` を入れる。**親の指示や別の子の着地を待たせる子には、待つ前に `tabs report stuck` で何を待つかを報告するよう書く**
-3. `tabs new "<題>" <本文の file> [--model <名前>] [--effort <段>]`。子の id とメモの path が出る。題は一覧に出る名前なので、何の仕事かが読める語で付ける
+3. `tabs new "<題>" <本文の file> [--model <名前>] [--effort <段>]`
    - **model と effort は仕事の種類で選ぶ**。実装は付けずに既定で立てる。決まった形への書き直しと定型の追随は `--effort medium`、別の model の意見は親と別の model を `--model` で選び effort は既定のままにする。既定・許す値・子から外す道具は、エージェントの `templates/claude-child.json` が持つ。許されない値は既定で立ち、子の最初の発話の `[起動の知らせ]` の行に出る
      - Why: 子は呼ぶたびに起動の固定分と会話を読み直す。中身の決まった仕事で考える量を下げると、確かめと探索が減り、使用量が下がる (2026-11-21、子から使わない道具を外して 1 回目の文脈を 4.66 万から 2.48 万にした時に、同じレビューで読み直しが 150 万から 51 万になった)
 
 ### 見る
 
-- `tabs children` (子ごとの id / 状態 / 題)。状態は子のメモが持つ (作業中 / 完了 / 詰まり)
 - 入れ替わった親は、起動の検査の `children:` の行で自分の子を知る。タブの id は入れ替えで変わらないので、子は前の会話が立てた物でも自分の子として出る
 - 子の報告は親のタブへの連絡として届く。本文は「子のタブ <id> の報告 (完了 / 詰まり)」の形
 
@@ -150,8 +148,8 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 
 1. 報告を一次ソースで確かめる。確かめは § 中央 merge の責務 の 7 点で、子の「緑」は自分で取り直す
 2. 差し戻すなら、子へ `tabs send <子の id> <file>` で返す。閉じない
-3. 取り込んだら PR → merge、worktree と branch を消す
-4. `tabs close <子の id>`。タブとそのメモが消える。作業中の子は `--force` の時だけ閉じる
+3. 取り込んだら PR → merge、worktree と branch を消す。取り込まずに残す branch と worktree は、閉じる前に計画の単位の表 (計画の無い仕事は journal の「締めで残した物」) へ repo・名前・理由を 1 行書く。残りの数は起動の検査の `leftovers:` の行に出る
+4. `tabs close <子の id>`
 5. journal の「やったこと」に子の id と成果を書く。子は journal を書かない
 
 - **次の仕事をキャッシュの持ち時間 (prompt cache の TTL) の中で渡す子だけ、閉じずに残すか `tabs sleep` で眠らせる。それより空くなら閉じ、次の仕事は新しい子に渡す**
@@ -167,7 +165,6 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 
 - **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。票を渡されていれば `tabs ticket mine` も読む。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る
-- **着手の前に 3 行を出す**: 1. 私の役割 2. 触る範囲 (自分の scope の path) 3. 読むだけの範囲。認識が親の本文とずれていたら、推測で進めずに親に確かめる
 - **git は `git add <path>` と `git commit` の 2 つだけ**。巻き戻しと退避の命令 (checkout で file を戻す・stash・reset・revert・restore) は使わない。例外は rebase と merge の衝突を解く時の `--theirs`・`--ours` で、自分の scope の file に限り報告に書く。add は path を名指し、`-A` と `.` は付けない。write は自分の scope の中だけで、並列の子の編集はそのまま置く。同期は `git fetch origin <base> && git rebase origin/<base>` だけ (reset で合わせると分岐点が古いまま残り、base が進んだ後の merge がその間の PR を巻き戻す。実測 8 本)
   - 代わりの手: 差分は `git diff`・`git show <base>:<file>`・`git status --short`。stage を落とすなら編集を手で戻して要る path だけ add し直す (新規 file は `git rm --cached <path>`)。lint の自動整形が scope の外に及んだら commit せずに置き、報告の NEW BUG REPORT に 1 行。commit の後に消したい物は後の commit で直す
 - **共通の完了の条件**: write は scope の中だけ (`git diff --name-only <base>..HEAD` で他の path が 0 件)・当たる試験と lint と docs-check が clean (外した・飛ばした試験が 1 本でもあれば完了とは言わず、その名前と理由を stuck で返す)・番人の禁止語の検査が 0 件 (止まったら理由を読んで中身を直し、番人は外さない)・commit の prefix が規約どおり・生成の道具の署名行を footer に入れない・diff を通読し、最低 1 本は file 全体を開く。PR と merge は親が持つ
