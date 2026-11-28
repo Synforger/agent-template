@@ -26,6 +26,7 @@ lib/claude-launch.py                   | tests/test-claude-launch.sh        | �
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | `--child` の起動は子のタブとして、 最初の発話の `<child-start>` の階層で起動し、 エージェントを pull しない。 `--child` の無い起動は子の印を受け継がない
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの folder は起動の file の置き場で決まり (= 受け継いだ `AGENT_ROOT` では決めない)、 `AGENT_ROOT` で session に渡る
 lib/claude-launch.py                   | tests/test-claude-launch.sh        | 階層ごとの model の表 (`TIER_MODELS`) に在る階層は表の model で起動し (= `normal` は fable)、 表に無い階層は `MODEL` で起動する
+lib/claude-launch.py                   | tests/test-claude-launch.sh        | エージェントの `templates/claude-tiers.json` の `models` が在ればそれが `TIER_MODELS` に代わり、 alias 1 語でない値や読めない file は使わずに型の既定で起動して 1 行言う
 startup/action_policy.py               | tests/test-action-policy.sh        | 起動の検査の出力に当たる反応の決まりだけを `action-policy.txt` から出し、 ok の行しか無い決まりは出さない
 startup/startup-status.sh              | -                                  | 起動の検査を束ねて 1 ブロックで出し、 末尾に当たる行の反応の指針だけを出す
 startup/check-static-capacity.sh       | tests/test-static-capacity.sh      | 常時読み込みか skill の一覧が溢れたら赤になる

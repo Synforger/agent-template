@@ -16,7 +16,7 @@
 `<session-rollover phase="start">` の封筒) は、 前の会話が封筒に書いた階層 (= `tier=` の行) をそのまま採る。
 子のタブ (= 親のタブが `tabs new` で立てたタブ) の最初の発話は `<child-start>` の塊を持ち、 その `tier=` の行
 (= 親の階層) を採る。 client が階層ごとに立てたタブの最初の発話 (= `<tab-open>` の封筒) も、 その `tier=` の行を採る。 子のタブは `--child` で起動され、 `AGENT_CHILD=1` を session に渡す (= 起動と締めの手順が
-子のタブ用になる。 手順は skill `pwa-client:tabs` と `sub-agent § 子の側の決まり`)。 子はエージェントを pull しない (= 親が同じ clone で作業している)。 口座は `CLAUDE_CONFIG_DIR` (= PWA のアカウント)、 無ければ `~/.claude`。
+子のタブ用になる。 手順は skill `pwa-client:tabs-children` と `sub-agent § 子の側の決まり`)。 子はエージェントを pull しない (= 親が同じ clone で作業している)。 口座は `CLAUDE_CONFIG_DIR` (= PWA のアカウント)、 無ければ `~/.claude`。
 再開は、 会話の記録が在る口座で開く (= `~/.claude*/projects/*/<ID>.jsonl`)。 起動の前にエージェントを pull する
 (= session が最初に読む CLAUDE.md を、 別の PC が締めた分まで揃える)。 エージェントの folder は `AGENT_ROOT` で
 session に渡す (= `AGENT_TIER` はこの folder からの階層で、 タブの中の道具 (= `tabs`) が自分のエージェントを探す口)。
@@ -54,6 +54,10 @@ FAST_MODE = False
 #: 子のタブの起動の設定 (= エージェントの folder からの置き場)。 鍵は `model`・`effort` (= 既定)、 `models`・`efforts`
 #: (= 親が選べる値)、 `env` (= 子にだけ足す環境変数)、 `settings` (= `--settings` で足す設定)、 `disallowed_tools`
 CHILD_PROFILE = Path("templates") / "claude-child.json"
+#: 階層ごとの model をエージェントが決める設定 (= 鍵 `models` に 階層 → alias)。 在れば `TIER_MODELS` に代わり、 無ければ型の既定
+TIER_PROFILE = Path("templates") / "claude-tiers.json"
+#: 上書きに書ける alias の形 (= 英小文字の 1 語。 版も変種も書かない)
+ALIAS = re.compile(r"[a-z]+")
 #: 起動の前の pull が網を待つ上限の秒。 普段の fetch は 1 秒前後で、 返らない ssh を待つと Claude が立たない。
 #: 試験は環境変数で縮める
 PULL_TIMEOUT_SECONDS = float(os.environ.get("AGENT_PULL_TIMEOUT", "20"))
@@ -192,6 +196,23 @@ def load_child_profile() -> dict:
         say(f"{path} を読めません (= 子は既定で起動します): {error}")
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def load_tier_models() -> dict:
+    """階層ごとの model。 エージェントの `templates/claude-tiers.json` の `models` が在ればそれ、 無いか読めなければ `TIER_MODELS`。"""
+    path = AGENT / TIER_PROFILE
+    if not path.is_file():
+        return TIER_MODELS
+    try:
+        models = json.loads(path.read_text(encoding="utf-8")).get("models")
+    except (OSError, ValueError, AttributeError) as error:
+        say(f"{path} を読めません (= 型の既定の model で起動します): {error}")
+        return TIER_MODELS
+    if not isinstance(models, dict) or not all(
+            isinstance(tier, str) and isinstance(alias, str) and ALIAS.fullmatch(alias) for tier, alias in models.items()):
+        say(f"{path} の models は 階層 → alias 1 語 で書きます (= 型の既定の model で起動します)")
+        return TIER_MODELS
+    return models
 
 
 #: 子の起動の設定の鍵と、 その値の形 (= 形の違う値は 1 行で言って使わない)
@@ -510,7 +531,7 @@ def main() -> int:
     else:
         os.environ["CLAUDE_CONFIG_DIR"] = str(account)
     drop_caller_environment()
-    model, effort, child_args = TIER_MODELS.get(tier, MODEL), EFFORT, []
+    model, effort, child_args = load_tier_models().get(tier, MODEL), EFFORT, []
     if os.environ.get("AGENT_CHILD"):
         model, effort, child_args, child_env, notes = child_launch(message, load_child_profile())
         os.environ.update(child_env)

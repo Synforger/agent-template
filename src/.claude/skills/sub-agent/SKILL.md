@@ -119,7 +119,7 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 
 ## 子のタブ (session をまたいで回る体)
 
-子のタブは client (画面の配信と入れ替えを持つ道具) の一覧に出るエージェントのタブで、自分の会話と自分の入れ替えを持つので、親が替わっても回り続ける。**立てる・閉じるは統括の判断で行う**。命令 (`tabs new` / `tabs children` / `tabs send` / `tabs close` / 子の側の `tabs report`) の使い方と、子の側の手順は client の plugin の skill `pwa-client:tabs` が持つ。子の側のエージェントの決まりは § 子の側の決まり。
+子のタブは client (画面の配信と入れ替えを持つ道具) の一覧に出るエージェントのタブで、自分の会話と自分の入れ替えを持つので、親が替わっても回り続ける。**立てる・閉じるは統括の判断で行う**。命令 (`tabs new` / `tabs children` / `tabs send` / `tabs close` / 子の側の `tabs report`) の使い方と、子の側の手順は client の plugin の skill `pwa-client:tabs-children` が持つ。子の側のエージェントの決まりは § 子の側の決まり。
 
 - 体の決まりはこの skill の上の節と同じ。渡す本文は § prompt テンプレ、git は commit まで、worktree は統括が切る、PR と merge は統括、中央で受け取る時の 7 点が当たる
 - **子は親と同じ階層に立つ**。立てる命令が親の階層を渡す。本文の検査は「子は親と同じ境界を読む」前提で通るので、違う階層の子には親だけが読んだ物が通ってしまう
@@ -159,11 +159,11 @@ skill `sub-agent` の § 子の側の決まり を読んでから着手する。
 
 - **報告した子へ仕事を足して返す時は、本文の最後に「済んだら `tabs report done|stuck` で報告してから止まる。まだ待つ物が在れば stuck に書く」と書く**。印の無い `tabs send` は子のメモを `作業中` に戻すので、「今の stuck のままで良い」と返すと、子は報告せずに止まり、client の見張りが親に知らせる。仕事を足さない返事 (了解・知らせ) は `tabs send <子の id> <file> --no-work` で送り、メモを報告のままにする (2026-11-15、1 つの親で子 3 本に起きた)
 
-### 子の側の決まり (子のタブとして動く時。手順の本体は skill `pwa-client:tabs § Working as a child`)
+### 子の側の決まり (子のタブとして動く時。手順の本体は skill `pwa-client:tabs-children § Working as a child`)
 
 見分けは環境変数 `AGENT_CHILD=1`。手順に次のエージェントの決まりを足す。
 
-- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。票を渡されていれば `tabs ticket mine` も読む。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
+- **起動と締めは、`CLAUDE.md` の開始時と終了時の手順の代わりに、この節と skill `pwa-client:tabs-children` で行う**。子に親と同じ起動の読み込みをさせない。読むのは `CLAUDE.md` の開始時の手順が並べる常時 load の file と、親が渡した仕事。親が渡した仕事は最初の発話の本文にあり、自動の入れ替えで起動し直した時は、タブのメモ `$PWA_NOTE` の「渡された仕事」と「引き継ぎ」にある。票を渡されていれば `tabs ticket mine` も読む。journal / vision / 起動の検査 / ブリーフィングは無く、エージェントの pull も起動の script が飛ばす。親が同じ clone で作業しているためだ
 - 読了は 1 行で出し、挨拶もブリーフィングもせずに仕事へ入る
 - **git は `git add <path>` と `git commit` の 2 つだけ**。巻き戻しと退避の命令 (checkout で file を戻す・stash・reset・revert・restore) は使わない。例外は rebase と merge の衝突を解く時の `--theirs`・`--ours` で、自分の scope の file に限り報告に書く。add は path を名指し、`-A` と `.` は付けない。write は自分の scope の中だけで、並列の子の編集はそのまま置く。同期は `git fetch origin <base> && git rebase origin/<base>` だけ (reset で合わせると分岐点が古いまま残り、base が進んだ後の merge がその間の PR を巻き戻す。実測 8 本)
   - 代わりの手: 差分は `git diff`・`git show <base>:<file>`・`git status --short`。stage を落とすなら編集を手で戻して要る path だけ add し直す (新規 file は `git rm --cached <path>`)。lint の自動整形が scope の外に及んだら commit せずに置き、報告の NEW BUG REPORT に 1 行。commit の後に消したい物は後の commit で直す
