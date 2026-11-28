@@ -19,6 +19,7 @@ NORMAL_ROWS: dict[str, str] = {
     "guard_deploy": r"^guard_deploy: (ok|\(skipped)",
     "clone_deploy": r"^clone_deploy\([^)]*\): ok",
     "platform_check": r"^platform_check: clean",
+    "tab_health": r"^tab_health: ok",
     "peer": r"^peer\([^)]*\): ok",
 }
 

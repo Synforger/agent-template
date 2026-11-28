@@ -56,6 +56,8 @@ case "$1 $2" in
         if [[ "$*" == *"--json headRefOid "* ]]; then
             # the head moves once a check was asked for, when the scene says so
             if [ -f "${S}/moves" ] && [ -f "${S}/n" ]; then cat "${S}/moves"; else cut -d' ' -f4 "${S}/state"; fi
+        elif [[ "$*" == *mergeStateStatus* ]]; then
+            cat "${S}/mergestate" 2>/dev/null
         else
             cat "${S}/state"
         fi ;;
@@ -87,10 +89,23 @@ check "検査が後から登録されても、 通るまで待ってから merge
 check "merge の前に検査を 4 回見ている" "$([ "$(sed '/^pr merge/,$d' "${FAKE_GH}/calls" | grep -c '^pr checks')" = 4 ] && [ "$(grep -m1 '^pr merge' "${FAKE_GH}/calls")" = "pr merge 7 --squash --delete-branch --match-head-commit ${OLD}" ]; echo $?)"
 check "着地した PR と commit を言う" "$([[ "${out}" == *"#7 merged into main (${MERGE:0:7})"* ]]; echo $?)"
 
+# --- --author-email: merge の頼みにそのまま渡し、 値が無ければ usage で止まる ---
+scene author yes "${PASS}"
+out="$(land 7 --author-email 1+a@users.noreply.github.com)"; code=$?
+check "--author-email を gh pr merge へ渡す (exit ${code}): ${out}" "$([ "${code}" -eq 0 ] && grep -qxF "pr merge 7 --squash --delete-branch --match-head-commit ${OLD} --author-email 1+a@users.noreply.github.com" "${FAKE_GH}/calls"; echo $?)"
+out="$(land 7 --author-email)"; code=$?
+check "--author-email に値が無ければ usage で止まる (exit ${code})" "$([ "${code}" -eq 2 ]; echo $?)"
+
 # --- 検査が 1 つも登録されないまま: merge しない ---
 scene never yes '[]'
 out="$(TIMEOUT=2 land 7)"; code=$?
 check "検査が 1 つも無いままなら merge しない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"no check was ever reported"* ]]; echo $?)"
+
+# --- 検査が 1 つも無く、 PR が base と衝突している: Actions ではなく衝突を案内する ---
+scene dirty yes '[]'
+echo DIRTY > "${FAKE_GH}/mergestate"
+out="$(TIMEOUT=2 land 7)"; code=$?
+check "衝突のある PR では衝突の解き方を案内し、 Actions の切り替えは出さない (exit ${code}): ${out}" "$([ "${code}" -eq 1 ] && [ "$(merged)" = 0 ] && [[ "${out}" == *"conflicts with its base"* ]] && [[ "${out}" != *"actions/permissions"* ]]; echo $?)"
 
 # --- 今いる repo に無い PR 番号: 検査を待たずに止まる (= 別の repo の中で打った時) ---
 scene missing yes '[]'
