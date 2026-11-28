@@ -21,6 +21,11 @@ a { color: var(--link); }
 ul { padding-left: 20px; }
 li { margin: 6px 0; }
 nav { margin-bottom: 16px; }
+summary { cursor: pointer; margin: 12px 0 4px; }
+summary h3 { display: inline; margin: 0; }
+[data-toc-new] p { font-weight: 600; margin: 8px 0 0; }
+[data-toc-new] small { color: var(--muted); margin-left: 8px; }
+[data-toc-new] ol { list-style: none; margin: 0 0 16px; padding-left: 20px; }
 </style>
 </head>
 <body>
@@ -45,16 +50,27 @@ nav { margin-bottom: 16px; }
 
   <section data-toc-pages>
   <h2>枝</h2>
-  <!-- 横の目次の左の一覧は、この section の中の見出しとリンクだけを並べる。
-  枝ごとに見出しを 1 つ置き、その枝の全部のページへリンクする。枝の名前は仕事の種類で変えてよい。例:
-  <h3>前提</h3>
-  <ul><li><a href="./前提/依頼.html">依頼の中身とデータ</a></li></ul>
-  <h3>部品</h3>
-  <ul><li><a href="./部品/<部品>.html">部品の名前 (何をする部品か 1 行)</a></li></ul>
-  <h3>検証</h3>
-  <ul><li><a href="./検証/<日付>-<問い>.html">問い (誰がいつ)</a></li></ul>
-  <h3>会議</h3>
-  <ul><li><a href="./会議/<日付>.html">頼まれた事と答え</a></li></ul>
+  <!-- 新しく足した 3 件は、下の空の div に横の目次の部品が出す。中は手で書かない -->
+  <div data-toc-new></div>
+  <!-- 横の目次の左の一覧は、この section の中の見出しとリンクだけを枝にして、畳んで並べる。
+  枝ごとに <details> を 1 つ置き、<summary> の中の見出し (h3) を枝の名前にして、中にその枝の全部のページへリンクする。
+  足したページのリンクには data-added="足した日" を付ける。枝の名前は仕事の種類で変えてよい。例:
+  <details>
+    <summary><h3>前提</h3></summary>
+    <ul><li><a href="./前提/依頼.html" data-added="YYYY-MM-DD">依頼の中身とデータ</a></li></ul>
+  </details>
+  <details>
+    <summary><h3>部品</h3></summary>
+    <ul><li><a href="./部品/<部品>.html" data-added="YYYY-MM-DD">部品の名前 (何をする部品か 1 行)</a></li></ul>
+  </details>
+  <details>
+    <summary><h3>検証</h3></summary>
+    <ul><li><a href="./検証/<日付>-<問い>.html" data-added="YYYY-MM-DD">問い (誰がいつ)</a></li></ul>
+  </details>
+  <details>
+    <summary><h3>会議</h3></summary>
+    <ul><li><a href="./会議/<日付>.html" data-added="YYYY-MM-DD">頼まれた事と答え</a></li></ul>
+  </details>
   -->
   </section>
 </main>
