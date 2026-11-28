@@ -95,6 +95,11 @@ def normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def prose_length(phrase: str) -> int:
+    """共通部分のうち `…` の外の字数。 path や命令の頭が揃っただけの組を、 重なりに数えないため (= 閉じていない ` は末尾まで外す)。"""
+    return len(re.sub(r"`[^`]*(`|$)", "", phrase))
+
+
 def longest_common_substring(a: str, b: str) -> str:
     """最長共通部分文字列 (= 古典 DP、 N=M=数千字なら問題なし)。"""
     if not a or not b:
@@ -175,7 +180,7 @@ def main() -> int:
             if win_a.isdisjoint(win_b):  # 閾値長の共通窓なし = DP を回すまでもない
                 continue
             lcs = longest_common_substring(norm_a, norm_b)
-            if len(lcs) >= MIN_PHRASE_LEN:
+            if prose_length(lcs) >= MIN_PHRASE_LEN:
                 duplicates.append((label_a, label_b, lcs))
 
     # Summary mode = 1 行出力で起動時 status に集約
