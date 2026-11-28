@@ -11,20 +11,25 @@
 
 選び方 (新しさは日付、同じ日は session の番号):
 - 全文の 1 本は、自分のタブ (`tab:` が自分) の最新。自分の物が無ければ、その階層・その機械の最新
-- 一覧は、自分の最新より後に、同じ階層・同じ機械のほかのタブが書いた物。自分の物が無ければ、全文の 1 本より前の 2 本。
-  自分から分かれた fork (`forked_from:` が自分) を先頭に、ほかは新しい順
+- 一覧は、同じ階層・同じ機械のほかのタブが書いた物。自分の journal の数で基準が変わる
+  - 2 本以上: 自分の 1 つ前より後の物 (今締めた会話が始まった頃から。会話の間に締めた fork を落とさないため)
+  - 1 本: その後の物の全部と、その前の直近 2 本
+  - 無し: 全文の 1 本より前の 2 本
+  並びは、自分から分かれた fork (`forked_from:` が自分) を先頭に、ほかは新しい順
 - `tab:` の無い journal はほかのタブの物として数え、`pc:` の無い journal は機械で外さない
 
 出すのは次の形 (一覧の description は 1 文目だけ):
 
     journal_full: <path>  (自分のタブの最新 | 自分の journal が無いので階層の最新)
-    journal_others: <N> 本 (<基準の journal> の後に、同じ階層・同じ機械のほかのタブが書いた物)
+    journal_others: <N> 本 (<自分の 1 つ前の journal> の後に、同じ階層・同じ機械のほかのタブが書いた物)
     - [fork] <date> session-<NN> <tab> — <description の 1 文> (<path>)
     - <date> session-<NN> <tab または -> — <description の 1 文> (<path>)
     elapsed: <秒>s
 
-自分の物が無い時の 2 行目の括弧は `(<全文の 1 本> より前の物。自分の journal が無いので直近を出す)`、journal が
-1 本も無い時の path は `-`。階層の folder が無い時は、理由を stderr に出して 2 で終わる。
+2 行目の括弧は、自分の journal が 1 本の時は
+`(<全文の 1 本> より後の全部と、前の直近 2 本まで。自分の journal が 1 本だけなので)`、無い時は
+`(<全文の 1 本> より前の物。自分の journal が無いので直近を出す)`。journal が 1 本も無い時の path は `-`。
+階層の folder が無い時は、理由を stderr に出して 2 で終わる。
 
 この file は読み書きと入口。選び方と出す行を作る関数は file に触らない。1 つの命令の分で小さいので 1 file に置く
 (規則の「役割ごとに file」から外れる理由)。
@@ -57,8 +62,8 @@ PLACEHOLDER_PREFIX = "{{"
 SENTENCE_END = "。"
 OPENING_BRACKETS = "「『（("
 CLOSING_BRACKETS = "」』）)"
-# 自分の journal が無い時に、全文の 1 本より前から一覧へ出す数
-EARLIER_COUNT_WITHOUT_OWN = 2
+# 基準にする 1 つ前の自分の journal が無い時に、全文の 1 本より前から一覧へ出す数
+EARLIER_COUNT = 2
 NO_VALUE = "-"
 NO_DESCRIPTION = "(description 無し)"
 
@@ -84,10 +89,11 @@ class Journal:
 
 @dataclass(frozen=True)
 class Selection:
-    """起動で読む物。`full` は全文の 1 本、`others` は一覧に並べる順。"""
+    """起動で読む物。`full` は全文の 1 本、`baseline` は自分の 1 つ前の journal、`others` は一覧に並べる順。"""
 
     full: Journal | None
     is_own: bool
+    baseline: Journal | None
     others: list[Journal]
     tab: str
 
@@ -147,17 +153,22 @@ def is_own_fork(journal: Journal, tab: str) -> bool:
 def select(journals: Sequence[Journal], tab: str, pc: str) -> Selection:
     """1 つの階層の journal から、全文の 1 本と一覧を選ぶ。`pc` が空なら機械で絞らない。"""
     newest_first = sorted(journals, key=lambda journal: journal.order, reverse=True)
-    own = next((journal for journal in newest_first if tab and journal.tab == tab), None)
+    own = [journal for journal in newest_first if tab and journal.tab == tab]
     here = [journal for journal in newest_first if not (pc and journal.pc and journal.pc != pc)]
-    if own:
-        full = own
-        others = [journal for journal in here if journal.order > own.order]
+    theirs = [journal for journal in here if not (tab and journal.tab == tab)]
+    full = own[0] if own else next(iter(here), None)
+    baseline = own[1] if len(own) > 1 else None
+    if baseline:
+        others = [journal for journal in theirs if journal.order > baseline.order]
+    elif own:
+        later = [journal for journal in theirs if journal.order > own[0].order]
+        earlier = [journal for journal in theirs if journal.order < own[0].order]
+        others = later + earlier[:EARLIER_COUNT]
     else:
-        full = here[0] if here else None
-        others = here[1:1 + EARLIER_COUNT_WITHOUT_OWN]
+        others = here[1:1 + EARLIER_COUNT]
     # 並べ替えは安定なので、fork の中と、ほかの中は新しい順のまま
     others.sort(key=lambda journal: not is_own_fork(journal, tab))
-    return Selection(full=full, is_own=own is not None, others=others, tab=tab)
+    return Selection(full=full, is_own=bool(own), baseline=baseline, others=others, tab=tab)
 
 
 def report_lines(selection: Selection) -> list[str]:
@@ -166,11 +177,12 @@ def report_lines(selection: Selection) -> list[str]:
     if full is None:
         return [f"journal_full: {NO_VALUE}  (この階層・この機械の journal が無い)",
                 "journal_others: 0 本 (journal が無い)"]
-    if selection.is_own:
-        reason = "自分のタブの最新"
-        scope = f"{full.path} の後に、同じ階層・同じ機械のほかのタブが書いた物"
+    reason = "自分のタブの最新" if selection.is_own else "自分の journal が無いので階層の最新"
+    if selection.baseline:
+        scope = f"{selection.baseline.path} の後に、同じ階層・同じ機械のほかのタブが書いた物"
+    elif selection.is_own:
+        scope = f"{full.path} より後の全部と、前の直近 {EARLIER_COUNT} 本まで。自分の journal が 1 本だけなので"
     else:
-        reason = "自分の journal が無いので階層の最新"
         scope = f"{full.path} より前の物。自分の journal が無いので直近を出す"
     lines = [f"journal_full: {full.path}  ({reason})",
              f"journal_others: {len(selection.others)} 本 ({scope})"]

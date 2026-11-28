@@ -51,25 +51,60 @@ journal journal 2026-01-02 02 'pc: home' 'tab: ses_fork' 'forked_from: ses_me' '
 journal journal 2026-01-02 03 'pc: work' 'tab: ses_far' 'description: 別の機械。'
 journal journal 2026-01-02 04 'description: 欄の無い古い物。'
 journal journal 2026-01-03 01 'pc: home' 'tab: ses_other' 'forked_from: ses_elsewhere' 'description: ほかのタブの fork。'
-check "自分の最新を全文にし、後の物を並べる (自分の fork が先頭、別の機械は外し、tab と pc の無い物は残す)" \
+check "自分の最新を全文にし、1 つ前の自分より後の物を並べる (自分の fork が先頭、別の機械は外し、tab と pc の無い物は残す)" \
     "$(run --tab ses_me --pc home)" \
     "$(lines \
         'journal_full: journal/2026-01-02/session-01.md  (自分のタブの最新)' \
-        'journal_others: 3 本 (journal/2026-01-02/session-01.md の後に、同じ階層・同じ機械のほかのタブが書いた物)' \
+        'journal_others: 4 本 (journal/2026-01-01/session-01.md の後に、同じ階層・同じ機械のほかのタブが書いた物)' \
         '- [fork] 2026-01-02 session-02 ses_fork — fork が決めた事 (journal/2026-01-02/session-02.md)' \
+        '- [fork] 2026-01-01 session-02 ses_fork — 締める前の fork (journal/2026-01-01/session-02.md)' \
         '- 2026-01-03 session-01 ses_other — ほかのタブの fork (journal/2026-01-03/session-01.md)' \
         '- 2026-01-02 session-04 - — 欄の無い古い物 (journal/2026-01-02/session-04.md)')"
-check "後に書いた物が無ければ 0 本" \
+check "自分の物が 1 本だけなら、その後の全部と、前の 2 本" \
     "$(run --tab ses_other --pc home)" \
     "$(lines \
         'journal_full: journal/2026-01-03/session-01.md  (自分のタブの最新)' \
-        'journal_others: 0 本 (journal/2026-01-03/session-01.md の後に、同じ階層・同じ機械のほかのタブが書いた物)')"
+        'journal_others: 2 本 (journal/2026-01-03/session-01.md より後の全部と、前の直近 2 本まで。自分の journal が 1 本だけなので)' \
+        '- 2026-01-02 session-04 - — 欄の無い古い物 (journal/2026-01-02/session-04.md)' \
+        '- 2026-01-02 session-02 ses_fork — fork が決めた事 (journal/2026-01-02/session-02.md)')"
 check "環境変数のタブを読み、--tab が上書きする" \
     "$( (cd "${ROOT}" && env -u AGENT_TIER PWA_SID=ses_other "${PYTHON}" "${TOOL}" --pc home) | head -1
         (cd "${ROOT}" && env -u AGENT_TIER PWA_SID=ses_other "${PYTHON}" "${TOOL}" --pc home --tab ses_me) | head -1)" \
     "$(lines \
         'journal_full: journal/2026-01-03/session-01.md  (自分のタブの最新)' \
         'journal_full: journal/2026-01-02/session-01.md  (自分のタブの最新)')"
+
+# --- メインが動いている間に締めた fork ---
+new_root during
+journal journal 2026-01-01 01 'tab: ses_main' 'description: 2 つ前のメイン。'
+journal journal 2026-01-01 02 'tab: ses_old' 'description: 前の会話より前の物。'
+journal journal 2026-01-02 01 'tab: ses_main' 'description: 前の会話の始まりの頃のメイン。'
+journal journal 2026-01-02 02 'tab: ses_fork' 'forked_from: ses_main' 'description: 作業中に締めた fork。'
+journal journal 2026-01-02 03 'tab: ses_main' 'description: 今締めたメイン。'
+check "メインが動いている間に締めた fork が、次の起動の一覧に出る (基準は 1 つ前の自分で、その前の物は出ない)" \
+    "$(run --tab ses_main --pc home)" \
+    "$(lines \
+        'journal_full: journal/2026-01-02/session-03.md  (自分のタブの最新)' \
+        'journal_others: 1 本 (journal/2026-01-02/session-01.md の後に、同じ階層・同じ機械のほかのタブが書いた物)' \
+        '- [fork] 2026-01-02 session-02 ses_fork — 作業中に締めた fork (journal/2026-01-02/session-02.md)')"
+
+# --- 自分の journal が 1 本だけの時 ---
+new_root single
+journal journal 2026-01-01 01 'tab: ses_a' 'description: 前の 3 本目。'
+journal journal 2026-01-01 02 'tab: ses_b' 'description: 前の 2 本目。'
+journal journal 2026-01-01 03 'pc: work' 'tab: ses_far' 'description: 別の機械。'
+journal journal 2026-01-01 04 'tab: ses_c' 'description: 前の 1 本目。'
+journal journal 2026-01-02 01 'pc: home' 'tab: ses_me' 'description: 自分。'
+journal journal 2026-01-02 02 'tab: ses_d' 'description: 後の 1 本目。'
+journal journal 2026-01-02 03 'tab: ses_e' 'description: 後の 2 本目。'
+journal journal 2026-01-02 04 'tab: ses_fork' 'forked_from: ses_me' 'description: 後の fork。'
+check "後の物は全部、前の物は直近の 2 本で、fork が先頭" \
+    "$(run --tab ses_me --pc home | tail -n +3 | cut -d' ' -f2-3)" \
+    "$(lines '[fork] 2026-01-02' '2026-01-02 session-03' '2026-01-02 session-02' '2026-01-01 session-04' '2026-01-01 session-02')"
+new_root alone
+journal journal 2026-01-01 01 'tab: ses_me' 'description: 自分だけ。'
+check "ほかに journal が無ければ 0 本" "$(run --tab ses_me --pc home | tail -1)" \
+    'journal_others: 0 本 (journal/2026-01-01/session-01.md より後の全部と、前の直近 2 本まで。自分の journal が 1 本だけなので)'
 
 # --- 自分の journal が無い時 ---
 new_root fresh
