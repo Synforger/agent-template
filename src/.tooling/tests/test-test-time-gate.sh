@@ -137,6 +137,49 @@ check "別の folder で流した同じ命令は別の基準 (= 初めてなの�
 out="$(hook PreToolUse sA k3 "pytest -q | tail -1" 3000 0 "" "${REPO}/sub" > /dev/null; hook PostToolUse sA k3 "pytest -q | tail -1" 3012 0 "" "${REPO}/sub")"
 check "cd で入っても cwd で居ても同じ folder なら同じ基準で鳴る" mentions "sub: pytest -q" <<< "${out}"
 
+# --- 試験の外に軽い段 (= folder の移動と出力の絞り) 以外が在る命令は測らない (= 秒は命令の全体でしか測れない) -----------
+no_base() { [ ! -e "${STATE}/baselines.json" ]; }
+no_ring() { [ ! -e "${STATE}/ringing/sA.json" ]; }
+HEAVY=("pytest -q && git merge topic" "pytest -q && git commit -m x -- f" "pytest -q; git push" "git fetch origin && pytest -q"
+    "pytest -q && gh pr view 5" "pytest -q && bash .tooling/work/pr-land.sh 5" "sleep 30; pytest -q" "task build && pytest -q"
+    "pytest -q && direnv exec /tools git push" "pytest -q && env FOO=1 make all" "out=\$(sleep 30); pytest -q")
+for command in "${HEAVY[@]}"; do
+    reset
+    ran sA h1 "${command}" 1000 1100 > /dev/null
+    check "ほかの重い段が在る命令は基準を書かない: ${command}" no_base
+    reset
+    ran sA h2 "pytest -q" 1000 1002 > /dev/null
+    out="$(ran sA h3 "${command}" 2000 2100)"
+    check "ほかの重い段が在る命令は鳴らない: ${command}" silent <<< "${out}"
+    check "ほかの重い段が在る命令は鳴りを残さず、 基準も動かさない: ${command}" bash -c "[ ! -e '${STATE}/ringing/sA.json' ] && grep -q ': 2.0' '${STATE}/baselines.json'"
+done
+LIGHT=("pytest -q 2>&1 | tail -5" "pytest -q | head -3 | grep -c passed" "cd . && pytest -q" "pytest -q > a.log; echo \$?; cat a.log | wc -l"
+    "export FOO=1; BAR=2; pytest -q | tee a.log" "date; printf x; true; :; pytest -q; test -f a.log; [ -f a.log ]"
+    "pytest -q 2>&1 | sed -n 1p | awk '{print}' | sort" "/usr/bin/tail -1 a.log; pytest -q")
+for command in "${LIGHT[@]}"; do
+    reset
+    ran sA l1 "pytest -q" 1000 1002 > /dev/null
+    out="$(ran sA l2 "${command}" 2000 2100)"
+    check "軽い段だけが前後に在る命令は今までどおり鳴る: ${command}" mentions "いつもの 2.0秒" <<< "${out}"
+done
+reset
+ran sA l3 "cd sub && pytest -q | tail -5" 1000 1002 > /dev/null
+check "cd と絞りの付いた命令は基準を書く" [ "$(base_value)" = "2.0" ]
+# 測らない命令も試験は流れているので、 別の session の試験とはぶつかる
+reset
+hook PreToolUse sA h4 'pytest -q && git push' 1000 > /dev/null
+out="$(hook PreToolUse sB h5 'pytest -q tests' 1100)"
+check "測らない命令の試験も、 別の session の試験とぶつかる" denied <<< "${out}"
+# background でも測らない
+reset
+: > "${T}/ts-h.jsonl"
+hook PreToolUse sA h6 'pytest -q && git push' 1000 1 "" "${REPO}" "${T}/ts-h.jsonl" > /dev/null
+enqueue "${T}/ts-h.jsonl" h6 1100 completed "${T}/no-output"
+hook PreToolUse sA h7 'ls' 1200 0 "" "${REPO}" "${T}/ts-h.jsonl" > /dev/null
+check "background の測らない命令は、 終わりの記録だけ消す" [ "$(running_count)" = 0 ]
+check "background の測らない命令は基準を書かない" no_base
+check "background の測らない命令は鳴りを残さない" no_ring
+
 # --- 同じ時に終わった試験の基準が、 互いを消さない (= 全 session の hook が 1 つの file を読み書きする) -----------------
 reset
 for i in $(seq 1 20); do ran sA "p${i}" "pytest -q tests/t${i}.py" 1000 1002 > /dev/null & done

@@ -7,7 +7,8 @@ settings の PreToolUse (matcher Bash)・PostToolUse (matcher Bash)・PostToolUs
 
 - PreToolUse: まず終わった background の記録を終わりにする (下)。 閉じる手で鳴りが残っていれば deny。
   試験の命令で、 同じ repo の別の session の終わっていない記録 (30 分以内) が在れば deny。 それ以外の試験の命令は、 始まりを記録する。
-  秒は命令の全体でしか測れないので、 試験が複数在る命令は束で 1 つの試験として数える
+  秒は命令の全体でしか測れないので、 試験が複数在る命令は束で 1 つの試験として数える。
+  試験の外に軽い段 (= folder の移動と出力の絞り) 以外が在る命令は、 ぶつかりには数えるが測らない (= 鳴らさず、 基準も書かない)
   ほかの hook が断った呼び出しには終わりの hook が来ないので、 ぶつかる前にその会話の記録の結果の行を見て、 終わった物は捨てる
 - PostToolUse: まず終わった background の記録を終わりにする。 始まりと比べて秒数を出し、 基準と比べる。
   線を越えたら鳴りを残して文脈に文を足す。 収まれば基準を更新し、 同じ鍵の鳴りを消す。 `run_in_background` の命令は、 ここでは終わりにしない
@@ -31,6 +32,7 @@ from test_time import (  # noqa: E402
     closing_deny_message,
     collision_message,
     is_closing_hand,
+    is_timed_alone,
     next_base,
     find_task_notification,
     has_ended,
@@ -111,13 +113,17 @@ def before_call(payload: dict, store: TestTimeStore, now: float) -> str | None:
     store.start(tool_use_id, {
         "session": session, "repo": root, "command": runs_label(root, runs), "started_at": now,
         "background": bool(tool_input.get("run_in_background")), "tool_use_id": tool_use_id,
+        "timed": is_timed_alone(command),
         "transcript_path": payload.get("transcript_path") or "",
     })
     return None
 
 
 def judge(record: dict, output: str, now: float, store: TestTimeStore) -> str | None:
-    """終わった試験を基準と比べる。 線を越えたら鳴りを残して文を返し、 収まれば基準を更新して同じ鍵の鳴りを消す。"""
+    """終わった試験を基準と比べる。 線を越えたら鳴りを残して文を返し、 収まれば基準を更新して同じ鍵の鳴りを消す。
+    測らない命令の記録には何もしない。"""
+    if not record.get("timed", True):
+        return None
     elapsed = now - record["started_at"]
     key = baseline_key(record["repo"], record["command"])
     base = store.load_base(key)
