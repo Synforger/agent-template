@@ -305,6 +305,13 @@ step_children() {
     fi
 }
 
+step_tickets() {
+    # このタブが持つ票の数 (= tabs status の tickets: の行。 子の状態は children: の段が出す。 PWA のタブの外では何も出さない)
+    if command -v tabs >/dev/null 2>&1; then
+        tabs status 2>/dev/null | grep '^tickets:' || echo "tickets: UNKNOWN"
+    fi
+}
+
 step_fixed_cost() {
     # 起動と締めの固定費 (= hooks/fixed_cost.py が全部のタブで書く記録) の、 この階層と全体の 1 行
     if [ -f .tooling/startup/fixed_cost_summary.py ]; then
@@ -391,6 +398,7 @@ step_tool_actions     > "$TMPD/8e2-tools"   &
 step_pending_approvals > "$TMPD/8i-pending" &
 step_platform_check   > "$TMPD/8g-platform" &
 step_children         > "$TMPD/8f-children" &
+step_tickets          > "$TMPD/8f2-tickets" &
 step_pages_orphans    > "$TMPD/8h-pages"    &
 step_tab_health       > "$TMPD/8k-tabs"     &
 step_fixed_cost       > "$TMPD/8l-cost"     &
@@ -403,7 +411,7 @@ wait
 python3 .tooling/startup/route_by_owner.py --root "$ROOT" \
     "$TMPD/0-remote" "$TMPD/1-stale" "$TMPD/2-dup" "$TMPD/10-hits" "$TMPD/3-capacity" "$TMPD/4-docs" \
     "$TMPD/6-company" "$TMPD/6b-audit" "$TMPD/6c-unchecked" "$TMPD/7-guard" "$TMPD/8-settings" "$TMPD/8b-pins" "$TMPD/8d-deploy" "$TMPD/8e-clones" \
-    "$TMPD/8e2-tools" "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8h-pages" "$TMPD/8k-tabs" "$TMPD/8l-cost" "$TMPD/8m-budget" "$TMPD/8n-left" "$TMPD/8i-pending" "$TMPD/8j-peers" | tee "$TMPD/status"
+    "$TMPD/8e2-tools" "$TMPD/8g-platform" "$TMPD/8f-children" "$TMPD/8f2-tickets" "$TMPD/8h-pages" "$TMPD/8k-tabs" "$TMPD/8l-cost" "$TMPD/8m-budget" "$TMPD/8n-left" "$TMPD/8i-pending" "$TMPD/8j-peers" | tee "$TMPD/status"
 awk -v a="$_T0" -v b="${EPOCHREALTIME:-$(date +%s)}" \
     'BEGIN{printf "elapsed: %.1fs (= 全 step 並列、 律速は最も遅い 1 本)\n", b-a}'
 
