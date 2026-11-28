@@ -2,7 +2,8 @@
 # .tooling/startup/audit-known.sh (= 判定は audit_findings.py) の test。 作り物の監査の記録と番人の身代わりで、
 # 新しい漏れがその repo の境界を読めるタブにだけ出る事、係のタブ (印の file を置いた階層) が読む境界はほかのタブに
 # 出ない事、境界の外の repo は normal のタブだけに出る事、番人に訊けない時は全部が出る事、終わりの行の無い記録を
-# clean と読まない事、境界の無い記録を判定しない事、clean / STALE / NO RUN を確かめる。
+# clean と読まない事、境界の無い記録を判定しない事、回の後に受け入れた repo を新しい漏れから外す事、
+# clean / STALE / NO RUN を確かめる。
 #
 #   bash .tooling/tests/test-audit-known.sh
 set -uo pipefail
@@ -15,7 +16,9 @@ fail=0
 
 AUDIT_DIR="${T}/audit"
 export AUDIT_LOG_DIR="${AUDIT_DIR}"
-mkdir -p "${AUDIT_DIR}"
+KNOWN_DIR="${T}/known"
+export AUDIT_KNOWN_DIR="${KNOWN_DIR}"
+mkdir -p "${AUDIT_DIR}" "${KNOWN_DIR}"
 
 # 番人の身代わり: `reach` に FAKE_REACH (空白区切り) の名前を 1 行ずつ返す。FAKE_REACH_RC で失敗させる。
 # GUARD_WORK_FOLDER に .fake-reach が在れば、その folder の階層のタブとしてその中身を返す (.fake-fail が在れば失敗)
@@ -178,6 +181,26 @@ age_log 2026-05-03 10
 expect 'older than 7 days is STALE' client-x '^weekly_audit: STALE \(last run [0-9]+d ago'
 rm -f "${AUDIT_DIR}"/weekly-audit-*.log
 expect 'no log is NO RUN' '' '^weekly_audit: NO RUN \(no log'
+
+# 6b. 回の後に受け入れた repo は、 次の回まで FINDINGS に残っても新しい漏れから外し、 最初に言う物にしない
+# known <file> <repo> <受け入れた時刻> : 番人の `weekly-audit.sh --accept` が書く形の受け入れの記録
+known() { printf '# findings accepted as known by anon-audit-deep.sh (%s)\nsince %s\ntip 0000000\n' "$2" "$3" > "${KNOWN_DIR}/$1.known"; }
+rm -f "${AUDIT_DIR}"/weekly-audit-*.log
+mklog 2026-05-10 3 body_areas
+age_log 2026-05-10 1
+known repo-public /work/own/repo-public 2099-01-01T00:00:00Z
+expect 'a repo accepted after the run is not said first' '' '^weekly_audit: accepted after the run in 1 repo\(s\).*nothing to say first'
+expect 'the accepted repo is named with its time' '' '^  accepted: /work/own/repo-public \(since 2099-01-01T00:00:00Z\)$'
+expect_not 'the accepted repo is not new' '' 'NEW in|new: /work/own/repo-public'
+known repo-x /work/area-a/repo-x 2099-01-01T00:00:00Z
+expect 'a tab with one new and one accepted repo says only the new one first' 'client-x client-y' '^weekly_audit: NEW in 1 repo\(s\)'
+expect 'the new one is still named' 'client-x client-y' 'new: /work/area-b/repo-y'
+expect 'the accepted one follows' 'client-x client-y' '^  accepted: /work/area-a/repo-x'
+known repo-x /work/area-a/repo-x 2000-01-01T00:00:00Z
+expect 'a repo accepted before the run is still new' client-x 'new: /work/area-a/repo-x'
+printf 'not a known file\n' > "${KNOWN_DIR}/broken.known"
+expect 'an unreadable known file accepts nothing' client-x 'new: /work/area-a/repo-x'
+rm -f "${KNOWN_DIR}"/*.known
 
 # 7. 使い方の誤りは 2 で止まる (= 台帳の口は退役した)
 bash "${KNOWN}" adopt "${T}/x.log" > /dev/null 2>&1; expect_rc 'the retired adopt is an unknown command' $? 2
