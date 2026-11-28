@@ -3,7 +3,7 @@
 # pr-land.sh — PR を、 検査が通ったのを確かめてから merge し、 merge されたのを確かめてから tag を打つ
 # =============================================================================
 #   bash <エージェントの folder>/.tooling/work/pr-land.sh <PR 番号> [--squash|--merge] [--tag <名前>] [--keep-branch]
-#       [--match-head <sha>] [--subject <text>] [--body-file <file>]
+#       [--match-head <sha>] [--subject <text>] [--body-file <file>] [--author-email <住所>]
 #   (= その PR の repo の中で打つ。 型へ上げた PR なら型の worktree の中。 merge の仕方の既定は --squash)
 #
 # 何のために在るか (= 手で続けて打って 2 種類の誤りが出た):
@@ -34,8 +34,8 @@
 # =============================================================================
 set -uo pipefail
 
-usage() { echo "usage: pr-land.sh <PR number> [--squash|--merge] [--tag <name>] [--keep-branch] [--match-head <sha>] [--subject <text>] [--body-file <file>]" >&2; exit 2; }
-how="--squash"; tag=""; keep=0; pr=""; named=""; subject=""; body_file=""
+usage() { echo "usage: pr-land.sh <PR number> [--squash|--merge] [--tag <name>] [--keep-branch] [--match-head <sha>] [--subject <text>] [--body-file <file>] [--author-email <address>]" >&2; exit 2; }
+how="--squash"; tag=""; keep=0; pr=""; named=""; subject=""; body_file=""; author=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --squash|--merge) how="$1" ;;
@@ -44,6 +44,7 @@ while [ $# -gt 0 ]; do
         --match-head) [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || usage; named="$2"; shift ;;
         --subject) [ -n "${2:-}" ] || usage; subject="$2"; shift ;;
         --body-file) [ -f "${2:-}" ] && [ -r "$2" ] || usage; body_file="$2"; shift ;;
+        --author-email) [ -n "${2:-}" ] || usage; author="$2"; shift ;;   # 公開の repo で merge の author を noreply に固定する
         [0-9]*) pr="$1" ;;
         *) usage ;;
     esac
@@ -82,8 +83,10 @@ elif [ "${workflows}" = "0" ] && [ "${visibility}" = "PUBLIC" ]; then
     stop "#${pr} is in a public repo with no workflow; a public repo is judged by its Actions (not merged)"
 fi
 waited=0
+checks_err="$(mktemp)"
+trap 'rm -f "${checks_err}"' EXIT
 while [ "${workflows}" != "0" ] || [ "${visibility}" != "PRIVATE" ]; do
-    verdict="$(gh_ pr checks "${pr}" --json name,bucket | python3 -c '
+    verdict="$("${GH[@]}" pr checks "${pr}" --json name,bucket 2>"${checks_err}" | python3 -c '
 import json, sys
 try:
     checks = json.load(sys.stdin)
@@ -104,9 +107,19 @@ else:
         pass*) echo "pr-land: #${pr} checks passed (${verdict#pass })"; break ;;
         fail*) stop "a check failed on #${pr}: ${verdict#fail } (not merged)" ;;
     esac
+    # 読めない token は待っても読めない (= 「検査なし」 として上限まで待たない)
+    if grep -q "Resource not accessible" "${checks_err}"; then
+        stop "gh could not read the checks of #${pr} (not merged): this account's token may not read them.
+  Run it with PR_LAND_GH (e.g. PR_LAND_GH=gh with GH_TOKEN) set to an account that can"
+    fi
     if [ "${waited}" -ge "${TIMEOUT}" ]; then
+        # 衝突のある PR には GitHub が pull_request の run を立てない (= Actions の切り替えでは直らない)
+        if [ "${verdict}" = "none" ] && [ "$("${GH[@]}" pr view "${pr}" --json mergeStateStatus -q .mergeStateStatus 2>/dev/null)" = "DIRTY" ]; then
+            stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged): the PR conflicts with its base,
+  and GitHub starts no pull_request run for a conflicting PR. Merge the base into the branch, resolve, push again"
+        fi
         [ "${verdict}" = "none" ] && stop "no check was ever reported on #${pr} in ${TIMEOUT}s (not merged).
-  If a workflow here listens to pull_request and GitHub created no run for this PR at all, GitHub's
+  If the PR has no conflict and a workflow here listens to pull_request and GitHub created no run for this PR at all, GitHub's
   record of which workflow starts on which event is stale for this repository: turn the repository's
   Actions off and on again ('gh api -X PUT repos/{owner}/{repo}/actions/permissions -F enabled=false',
   then the same with '-F enabled=true' and the allowed_actions it had), then push to the PR again"
@@ -134,9 +147,10 @@ merge_args+=(--match-head-commit "${pinned}")
 rest_args=(-f merge_method="${how#--}" -f sha="${pinned}")
 if [ -n "${subject}" ]; then merge_args+=(--subject "${subject}"); rest_args+=(-f commit_title="${subject}"); fi
 if [ -n "${body_file}" ]; then merge_args+=(--body-file "${body_file}"); rest_args+=(-F commit_message="@${body_file}"); fi
+[ -n "${author}" ] && merge_args+=(--author-email "${author}")
 merge_err="$("${GH[@]}" "${merge_args[@]}" 2>&1 >/dev/null)"
 read_state
-if [ "${state:-}" != "MERGED" ] && [[ "${merge_err}" == *"Merge already in progress"* ]]; then
+if [ "${state:-}" != "MERGED" ] && [[ "${merge_err}" == *"Merge already in progress"* ]] && [ -z "${author}" ]; then   # REST の merge は author を決められない
     echo "pr-land: GitHub answered 'Merge already in progress' on #${pr}; asking again through the REST merge with the head ${pinned:0:7}"
     rest_err="$("${GH[@]}" api -X PUT "repos/{owner}/{repo}/pulls/${pr}/merge" "${rest_args[@]}" 2>&1 >/dev/null)"
     merge_err="${rest_err:-${merge_err}}"
