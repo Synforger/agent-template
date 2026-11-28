@@ -3,6 +3,7 @@
 
 呼ぶのは `hooks/test_time_gate.py` (= 試験の時間を測って鳴らす hook) と `work/test-time.py` (= 受け入れの命令)。
 命令の見分け・鳴る線の計算・基準の更新・pytest の遅い所の行の読み・鳴らす文を作る。 状態の読み書きは `test_time_store.py`。
+段の字句を読む部品 (= `command_words`・`step_assignments`・`expanded`・`without_redirections`) は `hooks/skill_triggers.py` も使う。
 段の割り方は `shell_segments.py`。 読まない形 = 文字列や置換の中で動く命令 (`bash -c`・`eval`・`$(…)`) と、 割れない命令 (= 通す)。
 試験 = tests/test-test-time-gate.sh
 """
@@ -29,6 +30,12 @@ RING_EXTRA_SECONDS = 5.0
 COLLISION_WINDOW_SECONDS = 30 * 60
 SLOWEST_COUNT = 10
 
+#: 試験の段の外に在っても、 命令の全体の秒を試験の秒と読める段の頭の命令 (= 試験の前後の folder の移動と出力の絞り)。
+#: 代入だけの段も軽い。 これ以外 (git・gh・sleep・build など) が 1 つでも在る命令は測らない
+LIGHT_HEADS = frozenset((
+    "cd", "echo", "printf", "true", ":", "export", "tail", "head", "grep", "tee", "cat", "wc", "sed", "awk", "sort",
+    "date", "test", "[",
+))
 #: 命令の前に立つ shell の語 (= その後ろが命令)
 SHELL_LEADS = ("do", "then", "else", "elif", "if", "while", "until", "!", "{", "(")
 #: 後ろの命令をそのまま走らせる包み → (値を取る旗, 命令の前に置く値の数)
@@ -137,11 +144,11 @@ def accepted_base(elapsed_seconds: float, after_seconds: float) -> float:
 
 def _segments(command: str) -> list[list[str]]:
     """命令を引用・heredoc・注釈の外の区切りで段に割り、 段ごとに実際に走る命令の字句にする (= 割れなければ空)。"""
-    found = (_unwrapped(words) for words in segments(without_text(command)))
+    found = (command_words(words) for words in segments(without_text(command)))
     return [words for words in found if words]
 
 
-def _unwrapped(words: list[str]) -> list[str]:
+def command_words(words: list[str]) -> list[str]:
     """段の頭の代入・shell の語・包みの命令 (= `direnv exec <dir>`・`env`・`timeout` など) を外した字句。"""
     rest = list(words)
     while rest:
@@ -210,34 +217,40 @@ def test_runs(command: str, cwd: Path) -> list[tuple[Path, str]]:
     current = cwd
     variables = {"HOME": os.path.expanduser("~")}
     for step in segments(without_text(command)):
-        variables.update(_assignments(step, variables))
-        words = _unwrapped(step)
+        variables.update(step_assignments(step, variables))
+        words = command_words(step)
         if len(words) >= 2 and words[0] == "cd":
-            current = (current / os.path.expanduser(_expanded(words[1], variables))).resolve()
+            current = (current / os.path.expanduser(expanded(words[1], variables))).resolve()
             continue
         if _matches_head(words, TEST_HEADS):
-            folder = _folder_after([_expanded(word, variables) for word in words], current)
-            runs.append((folder, normalize(shlex.join(_without_redirections(words)))))
+            folder = _folder_after([expanded(word, variables) for word in words], current)
+            runs.append((folder, normalize(shlex.join(without_redirections(words)))))
     return runs
 
 
-def _assignments(step: list[str], variables: dict[str, str]) -> dict[str, str]:
+def is_timed_alone(command: str) -> bool:
+    """命令の全体の秒を試験の秒と読めるか (= 試験の段の外が軽い段だけなら真)。"""
+    return all(
+        _matches_head(words, TEST_HEADS) or os.path.basename(words[0]) in LIGHT_HEADS for words in _segments(command))
+
+
+def step_assignments(step: list[str], variables: dict[str, str]) -> dict[str, str]:
     """段の頭の代入 (= `W=/path`・`export W=/path`) の名前と値。 値の中の前の代入は展開する。"""
     found: dict[str, str] = {}
     for word in step[1:] if step[:1] == ["export"] else step:
         match = ASSIGNMENT.match(word)
         if not match:
             break
-        found[match[1]] = _expanded(match[2], {**variables, **found})
+        found[match[1]] = expanded(match[2], {**variables, **found})
     return found
 
 
-def _expanded(word: str, variables: dict[str, str]) -> str:
+def expanded(word: str, variables: dict[str, str]) -> str:
     """字句の中の `$名前`・`${名前}` を、 分かっている値に置く (= 知らない名前はそのまま)。"""
     return VARIABLE.sub(lambda match: variables.get(match[1] or match[2], match[0]), word)
 
 
-def _without_redirections(words: list[str]) -> list[str]:
+def without_redirections(words: list[str]) -> list[str]:
     """段の字句から出力と入力の向け先 (= `2>&1`・`> log`・`2>/dev/null`) を外す (= 向け先の違いで別の試験にしない)。"""
     kept: list[str] = []
     rest = list(words)

@@ -13,11 +13,12 @@
 name = "code-writing"
 [[skill.when]]
 tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+# repo に残る場所の code の file の時だけ (= _scratch/ と一時の置き場の中には当てない)
 code = true
 [[skill.when]]
 tools = ["Bash"]
-# 連絡の本文や報告を置く _scratch/ と session の一時の置き場 scratchpad/ を作るだけの mkdir は、 code の置き場を決める操作ではないので当てない (= 引数のどれか 1 つでもその外なら当てる。 旗・redirect・注釈は引数に数えない)
-command = '\bmkdir\b(?:[ \t]+[^\s;&|<>#][^\s;&|<>]*)*?[ \t]+(?!-|\d*[<>]|[^\s;&|<>]*(?:_scratch|/scratchpad)(?:/|[\x22\x27]?(?:[\s;&|<>)]|$)))[^\s;&|<>#]'
+# code の置き場を作る命令の時だけ (= 一時の置き場の中の mkdir と、 md・txt・json を書くだけの命令には当てない。 見分けは skill_triggers.py の先頭の code_place)
+code_place = true
 
 [[skill]]
 name = "sub-agent"
