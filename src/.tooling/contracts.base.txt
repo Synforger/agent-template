@@ -58,6 +58,7 @@ startup/actions_verdict.py           | tests/test-startup-owners.sh       | 同�
 startup/pending_approvals.py         | tests/test-startup-owners.sh       | 自分の `.git` を持つ階層のうち、 番人の `detect_repo_kind` が名乗りの検査をかける種類と答えた物だけを `pending_approval: guard.scope <階層>` と名指し、 当たる物が無ければ `pending_approval: none`
 startup/peer_health.py               | tests/test-peer-health.sh          | client の見張りの記録から、 別の機械ごとに ok / DOWN (30 分以上答えない) / WAITING (置かれた連絡が在る) / UNKNOWN (見張りの記録が 15 分以上古い) を 1 行で出し、 記録の無い機械では黙る。 読むだけで client を叩かない
 startup/unchecked_repos.py           | tests/test-unchecked-repos.sh      | 番人の doctor の照合の外の repo の一覧から、 このタブが読める境界と境界の外・除外の行だけ path を出し、 ほかの境界は数だけにする。 一覧の無い機械では黙り、 番人に訊けない時は境界の行を全部数だけにする
+startup/journal_index.py               | tests/test-journal-index.sh        | 全文で読む 1 本は自分のタブの最新、 自分の物が無ければその階層・その機械の最新で、 一覧はほかのタブが書いた物のうち自分の 1 つ前より後の物 (自分の物が 1 本ならその後の全部と前の 2 本、 無ければ全文の 1 本の前の 2 本) を、 自分から分かれた fork を先頭にして description の 1 文目と並べる。 別の機械の物は外し、 `tab:` と `pc:` の無い物は残す
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査を読み上げる係のタブは、 サブプロジェクトの何段目に居ても係として働く
 startup/audit_findings.py              | tests/test-audit-known.sh          | 終わりの行の無い記録は clean と読まず INCOMPLETE と出して、 終わった一番新しい記録で判定し、 境界の無い記録と読み解けない記録は判定せずに黙らせない
 startup/audit_findings.py              | tests/test-audit-known.sh          | 回の後に受け入れた repo (= 受け入れの記録の since がその回の記録より新しい) は新しい漏れから外して `accepted:` の行に出し、 それだけの時は最初に言う物にせず、 回の前の受け入れと読めない受け入れの記録は外さない

@@ -102,6 +102,8 @@
 .tooling/startup/pending_approvals.py
 .tooling/startup/peer_health.py
 .tooling/startup/unchecked_repos.py
+# 起動で読む journal を選ぶ命令 (= 全文の 1 本と、 ほかのタブの一覧。 journal/_README.md と締めの skill が名指す)
+.tooling/startup/journal_index.py
 
 # docs-check step 11 が呼ぶ台帳生成 (= 出荷しないと step が空振りのまま PASS を出す)
 .tooling/rules/build-rule-registry.py
@@ -157,6 +159,7 @@
 .tooling/tests/test-startup-owners.sh
 .tooling/tests/test-peer-health.sh
 .tooling/tests/test-unchecked-repos.sh
+.tooling/tests/test-journal-index.sh
 
 # === rules 必須 file (= 機構の真値書類) ===
 rules/_README.md

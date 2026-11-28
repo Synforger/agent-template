@@ -89,7 +89,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 - <message-dir 設定時のみ> エージェント間メッセージ確認
 - **`bash .tooling/startup/startup-status.sh` 実行**: 出力末尾の行動指針に従う (= 反応基準は script の印字が真値)
 - **前 session の auto-index Read**: **起動階層の** `journal/<前 date>/session-NN-auto-index.jsonl` (= `normal` は直下の `journal/`、 project なら `projects/<P>/journal/`。 PC ローカル、 不在なら skip)
-- **`normal` の時は直下の `journal/` 最新 3 session を Read** (= 新しい順。 階層で起動した時は、 下の 5 点の 4 が同じ事をその階層の journal でする)
+- **`normal` の時は `python3 .tooling/startup/journal_index.py` を実行**し、 `journal_full:` の 1 本を全文で Read して、 `journal_others:` は一覧として読む (= 要る物だけ開く。 階層で起動した時は、 下の 5 点の 4 が同じ事をその階層の journal でする)
 - **持つ票を読む** (= client のタブ、 `PWA_SID` が在る時): `tabs ticket mine`。 持つ動いている票が 1 枚 1 行 (= id・題・状態・印・次の 1 手) で、 待ちは数だけ出る (= 1 枚も無ければ「持っている票はありません」 の 1 行)。 本文は要る時に `tabs ticket show <id>`。 タブが持つ仕事の真値はこの一覧で、 journal は続きを持たない
 
 #### Phase B-階層固有 (= 判定で採用した階層ごと、 並列一括)
@@ -101,7 +101,7 @@ Phase A / B / C は全 step を必ず実行する (= 発話の軽さ / session �
 1. `_README.md` (= その階層が何か / repo の在処 / 追加読み物の指定)
 2. `vision.md` (= この階層の現在地)
 3. `rules/always.md` 全文
-4. `journal/` 最新 3 session (= 新しい順、 満たなければある分だけ)
+4. `python3 .tooling/startup/journal_index.py --tier <この階層>` を実行し、 `journal_full:` の 1 本を全文で Read して、 `journal_others:` は一覧として読む (= 要る物だけ開く)
 5. `plans/` を `ls` + その階層の repo を `ls` と `git log -1` (= repo の在処は `_README.md`、 無い階層は skip)
 
 **この 5 点が手順の真値で、 置き場は本 file 1 箇所**。 各階層の `_README.md` は「起動時に何を読むか」 を持たず、 その階層でだけ要る物があれば `## 起動時の追加読み` に列挙する (= 5 点の後に読む)。
