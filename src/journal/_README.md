@@ -1,7 +1,7 @@
 ---
 title: journal/ の運用 (= 全階層共通の真値)
 description: session の記録の置き場。 file 名 / 書き方 / 追記のみの原則 / _archive の基準
-updated: 2026-11-21
+updated: 2026-11-29
 capacity: 3KB
 ---
 
@@ -18,9 +18,14 @@ capacity: 3KB
 
 - `YYYY-MM-DD/session-NN.md` (= 日付フォルダは**締めた日**、 作業期間が跨るなら本文の見出しに書く)
 - NN は階層ごとに独立、 採番は終了時 Step 0 の出力をそのまま使う
-- **続きのある仕事は journal に書かない**。 タブが持つ仕事は票 (client の `tabs ticket`) が真値で、 締めで持つ票それぞれに今を書き足す (= 手順は skill `session-end`)。 自動の入れ替えで締めた時だけ `## 入れ替えの時点` を書き、 新しい session がそれを読み上げて、 `tabs ticket mine` の次の 1 手から続ける。 client の外の session (= `PWA_SID` が無い) だけは、 前の形の `## 生きている依頼` を先頭に書く
+- **続きのある仕事は journal に書かず、 票 (client の `tabs ticket`) が持つ**。 締めで何を書くかは skill `session-end`
 - 書式 = `_template.md`。 発火記録は隣に `session-NN-rule-hits.jsonl` (= 書式 = `.claude/skills/rule-registry/SKILL.md`)
 - 機械が作る触跡は `session-NN-auto-index.jsonl` (= PC ローカル、 `git` に載せる階層と載せない階層がある)
+- 頭の欄の `tab:` (書いたタブ)・`forked_from:` (fork の元のタブ)・`description:` (一覧に 1 文目が出る) の書き方は skill `session-end`
+
+## 起動で読む物 = 全文 1 本と一覧
+
+エージェントの根で `python3 .tooling/startup/journal_index.py` を打つ。 `journal_full:` の 1 本 (= 自分のタブの最新、 無ければ階層の最新) は全文を読み、 `journal_others:` の一覧 (= ほかのタブと fork が書いた物) は 1 文を見て要る物だけ開く。 選び方と出力の形の真値は script の頭書き。
 
 ## 追記のみ
 

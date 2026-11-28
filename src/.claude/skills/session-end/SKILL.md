@@ -1,7 +1,7 @@
 ---
 title: session の締め (終了手順 Step 0〜3)
 description: 終了発話か入れ替えの引き金から push (引き金なら起動し直し) までの手順
-updated: 2026-11-22
+updated: 2026-11-29
 when_to_use: 操作者が断定形で終了を示した直後 (「終わり」「締めよう」「寝る」) / `<session-rollover phase="close">` が届いた時
 owner: template
 ---
@@ -44,6 +44,11 @@ Step 0〜3 を全部、この順で踏む。発動の判断 (断定形の終了�
 - **vision 更新** (現在地が動いた session のみ): 触れた階層の `vision.md` を**上書き**し、動いた時だけ書き換える。毎 session の更新義務はない。中身は状態だけで、やることは `plans/` と journal が持つ。無ければ作る。**既にある行を書き換える**。段落は増やさない。節と段落数は `.tooling/docs-check/docs-check.sh` step 14 が見る
 - **発火記録**: 効いた/違反 ID を `journal/<date>/session-NN-rule-hits.jsonl` へ書く。手順は `.claude/skills/rule-registry/SKILL.md` が持つ
 - **ジャーナル記入**: **書く前に階層を起動 keyword から再導出**。compaction で階層文脈が消えるためで、サブプロ起動なら一番下の段の journal が正、採番アンカーは自階層の .md から取る。**触れた階層全部に 1 本ずつ書く**。階層は自己完結している。`normal` は `journal/YYYY-MM-DD/session-NN.md`、project は `projects/<P>/journal/YYYY-MM-DD/session-NN.md`、subproject は `projects/<P>/subprojects/<S>/journal/YYYY-MM-DD/session-NN.md` (その下に段が続く時は `…/subprojects/<S2>/journal/…`、何段でも同じ形) に書く。親とサブの両方を触ったら触れた階層ごとに 1 本ずつ。NN は Step 0 出力の採番をそのまま使い、階層ごとに独立している。Step 0 の検証が `machine:` 行を出す派生は、その label を frontmatter の `pc:` に書く。複数の機械が同じ journal の folder に書く時、起動はこの印で自分の機械の物に絞る。規律は `journal/_README.md`、フォーマットは `journal/_template.md` が持つ。**続きのある仕事は journal に書かず、票が持つ** (client のタブ)。持つ票それぞれに今の状態を書き足し (1 行目が次の 1 手)、票の無い続きの仕事は `tabs ticket new` で開く (操作者の言葉から出た物は `--operator-said`)。票にするのは、その発話のターンの中で終わらない仕事とタブを渡る仕事だけで、1 枚 = 目的 1 つ。続けてよいかは票の出どころの欄 (操作者 / 別のタブ / 自分) が決めるので、手に出所の印は付けない。次の 1 手はエージェントが打つ手で書き、確かめていない見立ては「見立て」と書く。journal に票の id は並べない (`tabs ticket mine` が出す)。client の外の session (`PWA_SID` が無い) は票を持てないので、続きを journal の `## 生きている依頼` に書く (操作者の言葉を「」で原文のまま・範囲・次の 1 手。手ごとに `[操作者]`・`[タブ]`・`[案]`・`[見立て]` の印)
+  - **頭の `tab:`・`forked_from:`・`description:`**: 起動の一覧 (`.tooling/startup/journal_index.py`) が読む欄
+    - `tab:` は、締めの時に環境の `PWA_SID` を読んで書く。fork の会話には元のタブの値が残っているので、会話に出た id は写さない。`PWA_SID` が無い session は行を書かない
+    - `forked_from:` は fork のタブだけが書く。次の命令が元のタブの id を出し、何も出なければ行を書かない (client の記録で、`parent_id` を持ち子でないタブが fork)
+      `jq -r --arg me "$PWA_SID" '.[] | select(.id == $me and .child != true) | .parent_id // empty' "${AGENT_PLATFORM_ROOT:-$HOME/agent-platform}/state/claude-pwa-client/data/session_meta.json"`
+    - `description:` は 1 行で書き、1 文目が一覧に出る。fork の締めでは、メインのタブが知る必要のある事 (決めた事・変えた物・メインに残る手) を 1 文目から書く
   - **移り** (票の形が入って最初の締めで 1 回): タブのメモの「生きている頼み」と、前の journal の `## 生きている依頼`・`## 次回` のうち終わっていない物を票に開き直し、メモから消す。操作者の原文は `--operator-said` では運べない (取れるのは最後の発話だけ) ので、本文に「」で時刻と一緒に写す。出どころは「自分」になり、続ける前に操作者に見せる側に倒れる
 - **操作者が答えた物は、真値 (決まりの file・plan・操作者のメモ) へ入れ、journal の「決めた事」には入れた先の 1 行だけを書く**。中身を journal にもう一度書かない。答えは「はい」の形に限らない。方向を言った時も、操作者自身が案を出した時も答えで、例えば「〜の方が絶対良くね」「〜してもいいよ」が当たる。真値の側に決めた日時と操作者の言葉を添える
   - **`操作者の返事待ち` に書くのは、訊いた後の操作者の発話にその問いへの言及が 1 つも無い物だけ**。書く前に、この session の操作者の発話を問いごとに照らす。context に在るうちに行う
