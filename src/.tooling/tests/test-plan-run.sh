@@ -69,12 +69,12 @@ touch -t 203001010000 "${ALPHA}" "${BETA}" "${WORK}"
 check "after the start" 'plan_budget\(personal\): 公式 5% / 上限 40% \(残り 35%\)・会話から 5\.0% \(計画 2\.0%\)・窓の戻り' budget
 check_not "close enough" '離れている' budget
 check "local share" 'この機械の会話の計 5\.0% \(beta 3\.0% / alpha 2\.0%\)・物差し 1% = 0\.1\$ \(.* に戻った窓の 95% の実績.*単価の無い model の 0\.2M token は数えていない' budget
-check "cost order" '1 \| 0\.30 \| 3\.00% \| 1 \| beta .*2 \| 0\.20 \| 2\.00% \| 1 \| alpha' cost --since "${EPOCH_B}"
-# 物差しは窓・測る間・% ごとに覚える。 覚えた値を 0.2$ に書き換えると、 会話を読み直さずにその値で割る (alpha 0.2$ は 1.0%)。
+check "cost order" '1 \| 0\.30 \| 3\.00% \| 2 \| beta .*2 \| 0\.20 \| 2\.00% \| 1 \| alpha' cost --since "${EPOCH_B}"
+# 物差しは窓・測る間 (= 窓の戻りの 7 日前から。 作り物の窓なので負の時刻)・% ごとに覚える。 覚えた値を 0.2$ に書き換えると、 会話を読み直さずにその値で割る (alpha 0.2$ は 1.0%)。
 # 会話からの見当 2.5% は公式の 5% (丸めの幅で 4〜6%) より 1.25 倍を越えて小さいので、 離れた印が付く
 STICK="${AGENT_PLATFORM_ROOT}/state/token-usage/yardstick.json"
-if [ "$(cat "${STICK}" 2>/dev/null)" = '{"personal:2000:1000:95:usd": 0.1}' ]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "FAIL yardstick stored: $(cat "${STICK}" 2>&1)"; fi
-echo '{"personal:2000:1000:95:usd": 0.2}' > "${STICK}"
+if [ "$(cat "${STICK}" 2>/dev/null)" = '{"personal:2000:-602800:95:usd": 0.1}' ]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "FAIL yardstick stored: $(cat "${STICK}" 2>&1)"; fi
+echo '{"personal:2000:-602800:95:usd": 0.2}' > "${STICK}"
 check "yardstick remembered" '公式 5% / 上限 40% .*会話から 2\.5% \(計画 1\.0%\)・公式と会話からの見当が 0\.50 倍 \(会話から / 公式\) 離れている.*物差し 1% = 0\.2\$' budget
 
 # 窓 D (9395200 に始まり 10000000 に戻る) は途中で枠の大きさが変わった: 1 時間ごとの最大が 50% → 2% に落ち、 その後 20%。
