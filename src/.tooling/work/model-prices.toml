@@ -1,0 +1,24 @@
+# 7 日枠の減り方の物差しに使う、 model ごとの API の単価 ($ / 100 万 token)。 読むのは work/plan_run.py。
+# 7 日枠は model ごとに減り方が違い、 その比は API の単価の比に合う (同じ口座の 2 つの窓で、 Sonnet が主の窓と Opus が主の窓の
+# 1% あたりの量が、 単価で直すと揃い、 単価を見ない数え方では 1.6 倍ずれた)。 値は Anthropic の公開の単価。
+# 表に無い model の量は数えず、 budget の行に「単価の無い model」として出る。 新しい model が出たら行を足す。
+
+# cache への書き込みは、 入力の単価の何倍か (cache の持ち時間ごと。 記録に内訳の無い書き込みは ephemeral_5m で数える)
+[cache_write]
+ephemeral_5m = 1.25
+ephemeral_1h = 2.0
+
+[models.claude-fable-5-2]
+input = 8.0
+output = 40.0
+cache_read = 0.20
+
+[models.claude-opus-5-5]
+input = 4.0
+output = 20.0
+cache_read = 0.20
+
+[models.claude-sonnet-5-5]
+input = 2.0
+output = 10.0
+cache_read = 0.10
