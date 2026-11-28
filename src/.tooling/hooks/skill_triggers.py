@@ -22,12 +22,13 @@ A `when` matches when every condition it writes holds:
           leaves it out)
 - `prompt`  a regular expression searched in the operator's message
 - `env`     `NAME=value` pairs that the hook's environment holds
-- `code`    true: the path is a code file (by suffix, or `#!` on the first line), outside the temporary roots
+- `code`    true: the path is a code file (by suffix, or `#!` on the first line), outside the scratch places (the
+          temporary roots and any folder named `_scratch` or `scratchpad`, with all inside them)
 - `code_place` true: the Bash command makes a place for code, that is, a `mkdir` of it makes a folder outside the
-          scratch folders (`_scratch`, `scratchpad`) and the temporary roots. The command's own variables (and the
-          hook's environment) and its `cd` are followed; an operand that is only unknown variables says nothing. A
-          folder is no place for code when the command only writes documents (`.md`, `.txt`, `.json`) and what it
-          writes into that folder is documents. A `mkdir` inside a string or a substitution is not read
+          scratch places. The command's own variables (and the hook's environment) and its `cd` are followed; an
+          operand that is only unknown variables says nothing. A folder is no place for code when the command only
+          writes documents (`.md`, `.txt`, `.json`) and what it writes into that folder is documents. A `mkdir`
+          inside a string or a substitution is not read
 
 An own row with a base row's name adds its `when` to that row; any other own row is a skill of the agent's own.
 `{root}` in a regular expression stands for the agent's own folder. Called by `skill_gate.py`.
@@ -77,9 +78,14 @@ def is_temporary(path_text: str, temporary_roots: tuple[str, ...]) -> bool:
     return any(path_text == root or path_text.startswith(root + "/") for root in temporary_roots)
 
 
+def is_scratch(folder: str, temporary_roots: tuple[str, ...]) -> bool:
+    """Whether the folder is a scratch place or inside one (nothing written there is kept in a repository)."""
+    return is_temporary(folder, temporary_roots) or bool(SCRATCH_FOLDERS.intersection(Path(folder).parts))
+
+
 def is_code(path_text: str, first_bytes: bytes, new_content: str, temporary_roots: tuple[str, ...]) -> bool:
     """Whether the path is a code file worth the rules (told by suffix, or by `#!` without a suffix)."""
-    if not path_text or is_temporary(path_text, temporary_roots):
+    if not path_text or is_scratch(os.path.dirname(os.path.normpath(path_text)), temporary_roots):
         return False
     suffix = Path(path_text).suffix
     if suffix:
@@ -193,8 +199,7 @@ def makes_code_place(command: str, cwd: str, variables: dict[str, str], temporar
             if VARIABLE.sub("", path_text).strip("/"):
                 folders.append(resolved_path(path_text, folder, known.get("HOME", "")))
     return any(
-        not (SCRATCH_FOLDERS.intersection(Path(folder).parts) or is_temporary(folder, temporary_roots)
-             or (only_document_steps and holds_only_documents(folder, files)))
+        not (is_scratch(folder, temporary_roots) or (only_document_steps and holds_only_documents(folder, files)))
         for folder in folders)
 
 

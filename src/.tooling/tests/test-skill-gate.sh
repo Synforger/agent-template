@@ -377,5 +377,22 @@ for command in "${PLACE[@]}"; do
     check "code の置き場を作る命令は当てる: ${command}" rings_in "${AT}" "${command}"
 done
 
+# code の file を書く道具も、 _scratch/ と一時の置き場の中では当てない
+writes() { # <道具> <path の欄> <path>
+    names "$(shipped "$(tool "$1" "{\"$2\":\"$3\",\"content\":\"x\"}")" -u AGENT_CHILD)" code-writing
+}
+not_writes() { ! writes "$@"; }
+for writer in Write Edit MultiEdit; do
+    for path in "${AT}/projects/p/_scratch/ses_x/x.py" "${AT}/_scratch/x.sh" "/s/session/scratchpad/deep/x.py" "/scratch-root/x.py"; do
+        check "一時の置き場の code は当てない: ${writer} ${path}" not_writes "${writer}" file_path "${path}"
+    done
+    for path in "${AT}/.tooling/hooks/x.py" "${AT}/projects/p/src/x.py" "${AT}/my_scratch/x.py" "${AT}/src/scratchpad.py" \
+        "${AT}/_scratch/../src/x.py"; do
+        check "repo の中の code は当てる: ${writer} ${path}" writes "${writer}" file_path "${path}"
+    done
+done
+check "一時の置き場の notebook は当てない" not_writes NotebookEdit notebook_path "${AT}/_scratch/x.ipynb"
+check "repo の中の notebook は当てる" writes NotebookEdit notebook_path "${AT}/nb/x.ipynb"
+
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]

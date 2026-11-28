@@ -13,6 +13,7 @@
 name = "code-writing"
 [[skill.when]]
 tools = ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+# repo に残る場所の code の file の時だけ (= _scratch/ と一時の置き場の中には当てない)
 code = true
 [[skill.when]]
 tools = ["Bash"]
