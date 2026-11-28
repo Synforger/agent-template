@@ -1,0 +1,30 @@
+# 計画を回す道具 (work/plan_run.py) の設定の見本。 写して plan-run.toml にし、 値はこのエージェントの操作者が決める。
+# plan-run.toml が無い間は、 起動の検査の plan_budget と leftovers の行は出ない。
+
+# 計画の起点 (この時刻より後の 7 日枠の行と会話だけを数える)。 口座の枠が戻る時刻にする
+start = 2026-01-01T18:00:00+09:00
+
+# 口座ごとの、 計画が使ってよい 7 日枠の %
+[caps]
+personal = 40
+work = 20
+
+# 計画の分として数える会話: ここに書いた agent の folder で動いた会話の全部
+[plan]
+agents = ["<このエージェントの folder 名>"]
+
+# 口座ごとの会話の記録の根 (口座は根で決まる。 どちらの根にも同じ名前の agent の folder が在りうるので、 folder の名前では分けない)
+[account_roots]
+personal = "~/.claude"
+work = "~/.claude-work"
+
+# 進みの木 (status) が読む計画の file (agent の folder からの path) と、 単位の表・波の表の見出しの頭
+[status]
+plan = "plans/<計画の file>.md"
+units_heading = "単位の表"
+waves_heading = "波"
+
+# 片付けの棚卸しで見る repo の親 folder と、 open の PR を読む命令 (空にすれば PR は見ない)
+[leftovers]
+roots = ["~/agent-platform/tools", "~/agent-platform/agents"]
+gh = ["gh"]
