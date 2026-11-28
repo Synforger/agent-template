@@ -116,3 +116,8 @@
     say it in the briefing and settle every one in this session by the rules of pages/_README.md and skill
     explainer-pages (UNKNOWN -> say the check did not run). Leave 別の機械のタブか不明 alone: it is outside the count,
     tracked, and never seen on this machine, so it may be a live tab of another machine
+
+@ tab_health: | WARN|UNKNOWN
+  - tab_health WARN -> the machine's tab base is split (a second tmux server took the socket) or holds sessions no tab
+    owns. normal cleans it in this session: name what each leftover runs, and ask the operator before any kill
+    (UNKNOWN -> say so in the briefing)
