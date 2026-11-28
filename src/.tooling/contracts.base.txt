@@ -37,7 +37,7 @@ startup/capacity-candidates.py         | -                                  | �
 startup/check-launch-pins.py           | tests/test-launch-pins.sh          | 起動の経路に版の名指しや effort の上書きが在れば赤になる
 startup/check-deployed-clones.sh       | tests/test-deployed-clones.sh      | 配備元の clone が遅れていれば「遅れている」 と出て、 取り込むと緑に戻る
 startup/check_platform.py              | tests/test-platform-check.sh       | 器の点検が問題を名指せば数と 1 件 1 行が出て (= `template drift:` は数えない)、 点検が終わらない / 集計の行を出さない時は UNKNOWN、 器の無い機械では何も出さない
-startup/audit-known.sh                 | tests/test-audit-known.sh          | `status` は監査の記録の置き場を番人に訊いて判定へ渡し、 ほかの命令 (= 退役した台帳の口) は使い方を出して 2 で止まる
+startup/audit-known.sh                 | tests/test-audit-known.sh          | `status` は監査の記録と受け入れの記録の置き場を番人に訊いて判定へ渡し、 ほかの命令 (= 退役した台帳の口) は使い方を出して 2 で止まる
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査の FINDINGS の repo は、 その境界を読めるタブにだけ出し (= 境界の外の repo は境界を読まないタブ)、 番人に読める境界を訊けない時は全部を出す
 startup/pages_orphans.py               | tests/test-pages-orphans.sh        | 起動した階層の pages/ の下で、生きているタブ (別の機械のタブも) の id でない folder を、中身ありと雛形だけに分けて出し、`_` 始まりは数えず、タブの一覧が読めない時は UNKNOWN。生きているが階層の分かる別の階層のタブの folder を別の階層のタブとして出し、階層のトップが説明のページを持つこの階層のタブを指さない時と先の無いリンクを持つ時も出す。階層の伏せてあるタブはどちらにも数えない。git に載っていて一度もこの機械の一覧に出ていない id の folder は、数の外に「別の機械のタブか不明」として出す
 startup/route_by_owner.py            | tests/test-startup-owners.sh       | 起動の検査の警告は、 持ち主の階層のタブにだけ今の行で出て、 ほかの階層の分は `others: <行の名前> <件数> (owner <階層>)` の 1 行にまとまり、 健全な行と持ち主の無い行はそのまま出る。 読めない階層の名前は `(別の境界)` と伏せ、 番人に訊けない時は normal 以外を伏せる
@@ -61,6 +61,7 @@ startup/unchecked_repos.py           | tests/test-unchecked-repos.sh      | 番�
 startup/journal_index.py               | tests/test-journal-index.sh        | 全文で読む 1 本は自分のタブの最新、 自分の物が無ければその階層・その機械の最新で、 一覧はほかのタブが書いた物のうち自分の 1 つ前より後の物 (自分の物が 1 本ならその後の全部と前の 2 本、 無ければ全文の 1 本の前の 2 本) を、 自分から分かれた fork を先頭にして description の 1 文目と並べる。 別の機械の物は外し、 `tab:` と `pc:` の無い物は残す
 startup/audit_findings.py              | tests/test-audit-known.sh          | 週次の監査を読み上げる係のタブは、 サブプロジェクトの何段目に居ても係として働く
 startup/audit_findings.py              | tests/test-audit-known.sh          | 終わりの行の無い記録は clean と読まず INCOMPLETE と出して、 終わった一番新しい記録で判定し、 境界の無い記録と読み解けない記録は判定せずに黙らせない
+startup/audit_findings.py              | tests/test-audit-known.sh          | 回の後に受け入れた repo (= 受け入れの記録の since がその回の記録より新しい) は新しい漏れから外して `accepted:` の行に出し、 それだけの時は最初に言う物にせず、 回の前の受け入れと読めない受け入れの記録は外さない
 startup/detect-duplicates.py           | -                                  | rule file の節どうしの重なりを組で出す
 startup/detect-stale-rules.sh          | -                                  | 7 日更新の無い rule file を、 サブプロジェクトが何段続いても数える
 
