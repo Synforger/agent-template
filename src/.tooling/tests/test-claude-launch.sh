@@ -485,6 +485,19 @@ env -u CLAUDE_CONFIG_DIR -u PWA_SID -u AGENT_TIER -u GUARD_WORK_FOLDER AGENT_CHI
 check "--child の無い起動は、 受け継いだ子の印を session に渡さない" has "${T}/out/env" "AGENT_CHILD=unset"
 check "子でない normal の起動は TIER_MODELS の model (= fable。 子の sonnet にならない)" [ "$(grep -A1 -xF -- --model "${T}/out/args" | tail -1)" = "fable" ]
 
+# エージェントの templates/claude-tiers.json が階層の model を上書きする (= 壊れた file は型の既定に戻って 1 行言う)
+mkdir -p "${T}/agent/templates"
+printf '{"models": {"normal": "opus"}}' > "${T}/agent/templates/claude-tiers.json"
+printf 'おはよう' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "エージェントの claude-tiers.json が normal の model を上書きする" [ "$(grep -A1 -xF -- --model "${T}/out/args" | tail -1)" = "opus" ]
+printf '{"models": {"normal": "opus[1m]"}}' > "${T}/agent/templates/claude-tiers.json"
+printf 'おはよう' > "${T}/msg"
+launch --first-message-file "${T}/msg"
+check "alias 1 語でない上書きは使わず、 型の既定で起動して 1 行言う" \
+    bash -c "[ \"\$(grep -A1 -xF -- --model '${T}/out/args' | tail -1)\" = fable ] && grep -q 'claude-tiers.json の models' '${T}/out/stderr'"
+rm -f "${T}/agent/templates/claude-tiers.json"
+
 # --- 子のタブの起動の設定 (= templates/claude-child.json) ----------------------------------
 
 after() { grep -A1 -xF -- "$1" "${T}/out/args" | tail -1; }
