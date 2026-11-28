@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from skill_reads import DIFF_MARK, READING_TOOLS, changed_since, first_bytes, load_rows, read_times, transcript_of  # noqa: E402
-from skill_triggers import is_code, skill_file, skills_for, target_path  # noqa: E402
+from skill_triggers import is_code, makes_code_place, skill_file, skills_for, target_path  # noqa: E402
 
 ROOT = Path(os.environ.get("AGENT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
 TABLE = Path(os.environ.get("SKILL_GATE_TABLE") or ROOT / ".tooling/hooks/skill-triggers.toml")
@@ -64,17 +64,20 @@ def event_of(payload: dict) -> dict:
     tool_input = payload.get("tool_input") or {}
     path_text = target_path(tool_input)
     content = tool_input.get("content") or ""
+    command = tool_input.get("command") or ""
+    cwd = payload.get("cwd") or ""
     return {
         "name": payload.get("hook_event_name") or "",
         "tool": payload.get("tool_name") or "",
         "path": path_text,
-        "command": tool_input.get("command") or "",
-        "cwd": payload.get("cwd") or "",
+        "command": command,
+        "cwd": cwd,
         "subagent": tool_input.get("subagent_type") or "general-purpose",
         "prompt": own_prompt(payload.get("prompt") or ""),
         "env": dict(os.environ),
         "root": str(ROOT),
         "is_code": is_code(path_text, first_bytes(path_text), content, TEMPORARY_ROOTS),
+        "makes_code_place": makes_code_place(command, cwd, dict(os.environ), TEMPORARY_ROOTS),
     }
 
 

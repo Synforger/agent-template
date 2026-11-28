@@ -321,5 +321,61 @@ for command in 'claude -p q' 'tabs ask ses_x q.txt' 'run --key secrets/bot/anthr
 done
 check "型の表だけで、 model を呼ばない命令は黙る" silent "$(shipped "$(tool Bash '{"command":"claude --version && tabs list"}')" -u AGENT_CHILD)"
 
+# 型の表の code-writing の Bash の行は、 code の置き場を作る時だけ当てる (= 一時の置き場と、 文書を書くだけの命令には当てない)
+mkdir -p "${CHILD}/.claude/skills/code-writing"; touch "${CHILD}/.claude/skills/code-writing/SKILL.md"
+bash_in() { # <cwd> <命令>
+    python3 -c 'import json,sys
+print(json.dumps({"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":sys.argv[1],"tool_input":{"command":sys.argv[2]}})[1:-1])' "$1" "$2"
+}
+rings_in() { names "$(shipped "$(bash_in "$1" "$2")" -u AGENT_CHILD -u D -u REPO)" code-writing; }
+quiet_in() { ! rings_in "$1" "$2"; }
+AT="${W}/repo"
+NO_PLACE=(
+    'mkdir -p "$D"'
+    $'D=/a/projects/p/_scratch/x; mkdir -p "$D" && cat > "$D/a.md" <<\'EOF\'\n# note\nEOF'
+    $'export D=a/_scratch/x\nmkdir -p "${D}/y"'
+    'D=/s/scratchpad; mkdir -p "$D"'
+    'cd a/_scratch/x && mkdir -p y'
+    '(cd a/_scratch/x; mkdir y)'
+    'mkdir -p "a/_scratch/x y"'
+    'mkdir -p a/_scratch/$(date +%F)'
+    'D=$(mktemp -d); mkdir -p "$D/sub"'
+    'mkdir -p "$(mktemp -d)/sub"'
+    'mkdir -p /scratch-root/x'
+    'D=/scratch-root/s; cd "$D" && mkdir -p y'
+    'mkdir -m 755 -p a/_scratch/x 2>/dev/null > log.txt'
+    'mkdir -p a/_scratch/x # then mkdir src'
+    $'mkdir -p pages/s && cat > pages/s/memo.md <<\'EOF\'\nmkdir src\nEOF'
+    'mkdir -p out; echo "{}" > out/a.json && printf x | tee out/b.txt >/dev/null'
+    $'mkdir -p out && cat <<\'EOF\' >> "out/a.md"\nx\nEOF\ntabs send ses_x out/a.md'
+    'echo "then; mkdir src/x"'
+    "grep -n 'x; mkdir src' notes.md"
+)
+for command in "${NO_PLACE[@]}"; do
+    check "code の置き場を作らない命令は黙る: ${command}" quiet_in "${AT}" "${command}"
+done
+check "cwd が一時の置き場の中の mkdir は黙る" quiet_in "${W}/p/_scratch/s" 'mkdir y'
+PLACE=(
+    'mkdir src/newpkg'
+    'mkdir -p src/a src/b'
+    'mkdir -p a/_scratch/x b'
+    'P=src/newpkg; mkdir -p "$P"'
+    'cd sub && mkdir -p lib/x'
+    'mkdir -p "$REPO/src/newpkg"'
+    '(mkdir -p src/x)'
+    'for n in a b; do mkdir -p "src/$n"; done'
+    'cd a/_scratch/x && cd ../../.. && mkdir src'
+    'mkdir -m 755 -p src/x 2>/dev/null'
+    'env X=1 /bin/mkdir src/x'
+    'mkdir -p "src/$(date +%F)"'
+    $'mkdir -p src/newpkg && cat > src/newpkg/a.py <<\'EOF\'\nx = 1\nEOF'
+    'mkdir -p src/newpkg && echo x > src/newpkg/README.md && cp a.py src/newpkg/'
+    'mkdir -p src/newpkg && echo x > "$OUT"'
+    $'cat > m.md <<EOF\nhello\nEOF\nmkdir src/x'
+)
+for command in "${PLACE[@]}"; do
+    check "code の置き場を作る命令は当てる: ${command}" rings_in "${AT}" "${command}"
+done
+
 echo "test-skill-gate: ${pass} passed, ${fail} failed"
 [ "${fail}" -eq 0 ]
