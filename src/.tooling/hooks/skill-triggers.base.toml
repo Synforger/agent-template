@@ -54,6 +54,13 @@ tools = ["Write", "Edit", "MultiEdit"]
 path = '{root}/.*(\.html$|/pages/)'
 
 [[skill]]
+name = "explainer-shape"
+# 説明のページ (.html) を書く時だけ (= タブのメモを書くだけなら読まない)
+[[skill.when]]
+tools = ["Write", "Edit", "MultiEdit"]
+path = '{root}/.*\.html$'
+
+[[skill]]
 name = "automation-machinery"
 [[skill.when]]
 tools = ["Write", "Edit", "MultiEdit"]

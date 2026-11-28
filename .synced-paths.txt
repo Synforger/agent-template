@@ -165,6 +165,7 @@ rules/_README.md
 .claude/skills/rule-registry/SKILL.md
 .claude/skills/code-writing/SKILL.md
 .claude/skills/explainer-pages/SKILL.md
+.claude/skills/explainer-shape/SKILL.md
 .claude/skills/explainer-pages/scripts/check-tab-links.py
 .claude/skills/explainer-pages/scripts/install_toc.py
 
